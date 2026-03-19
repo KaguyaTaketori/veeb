@@ -52,6 +52,7 @@ class Bill {
   final String? description;
   final String? merchant;
   final String? billDate;
+  final String receiptUrl;   // ← 新增
   final List<BillItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -64,10 +65,13 @@ class Bill {
     this.description,
     this.merchant,
     this.billDate,
+    this.receiptUrl = '',
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
   });
+
+  bool get hasReceipt => receiptUrl.isNotEmpty;
 
   String get displayMerchant {
     if (merchant == null || merchant!.isEmpty || merchant == '未知商家') {
@@ -75,30 +79,22 @@ class Bill {
     }
     return merchant!;
   }
-  
-  factory Bill.fromJson(Map<String, dynamic> json) {
-    DateTime _parseTs(dynamic raw) {
-      if (raw == null) return DateTime.fromMillisecondsSinceEpoch(0);
-      final ms = (raw as num).toDouble();
-      final epochMs = ms < 1e10 ? (ms * 1000).toInt() : ms.toInt();
-      return DateTime.fromMillisecondsSinceEpoch(epochMs);
-    }
 
-    return Bill(
-      id: json['id'] as int,
-      amount: (json['amount'] ?? 0).toDouble(),
-      currency: json['currency'] as String? ?? 'JPY',
-      category: json['category'] as String?,
-      description: json['description'] as String?,
-      merchant: json['merchant'] as String?,
-      billDate: json['bill_date'] as String?,
-      items: (json['items'] as List? ?? [])
-          .map((e) => BillItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      createdAt: _parseTimestamp(json['created_at']),
-      updatedAt: _parseTimestamp(json['updated_at']),
-    );
-  }
+  factory Bill.fromJson(Map<String, dynamic> json) => Bill(
+        id: json['id'] as int,
+        amount: (json['amount'] ?? 0).toDouble(),
+        currency: json['currency'] as String? ?? 'JPY',
+        category: json['category'] as String?,
+        description: json['description'] as String?,
+        merchant: json['merchant'] as String?,
+        billDate: json['bill_date'] as String?,
+        receiptUrl: json['receipt_url'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((e) => BillItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt: _parseTimestamp(json['created_at']),
+        updatedAt: _parseTimestamp(json['updated_at']),
+      );
 
   static DateTime _parseTimestamp(dynamic raw) {
     if (raw == null) return DateTime.fromMillisecondsSinceEpoch(0);
@@ -106,7 +102,7 @@ class Bill {
     final epochMs = ms < 1e10 ? (ms * 1000).toInt() : ms.toInt();
     return DateTime.fromMillisecondsSinceEpoch(epochMs);
   }
-  
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'amount': amount,
@@ -115,10 +111,36 @@ class Bill {
         if (description != null) 'description': description,
         if (merchant != null) 'merchant': merchant,
         if (billDate != null) 'bill_date': billDate,
+        'receipt_url': receiptUrl,
         'items': items.map((e) => e.toJson()).toList(),
         'created_at': createdAt.millisecondsSinceEpoch ~/ 1000,
         'updated_at': updatedAt.millisecondsSinceEpoch ~/ 1000,
       };
+
+  /// 用于编辑时的浅拷贝
+  Bill copyWith({
+    double? amount,
+    String? currency,
+    String? category,
+    String? description,
+    String? merchant,
+    String? billDate,
+    String? receiptUrl,
+    List<BillItem>? items,
+  }) =>
+      Bill(
+        id: id,
+        amount: amount ?? this.amount,
+        currency: currency ?? this.currency,
+        category: category ?? this.category,
+        description: description ?? this.description,
+        merchant: merchant ?? this.merchant,
+        billDate: billDate ?? this.billDate,
+        receiptUrl: receiptUrl ?? this.receiptUrl,
+        items: items ?? this.items,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
 }
 
 class MonthlySummary {

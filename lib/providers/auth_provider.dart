@@ -25,37 +25,24 @@ class AuthState {
       );
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthApi _authApi;
-
-  AuthNotifier(this._authApi) : super(const AuthState()) {
+class AuthNotifier extends Notifier<AuthState> {
+  @override
+  AuthState build() {
     _checkToken();
+    return const AuthState();
   }
 
-  // ✅ 修复 #5：不仅检查本地 token 存在，还发请求验证有效性
-  // 若后端无 /me 接口，可改为直接读本地 token（保留注释说明权衡）
+  AuthApi get _authApi => ref.watch(authApiProvider);
+
   Future<void> _checkToken() async {
     final token = await AuthService.instance.getToken();
     if (token == null) {
       state = state.copyWith(status: AuthStatus.unauthenticated);
       return;
     }
-
-    // TODO: 调用 GET /me 或 /auth/validate 验证 token 仍有效
-    // 若后端不提供该接口，以下代码可简化为直接 authenticated
-    // try {
-    //   await _apiClient.get('/me');
-    //   state = state.copyWith(status: AuthStatus.authenticated);
-    // } catch (_) {
-    //   await AuthService.instance.clearToken();
-    //   state = state.copyWith(status: AuthStatus.unauthenticated);
-    // }
-
-    // 当前：本地有 token 则认为已登录
     state = state.copyWith(status: AuthStatus.authenticated);
   }
 
-  // ✅ 修复 #6：authApi 通过 Provider 注入，不再每次 new
   Future<void> login(int userId, String secret) async {
     state = state.copyWith(loading: true, error: null);
     try {
@@ -78,6 +65,4 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(authApiProvider));
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());

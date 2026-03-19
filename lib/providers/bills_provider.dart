@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/bills_api.dart';
 import '../models/bill.dart';
 
-// ── 状态定义 ──────────────────────────────────────────────
-
 class BillsState {
   final List<Bill> bills;
   final bool loading;
@@ -13,6 +11,7 @@ class BillsState {
   final int page;
   final double monthTotal;
   final int monthCount;
+  final String keyword;
 
   const BillsState({
     this.bills = const [],
@@ -22,6 +21,7 @@ class BillsState {
     this.page = 1,
     this.monthTotal = 0,
     this.monthCount = 0,
+    this.keyword = '',
   });
 
   BillsState copyWith({
@@ -32,32 +32,39 @@ class BillsState {
     int? page,
     double? monthTotal,
     int? monthCount,
+    String? keyword,
   }) =>
       BillsState(
         bills: bills ?? this.bills,
         loading: loading ?? this.loading,
-        error: error,                   // null 可清空 error
+        error: error,
         hasNext: hasNext ?? this.hasNext,
         page: page ?? this.page,
         monthTotal: monthTotal ?? this.monthTotal,
         monthCount: monthCount ?? this.monthCount,
+        keyword: keyword ?? this.keyword,
       );
 }
 
-// ── Notifier ──────────────────────────────────────────────
+class BillsNotifier extends Notifier<BillsState> {
+  @override
+  BillsState build() => const BillsState();
 
-class BillsNotifier extends StateNotifier<BillsState> {
-  final BillsApi _api;
+  BillsApi get _api => ref.watch(billsApiProvider);
 
-  BillsNotifier(this._api) : super(const BillsState());
-
-  // ✅ 修复 #7：setState 合并为 2 次（开始 + 结束），在 Notifier 中天然避免
-  Future<void> load(DateTime month, {bool refresh = false}) async {
+  Future<void> load(
+    DateTime month, {
+    bool refresh = false,
+    String? keyword,
+  }) async {
     final page = refresh ? 1 : state.page;
+    final kw = keyword ?? state.keyword;
+
     state = state.copyWith(
       loading: true,
       error: null,
       page: page,
+      keyword: kw,
       bills: refresh ? [] : state.bills,
     );
 
@@ -66,6 +73,7 @@ class BillsNotifier extends StateNotifier<BillsState> {
         page: page,
         year: month.year,
         month: month.month,
+        keyword: kw.isEmpty ? null : kw,
       );
       final newBills = (data['bills'] as List)
           .map((e) => Bill.fromJson(e as Map<String, dynamic>))
@@ -91,11 +99,22 @@ class BillsNotifier extends StateNotifier<BillsState> {
     state = state.copyWith(page: state.page + 1);
     await load(month);
   }
+
+  Future<void> search(DateTime month, String keyword) async {
+    await load(month, refresh: true, keyword: keyword);
+  }
+
+  Future<void> deleteBill(int billId) async {
+    try {
+      await _api.deleteBill(billId);
+      state = state.copyWith(
+        bills: state.bills.where((b) => b.id != billId).toList(),
+        monthCount: state.monthCount - 1,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
 }
 
-// ── Provider ──────────────────────────────────────────────
-
-final billsProvider =
-    StateNotifierProvider<BillsNotifier, BillsState>((ref) {
-  return BillsNotifier(ref.watch(billsApiProvider));
-});
+final billsProvider = NotifierProvider<BillsNotifier, BillsState>(() => BillsNotifier());

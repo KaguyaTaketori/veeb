@@ -22,10 +22,11 @@ class StatsState {
       );
 }
 
-class StatsNotifier extends StateNotifier<StatsState> {
-  final BillsApi _api;
+class StatsNotifier extends Notifier<StatsState> {
+  @override
+  StatsState build() => const StatsState();
 
-  StatsNotifier(this._api) : super(const StatsState());
+  BillsApi get _api => ref.watch(billsApiProvider);
 
   Future<void> load(DateTime month) async {
     state = state.copyWith(loading: true, error: null);
@@ -44,7 +45,4 @@ class StatsNotifier extends StateNotifier<StatsState> {
   }
 }
 
-final statsProvider =
-    StateNotifierProvider<StatsNotifier, StatsState>((ref) {
-  return StatsNotifier(ref.watch(billsApiProvider));
-});
+final statsProvider = NotifierProvider<StatsNotifier, StatsState>(() => StatsNotifier());
