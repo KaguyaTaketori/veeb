@@ -1,4 +1,5 @@
 // lib/providers/bills_provider.dart
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/bills_api.dart';
 import '../models/bill.dart';
@@ -47,6 +48,9 @@ class BillsState {
 }
 
 class BillsNotifier extends Notifier<BillsState> {
+  // ── 请求序列号：每次发起新请求自增，响应回来时校验是否仍是最新请求 ────
+  int _seq = 0;
+
   @override
   BillsState build() => const BillsState();
 
@@ -59,6 +63,9 @@ class BillsNotifier extends Notifier<BillsState> {
   }) async {
     final page = refresh ? 1 : state.page;
     final kw = keyword ?? state.keyword;
+
+    // 自增序列号，标记本次请求
+    final mySeq = ++_seq;
 
     state = state.copyWith(
       loading: true,
@@ -75,21 +82,29 @@ class BillsNotifier extends Notifier<BillsState> {
         month: month.month,
         keyword: kw.isEmpty ? null : kw,
       );
+
+      // 序列号不匹配说明有更新的请求已发出，丢弃本次响应
+      if (mySeq != _seq) return;
+
       final newBills = (data['bills'] as List)
           .map((e) => Bill.fromJson(e as Map<String, dynamic>))
           .toList();
       final merged = refresh ? newBills : [...state.bills, ...newBills];
-      final total = (data['month_total'] as num?)?.toDouble() ??
+
+      // 优先使用后端返回的 total，作为正确的过滤后总数
+      final total = (data['total'] as num?)?.toDouble() ??
           merged.fold<double>(0.0, (s, b) => s + b.amount);
+      final monthTotal = merged.fold<double>(0.0, (s, b) => s + b.amount);
 
       state = state.copyWith(
         bills: merged,
         hasNext: data['has_next'] as bool? ?? false,
-        monthTotal: total,
-        monthCount: data['month_count'] as int? ?? merged.length,
+        monthTotal: monthTotal,
+        monthCount: merged.length,
         loading: false,
       );
     } catch (e) {
+      if (mySeq != _seq) return;
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
@@ -117,4 +132,5 @@ class BillsNotifier extends Notifier<BillsState> {
   }
 }
 
-final billsProvider = NotifierProvider<BillsNotifier, BillsState>(() => BillsNotifier());
+final billsProvider =
+    NotifierProvider<BillsNotifier, BillsState>(() => BillsNotifier());

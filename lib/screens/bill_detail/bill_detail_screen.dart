@@ -18,12 +18,15 @@ class BillDetailScreen extends ConsumerWidget {
     final amount = kAmountFormat.format(bill.amount);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50, // 统一的浅灰色背景
       appBar: AppBar(
-        title: const Text('詳細'),
-        actions: [
-          // 编辑按钮
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        title: const Text('詳細', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions:[
+          // 仅保留编辑按钮在右上角，删除移到底部
+          TextButton.icon(
             onPressed: () async {
               final updated = await Navigator.push<bool>(
                 context,
@@ -35,55 +38,239 @@ class BillDetailScreen extends ConsumerWidget {
                 Navigator.pop(context, true);
               }
             },
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('編集', style: TextStyle(fontSize: 15)),
           ),
-          // 删除按钮
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _confirmDelete(context, ref),
-          ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 金额卡片
-            _AmountCard(
-              emoji: emoji,
-              amount: amount,
-              currency: bill.currency,
-              category: bill.category,
-            ),
-            const SizedBox(height: 16),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680), // 宽屏保护
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            children:[
+              // 1. 顶部超大金额头部
+              _buildAmountHeader(context, emoji, amount),
+              const SizedBox(height: 32),
 
-            // 基本信息
-            _InfoSection(bill: bill),
-            const SizedBox(height: 16),
+              // 2. 基本信息卡片
+              _buildInfoCard(context),
+              const SizedBox(height: 24),
 
-            // 图片凭证
-            if (bill.hasReceipt) ...[
-              _SectionTitle(title: '凭证'),
-              const SizedBox(height: 8),
-              _ReceiptImage(url: bill.receiptUrl),
-              const SizedBox(height: 16),
-            ],
+              // 3. 凭证图片区块
+              if (bill.hasReceipt) ...[
+                _buildSectionTitle('レシート・領収書画像'),
+                const SizedBox(height: 12),
+                _ReceiptImage(url: bill.receiptUrl),
+                const SizedBox(height: 24),
+              ],
 
-            // 商品明细
-            if (bill.items.isNotEmpty) ...[
-              _SectionTitle(title: '明細 (${bill.items.length}件)'),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: bill.items
-                        .map((item) => BillItemRow.fromModel(item))
-                        .toList(),
+              // 4. 明细区块
+              if (bill.items.isNotEmpty) ...[
+                _buildSectionTitle('明細 (${bill.items.length}件)'),
+                const SizedBox(height: 12),
+                _buildItemsCard(context),
+                const SizedBox(height: 24),
+              ],
+
+              const SizedBox(height: 32),
+
+              // 5. 底部删除按钮 (危险操作下放)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade50,
+                    foregroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () => _confirmDelete(context, ref),
+                  child: const Text(
+                    'この記録を削除する',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
+              const SizedBox(height: 48), // 底部留白
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 模块构建方法 ────────────────────────────────────────────────────────
+
+  Widget _buildAmountHeader(BuildContext context, String emoji, String amount) {
+    return Column(
+      children:[
+        // 大号圆形 Emoji 容器
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(emoji, style: const TextStyle(fontSize: 36)),
+        ),
+        const SizedBox(height: 16),
+        // 分类名称
+        Text(
+          bill.category ?? '未分類',
+          style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 4),
+        // 超大金额显示
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children:[
+            Text(
+              bill.currency,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              amount,
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.w900, // 与其他页面的金额保持统一的极粗字重
+                height: 1.0,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Column(
+        children:[
+          _buildInfoRow(
+            icon: Icons.store_outlined,
+            label: '商家',
+            value: bill.merchant ?? '未入力',
+            isValueFaded: bill.merchant == null || bill.merchant!.isEmpty,
+          ),
+          const Divider(height: 1, indent: 48),
+          _buildInfoRow(
+            icon: Icons.calendar_today_outlined,
+            label: '日付',
+            value: bill.billDate ?? '不明',
+          ),
+          if (bill.description?.isNotEmpty == true) ...[
+            const Divider(height: 1, indent: 48),
+            _buildInfoRow(
+              icon: Icons.notes_outlined,
+              label: '備考',
+              value: bill.description!,
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    bool isValueFaded = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, // 兼容多行备注
+        children:[
+          Icon(icon, size: 20, color: Colors.grey[500]),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isValueFaded ? FontWeight.normal : FontWeight.w500,
+                color: isValueFaded ? Colors.grey[400] : Colors.black87,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
+    );
+  }
+
+  Widget _buildItemsCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children:[
+            ...bill.items.map((item) => BillItemRow.fromModel(item)),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children:[
+                Text(
+                  '明細合計',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+                Text(
+                  '¥${kAmountFormat.format(bill.items.fold(0.0, (sum, e) => sum + e.amount))}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -95,8 +282,8 @@ class BillDetailScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('削除確認'),
-        content: const Text('この記録を削除しますか？この操作は元に戻せません。'),
-        actions: [
+        content: const Text('この記録を削除しますか？\nこの操作は元に戻せません。'),
+        actions:[
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('キャンセル'),
@@ -106,7 +293,7 @@ class BillDetailScreen extends ConsumerWidget {
               backgroundColor: Colors.red,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('削除'),
+            child: const Text('削除する'),
           ),
         ],
       ),
@@ -121,147 +308,7 @@ class BillDetailScreen extends ConsumerWidget {
   }
 }
 
-// ── 子组件 ────────────────────────────────────────────────────────────────
-
-class _AmountCard extends StatelessWidget {
-  final String emoji;
-  final String amount;
-  final String currency;
-  final String? category;
-
-  const _AmountCard({
-    required this.emoji,
-    required this.amount,
-    required this.currency,
-    this.category,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 40)),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '¥$amount $currency',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                ),
-                if (category != null)
-                  Text(
-                    category!,
-                    style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer
-                          .withOpacity(0.7),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoSection extends StatelessWidget {
-  final Bill bill;
-  const _InfoSection({required this.bill});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          children: [
-            _InfoRow(
-              icon: Icons.store_outlined,
-              label: '商家',
-              value: bill.merchant ?? '不明',
-            ),
-            _InfoRow(
-              icon: Icons.calendar_today_outlined,
-              label: '日付',
-              value: bill.billDate ?? '不明',
-            ),
-            if (bill.description?.isNotEmpty == true)
-              _InfoRow(
-                icon: Icons.notes_outlined,
-                label: '備考',
-                value: bill.description!,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.grey[600]),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 48,
-            child: Text(
-              label,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(context)
-          .textTheme
-          .titleSmall
-          ?.copyWith(fontWeight: FontWeight.bold),
-    );
-  }
-}
+// ── 凭证图片组件 ─────────────────────────────────────────────────────────
 
 class _ReceiptImage extends StatelessWidget {
   final String url;
@@ -277,14 +324,19 @@ class _ReceiptImage extends StatelessWidget {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Image.network(
           url,
           width: double.infinity,
+          height: 160,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             height: 120,
-            color: Colors.grey[200],
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            ),
             child: const Center(
               child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
             ),
@@ -292,7 +344,7 @@ class _ReceiptImage extends StatelessWidget {
           loadingBuilder: (_, child, progress) => progress == null
               ? child
               : SizedBox(
-                  height: 200,
+                  height: 160,
                   child: Center(
                     child: CircularProgressIndicator(
                       value: progress.expectedTotalBytes != null
@@ -308,7 +360,7 @@ class _ReceiptImage extends StatelessWidget {
   }
 }
 
-/// 全屏查看大图，支持双指缩放
+/// 全屏查看大图，支持双指缩放 (保持原样，无需大改)
 class _FullImageScreen extends StatelessWidget {
   final String url;
   const _FullImageScreen({required this.url});
