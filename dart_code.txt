@@ -1,0 +1,1492 @@
+// ============================================================================
+// Dart Code - Vee App
+// Generated: 2026-03-19
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// FILE: auth_api.dart
+// ---------------------------------------------------------------------------
+import 'package:dio/dio.dart';
+import '../exceptions/app_exception.dart';
+
+class AuthApi {
+  final Dio _dio;
+  AuthApi(this._dio);
+
+
+  Future<String> getToken(int userId, String secret) async {
+    try {
+      final res = await _dio.post(
+        '/auth/token',
+        data: {'user_id': userId, 'secret': secret},
+      );
+      final token = res.data['access_token'] as String?;
+      if (token == null || token.isEmpty) {
+        throw const AppException(
+          message: 'サーバーからトークンを取得できませんでした',
+          type: AppExceptionType.server,
+        );
+      }
+      return token;
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw mapDioError(e);
+    }
+  }
+}
+
+
+AppException mapDioError(DioException e) {
+  switch (e.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.sendTimeout:
+      return const AppException(
+        message: 'ネットワーク接続がタイムアウトしました',
+        type: AppExceptionType.network,
+      );
+    case DioExceptionType.connectionError:
+      return const AppException(
+        message: 'サーバーに接続できません。ネットワークを確認してください',
+        type: AppExceptionType.network,
+      );
+    case DioExceptionType.badResponse:
+      final status = e.response?.statusCode;
+      if (status == 401) {
+        return AppException(
+          message: 'セッションが期限切れです。再ログインしてください',
+          statusCode: 401,
+          type: AppExceptionType.unauthorized,
+        );
+      }
+      if (status == 404) {
+        return AppException(
+          message: 'リソースが見つかりません',
+          statusCode: 404,
+          type: AppExceptionType.notFound,
+        );
+      }
+      if (status != null && status >= 500) {
+        return AppException(
+          message: 'サーバーエラーが発生しました（$status）',
+          statusCode: status,
+          type: AppExceptionType.server,
+        );
+      }
+      final msg = e.response?.data?['detail'] ?? e.message ?? '不明なエラー';
+      return AppException(
+        message: msg.toString(),
+        statusCode: status,
+        type: AppExceptionType.badRequest,
+      );
+    default:
+      return AppException(
+        message: e.message ?? '不明なエラーが発生しました',
+        type: AppExceptionType.unknown,
+      );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: bills_api.dart
+// ---------------------------------------------------------------------------
+// lib/api/bills_api.dart
+import 'package:dio/dio.dart';
+import '../exceptions/app_exception.dart';
+import 'auth_api.dart'; // _mapDioError 复用
+
+class BillsApi {
+  final Dio _dio;
+
+  /// 通过构造函数注入 Dio，便于测试时传入 mock。
+  BillsApi(this._dio);
+
+  Future<T> _guard<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw mapDioError(e);
+    } catch (e) {
+      throw AppException(message: e.toString(), type: AppExceptionType.unknown);
+    }
+  }
+
+  Future<Map<String, dynamic>> listBills({
+    int page = 1,
+    int pageSize = 20,
+    int? year,
+    int? month,
+  }) => _guard(() async {
+        final res = await _dio.get('/bills', queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+          if (year != null) 'year': year,
+          if (month != null) 'month': month,
+        });
+        return res.data as Map<String, dynamic>;
+      });
+
+  Future<Map<String, dynamic>> getMonthlySummary({int? year, int? month}) =>
+      _guard(() async {
+        final res = await _dio.get('/bills/summary', queryParameters: {
+          if (year != null) 'year': year,
+          if (month != null) 'month': month,
+        });
+        return res.data as Map<String, dynamic>;
+      });
+
+  Future<Map<String, dynamic>> getBill(int billId) =>
+      _guard(() async {
+        final res = await _dio.get('/bills/$billId');
+        return res.data as Map<String, dynamic>;
+      });
+
+  Future<Map<String, dynamic>> createBill(Map<String, dynamic> data) =>
+      _guard(() async {
+        final res = await _dio.post('/bills', data: data);
+        return res.data as Map<String, dynamic>;
+      });
+
+  Future<Map<String, dynamic>> patchBill(
+          int billId, Map<String, dynamic> data) =>
+      _guard(() async {
+        final res = await _dio.patch('/bills/$billId', data: data);
+        return res.data as Map<String, dynamic>;
+      });
+
+  Future<void> deleteBill(int billId) =>
+      _guard(() async => await _dio.delete('/bills/$billId'));
+
+  Future<Map<String, dynamic>> ocrBill(
+          String imageBase64, String mimeType) =>
+      _guard(() async {
+        final res = await _dio.post('/bills/ocr', data: {
+          'image_base64': imageBase64,
+          'mime_type': mimeType,
+        });
+        return res.data as Map<String, dynamic>;
+      });
+}
+
+// ---------------------------------------------------------------------------
+// FILE: client.dart
+// ---------------------------------------------------------------------------
+// lib/api/client.dart
+import 'package:dio/dio.dart';
+import '../config/app_config.dart';
+import '../services/auth_service.dart';
+import '../exceptions/app_exception.dart';
+
+Dio createApiClient() {
+  final dio = Dio(BaseOptions(
+    baseUrl: AppConfig.baseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {'Content-Type': 'application/json'},
+  ));
+
+  dio.interceptors.add(InterceptorsWrapper(
+    onRequest: (options, handler) async {
+      final token = await AuthService.instance.getToken();
+      if (token != null) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+      return handler.next(options);
+    },
+
+    onResponse: (response, handler) {
+      return handler.next(response);
+    },
+
+    onError: (error, handler) async {
+      if (error.response?.statusCode == 401) {
+        await AuthService.instance.clearToken();
+        return handler.reject(
+          DioException(
+            requestOptions: error.requestOptions,
+            error: const AppException(
+              message: 'セッションが期限切れです。再ログインしてください',
+              statusCode: 401,
+              type: AppExceptionType.unauthorized,
+            ),
+          ),
+        );
+      }
+      return handler.next(error);
+    },
+  ));
+
+  if (AppConfig.isDebug) {
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (o) => print('[Dio] $o'),
+    ));
+  }
+
+  return dio;
+}
+
+Dio createAuthClient() {
+  final dio = Dio(BaseOptions(
+    baseUrl: AppConfig.authBaseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {'Content-Type': 'application/json'},
+  ));
+
+  if (AppConfig.isDebug) {
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (o) => print('[Dio] $o'),
+    ));
+  }
+
+  return dio;
+}
+
+// ---------------------------------------------------------------------------
+// FILE: app_config.dart
+// ---------------------------------------------------------------------------
+// 使用方式（在 flutter run / flutter build 时注入）:
+//   flutter run --dart-define=API_BASE_URL=https://api.yourapp.com/v1
+//   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/v1  # 本地 Android 模拟器
+//
+// 未传入时回退到开发默认值，生产环境 CI/CD 必须注入正式地址。
+
+class AppConfig {
+  // --dart-define 注入，未传则使用 fallback
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://217.142.236.17:8000/v1',
+  );
+
+  static const String authBaseUrl = String.fromEnvironment(
+    'API_AUTH_BASE_URL',
+    defaultValue: 'http://217.142.236.17:8000',
+  );
+
+  static String get authTokenPath => '/auth/token';
+
+  static const bool isDebug = bool.fromEnvironment('DEBUG', defaultValue: true);
+}
+
+// ---------------------------------------------------------------------------
+// FILE: categories.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+const Map<String, String> kCategoryEmoji = {
+  '餐饮': '🍜',
+  '交通': '🚇',
+  '购物': '🛍️',
+  '娱乐': '🎮',
+  '医疗': '💊',
+  '住房': '🏠',
+  '水电煤': '💡',
+  '食品': '🛒',
+  '加油': '⛽',
+  '其他': '📦',
+};
+
+
+const List<Color> kCategoryColors = [
+  Color(0xFFE85D30),
+  Color(0xFF3B8BD4),
+  Color(0xFF1D9E75),
+  Color(0xFFEF9F27),
+  Color(0xFF9B59B6),
+  Color(0xFFE74C3C),
+  Color(0xFF2ECC71),
+  Color(0xFF1ABC9C),
+];
+
+final kAmountFormat = NumberFormat('#,###');
+
+// ---------------------------------------------------------------------------
+// FILE: app_exception.dart
+// ---------------------------------------------------------------------------
+
+class AppException implements Exception {
+  final String message;
+  final int? statusCode;
+  final AppExceptionType type;
+
+  const AppException({
+    required this.message,
+    this.statusCode,
+    this.type = AppExceptionType.unknown,
+  });
+
+  @override
+  String toString() => message;
+}
+
+enum AppExceptionType {
+  network,
+  unauthorized,
+  server,
+  notFound,
+  badRequest,
+  unknown,
+}
+
+// ---------------------------------------------------------------------------
+// FILE: main.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter/material.dart';
+import 'screens/bills_list/bills_list_screen.dart';
+import 'screens/ocr/ocr_screen.dart';
+import 'screens/stats/stats_screen.dart';
+import 'api/auth_api.dart';
+import 'api/client.dart';
+import 'services/auth_service.dart';
+import 'exceptions/app_exception.dart';
+
+void main() {
+  runApp(const VeeApp());
+}
+
+class VeeApp extends StatelessWidget {
+  const VeeApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Vee',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFE85D30), brightness: Brightness.light),
+        useMaterial3: true,
+        fontFamily: 'sans-serif',
+      ),
+      home: const AuthGate(),
+    );
+  }
+}
+
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _checking = true;
+  bool _hasToken = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final loggedIn = await AuthService.instance.isLoggedIn;
+    setState(() { _hasToken = loggedIn; _checking = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return _hasToken ? const HomeScreen() : const LoginScreen();
+  }
+}
+
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _userIdCtrl = TextEditingController();
+  final _secretCtrl = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _userIdCtrl.dispose();
+    _secretCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final userIdText = _userIdCtrl.text.trim();
+    final secret = _secretCtrl.text.trim();
+
+    if (userIdText.isEmpty || secret.isEmpty) {
+      setState(() { _error = 'IDとSecretを入力してください'; });
+      return;
+    }
+
+    final userId = int.tryParse(userIdText);
+    if (userId == null) {
+      setState(() { _error = 'User IDは数字で入力してください'; });
+      return;
+    }
+
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      final authApi = AuthApi(createAuthClient());
+      final token = await authApi.getToken(userId, secret);
+      await AuthService.instance.saveToken(token);
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
+    } on AppException catch (e) {
+      setState(() { _error = e.message; });
+    } catch (e) {
+      setState(() { _error = 'ログイン失敗: $e'; });
+    } finally {
+      if (mounted) setState(() { _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Text('Vee',
+                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 48),
+            TextField(
+              controller: _userIdCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                  labelText: 'Telegram User ID',
+                  border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _secretCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'Secret', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 8),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _loading ? null : _login,
+                child: _loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('ログイン'),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final _screens = const [
+    BillsListScreen(),
+    OcrScreen(),
+    StatsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.receipt_long), label: '流水'),
+          NavigationDestination(icon: Icon(Icons.camera_alt), label: '記録'),
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: '統計'),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: bill.dart
+// ---------------------------------------------------------------------------
+// lib/models/bill.dart
+
+class BillItem {
+  final int? id;
+  final String name;
+  final String nameRaw;
+  final double quantity;
+  final double? unitPrice;
+  final double amount;
+  final String itemType;
+  final int sortOrder;
+
+  BillItem({
+    this.id,
+    required this.name,
+    this.nameRaw = '',
+    this.quantity = 1.0,
+    this.unitPrice,
+    required this.amount,
+    this.itemType = 'item',
+    this.sortOrder = 0,
+  });
+
+  factory BillItem.fromJson(Map<String, dynamic> json) => BillItem(
+        id: json['id'],
+        name: json['name'] as String,
+        nameRaw: json['name_raw'] as String? ?? '',
+        quantity: (json['quantity'] ?? 1.0).toDouble(),
+        unitPrice: (json['unit_price'] as num?)?.toDouble(),
+        amount: (json['amount'] ?? 0).toDouble(),
+        itemType: json['item_type'] as String? ?? 'item',
+        sortOrder: json['sort_order'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
+        'name': name,
+        'name_raw': nameRaw,
+        'quantity': quantity,
+        if (unitPrice != null) 'unit_price': unitPrice,
+        'amount': amount,
+        'item_type': itemType,
+        'sort_order': sortOrder,
+      };
+}
+
+class Bill {
+  final int id;
+  final double amount;
+  final String currency;
+  final String? category;
+  final String? description;
+  final String? merchant;
+  final String? billDate;
+  final List<BillItem> items;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Bill({
+    required this.id,
+    required this.amount,
+    required this.currency,
+    this.category,
+    this.description,
+    this.merchant,
+    this.billDate,
+    this.items = const [],
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Bill.fromJson(Map<String, dynamic> json) {
+    // 支持秒级和毫秒级 Unix 时间戳
+    DateTime _parseTs(dynamic raw) {
+      if (raw == null) return DateTime.fromMillisecondsSinceEpoch(0);
+      final ms = (raw as num).toDouble();
+      // 判断是秒级（< 1e10）还是毫秒级
+      final epochMs = ms < 1e10 ? (ms * 1000).toInt() : ms.toInt();
+      return DateTime.fromMillisecondsSinceEpoch(epochMs);
+    }
+
+    return Bill(
+      id: json['id'] as int,
+      amount: (json['amount'] ?? 0).toDouble(),
+      currency: json['currency'] as String? ?? 'JPY',
+      category: json['category'] as String?,
+      description: json['description'] as String?,
+      merchant: json['merchant'] as String?,
+      billDate: json['bill_date'] as String?,
+      items: (json['items'] as List? ?? [])
+          .map((e) => BillItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      createdAt: _parseTs(json['created_at']),
+      updatedAt: _parseTs(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'amount': amount,
+        'currency': currency,
+        if (category != null) 'category': category,
+        if (description != null) 'description': description,
+        if (merchant != null) 'merchant': merchant,
+        if (billDate != null) 'bill_date': billDate,
+        'items': items.map((e) => e.toJson()).toList(),
+        'created_at': createdAt.millisecondsSinceEpoch ~/ 1000,
+        'updated_at': updatedAt.millisecondsSinceEpoch ~/ 1000,
+      };
+}
+
+class MonthlySummary {
+  final int year;
+  final int month;
+  final double total;
+  final int count;
+  final List<CategorySummary> byCategory;
+  final List<CurrencySummary> byCurrency;
+
+  MonthlySummary({
+    required this.year,
+    required this.month,
+    required this.total,
+    required this.count,
+    required this.byCategory,
+    required this.byCurrency,
+  });
+
+  factory MonthlySummary.fromJson(Map<String, dynamic> json) => MonthlySummary(
+        year: json['year'] as int,
+        month: json['month'] as int,
+        total: (json['total'] ?? 0).toDouble(),
+        count: json['count'] as int? ?? 0,
+        byCategory: (json['by_category'] as List? ?? [])
+            .map((e) => CategorySummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        byCurrency: (json['by_currency'] as List? ?? [])
+            .map((e) => CurrencySummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class CategorySummary {
+  final String category;
+  final double total;
+  final int count;
+
+  CategorySummary({
+    required this.category,
+    required this.total,
+    required this.count,
+  });
+
+  factory CategorySummary.fromJson(Map<String, dynamic> json) =>
+      CategorySummary(
+        category: json['category'] as String,
+        total: (json['total'] ?? 0).toDouble(),
+        count: json['count'] as int? ?? 0,
+      );
+}
+
+class CurrencySummary {
+  final String currency;
+  final double total;
+
+  CurrencySummary({required this.currency, required this.total});
+
+  factory CurrencySummary.fromJson(Map<String, dynamic> json) =>
+      CurrencySummary(
+        currency: json['currency'] as String,
+        total: (json['total'] ?? 0).toDouble(),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// FILE: bills_list_screen.dart
+// ---------------------------------------------------------------------------
+// lib/screens/bills_list/bills_list_screen.dart
+import 'package:flutter/material.dart';
+import '../../api/bills_api.dart';
+import '../../api/client.dart';
+import '../../constants/categories.dart';
+import '../../models/bill.dart';
+import '../../widgets/bill_item_tile.dart';
+
+final _billsApi = BillsApi(createApiClient());
+
+class BillsListScreen extends StatefulWidget {
+  const BillsListScreen({super.key});
+
+  @override
+  State<BillsListScreen> createState() => _BillsListScreenState();
+}
+
+class _BillsListScreenState extends State<BillsListScreen> {
+  List<Bill> _bills = [];
+  bool _loading = true;
+  String? _error;
+  int _page = 1;
+  bool _hasNext = false;
+  late DateTime _selectedMonth; // ✅ 支持切换月份
+
+  // ✅ 合计来自后端，避免仅统计已加载页的错误
+  double _monthTotal = 0;
+  int _monthCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMonth = DateTime.now();
+    _load();
+  }
+
+  Future<void> _load({bool refresh = false}) async {
+    if (refresh) setState(() { _page = 1; _bills = []; });
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _billsApi.listBills(
+        page: _page,
+        year: _selectedMonth.year,
+        month: _selectedMonth.month,
+      );
+      final newBills = (data['bills'] as List)
+          .map((e) => Bill.fromJson(e as Map<String, dynamic>))
+          .toList();
+      setState(() {
+        _bills = refresh ? newBills : [..._bills, ...newBills];
+        _hasNext = data['has_next'] as bool? ?? false;
+        // ✅ 从后端 summary 字段读取月合计（如后端提供）
+        _monthTotal = (data['month_total'] as num? ?? 
+            _bills.fold<double>(0.0, (s, b) => s + b.amount)).toDouble();
+        _monthCount = data['month_count'] as int? ?? _bills.length;
+      });
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (!_hasNext || _loading) return;
+    _page++;
+    await _load();
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    });
+    _load(refresh: true);
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    if (_selectedMonth.year == now.year && _selectedMonth.month == now.month) return;
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+    });
+    _load(refresh: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalText = '¥${kAmountFormat.format(_monthTotal)}';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+                onPressed: _prevMonth,
+                icon: const Icon(Icons.chevron_left, size: 20)),
+            Text('${_selectedMonth.year}年${_selectedMonth.month}月'),
+            IconButton(
+                onPressed: _nextMonth,
+                icon: const Icon(Icons.chevron_right, size: 20)),
+          ],
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => _load(refresh: true)),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('支出合計', style: Theme.of(context).textTheme.bodyMedium),
+                Text(totalText,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text('$_monthCount 件',
+                    style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!,
+                            style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 8),
+                        FilledButton(
+                            onPressed: () => _load(refresh: true),
+                            child: const Text('再試行')),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () => _load(refresh: true),
+                    child: _bills.isEmpty && !_loading
+                        ? const Center(child: Text('記録がありません'))
+                        : ListView.builder(
+                            itemCount: _bills.length + (_hasNext ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == _bills.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: FilledButton(
+                                      onPressed: _loadMore,
+                                      child: const Text('もっと見る')),
+                                );
+                              }
+                              return BillItemTile(bill: _bills[index]);
+                            },
+                          ),
+                  ),
+          ),
+          if (_loading) const LinearProgressIndicator(),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: ocr_screen.dart
+// ---------------------------------------------------------------------------
+// lib/screens/ocr/ocr_screen.dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../api/bills_api.dart';
+import '../../constants/categories.dart';
+import '../../models/bill.dart' show Bill;
+import '../../widgets/bill_item_row.dart';
+
+// ── 依赖注入过渡方案（后续换 Riverpod/GetIt）
+import '../../api/client.dart';
+final _billsApi = BillsApi(createApiClient());
+
+class OcrScreen extends StatefulWidget {
+  const OcrScreen({super.key});
+
+  @override
+  State<OcrScreen> createState() => _OcrScreenState();
+}
+
+class _OcrScreenState extends State<OcrScreen> {
+  final _picker = ImagePicker();
+  bool _loading = false;
+  String? _error;
+  Bill? _result;
+
+  Future<void> _pickAndOcr(ImageSource source) async {
+    final xfile = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1920,
+    );
+    if (xfile == null) return;
+
+    setState(() { _loading = true; _error = null; _result = null; });
+
+    try {
+      final bytes = await File(xfile.path).readAsBytes();
+      final base64Str = base64Encode(bytes);
+      final mimeType = xfile.mimeType ?? 'image/jpeg';
+      final data = await _billsApi.ocrBill(base64Str, mimeType);
+      setState(() {
+        _result = Bill.fromJson(data);
+      });
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  Future<void> _confirm() async {
+    if (_result == null) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      await _billsApi.createBill(_result!.toJson());
+      setState(() { _result = null; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('記帳しました！')),
+        );
+      }
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('拍照記帳')),
+      body: _loading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('AI解析中...'),
+                ],
+              ),
+            )
+          : _result != null
+              ? _ConfirmView(
+                  result: _result!,
+                  onConfirm: _confirm,
+                  onRetake: () => setState(() => _result = null),
+                )
+              : _PickerView(
+                  error: _error,
+                  onCamera: () => _pickAndOcr(ImageSource.camera),
+                  onGallery: () => _pickAndOcr(ImageSource.gallery),
+                ),
+    );
+  }
+}
+
+
+class _PickerView extends StatelessWidget {
+  final String? error;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
+
+  const _PickerView({this.error, required this.onCamera, required this.onGallery});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.receipt_long, size: 80, color: Colors.grey),
+          const SizedBox(height: 24),
+          const Text('レシートを撮影してAIが自動解析します',
+              style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+              onPressed: onCamera,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('カメラで撮影')),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+              onPressed: onGallery,
+              icon: const Icon(Icons.photo_library),
+              label: const Text('アルバムから選択')),
+          if (error != null) ...[
+            const SizedBox(height: 16),
+            Text(error!, style: const TextStyle(color: Colors.red)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
+class _ConfirmView extends StatelessWidget {
+  final Bill result;
+  final VoidCallback onConfirm;
+  final VoidCallback onRetake;
+
+  const _ConfirmView({
+    required this.result,
+    required this.onConfirm,
+    required this.onRetake,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = kAmountFormat.format(result.amount);
+    final emoji = kCategoryEmoji[result.category] ?? '📦';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Text(
+              '¥$amount ${result.currency}',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _InfoRow(label: '商家', value: result.merchant ?? '不明'),
+          _InfoRow(label: 'カテゴリ', value: '$emoji ${result.category ?? 'その他'}'),
+          _InfoRow(label: '日付', value: result.billDate ?? ''),
+          if (result.items.isNotEmpty) ...[
+            const Divider(height: 24),
+            Text('明細', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...result.items.map((item) => BillItemRow.fromModel(item)),
+          ],
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                    onPressed: onRetake, child: const Text('撮り直す')),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                    onPressed: onConfirm, child: const Text('確認・保存')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(children: [
+        SizedBox(
+          width: 80,
+          child: Text(label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        ),
+        Expanded(
+            child: Text(value,
+                style: const TextStyle(fontWeight: FontWeight.w500))),
+      ]),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: stats_screen.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../../api/bills_api.dart';
+import '../../api/client.dart';
+import '../../constants/categories.dart';
+import '../../models/bill.dart' show MonthlySummary;
+
+final _billsApi = BillsApi(createApiClient());
+
+class StatsScreen extends StatefulWidget {
+  const StatsScreen({super.key});
+
+  @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen> {
+  MonthlySummary? _summary;
+  bool _loading = true;
+  String? _error;
+  int _touchedIndex = -1;
+  late DateTime _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMonth = DateTime.now();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _billsApi.getMonthlySummary(
+        year: _selectedMonth.year,
+        month: _selectedMonth.month,
+      );
+      setState(() { _summary = MonthlySummary.fromJson(data); });
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    });
+    _load();
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    if (_selectedMonth.year == now.year && _selectedMonth.month == now.month) return;
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+    });
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('統計'), centerTitle: false),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                  const SizedBox(height: 8),
+                  FilledButton(onPressed: _load, child: const Text('再試行')),
+                ]))
+              : _summary == null
+                  ? const Center(child: Text('データなし'))
+                  : _Body(
+                      summary: _summary!,
+                      selectedMonth: _selectedMonth,
+                      touchedIndex: _touchedIndex,
+                      onTouch: (i) => setState(() => _touchedIndex = i),
+                      onPrev: _prevMonth,
+                      onNext: _nextMonth,
+                    ),
+    );
+  }
+}
+
+class _Body extends StatelessWidget {
+  final MonthlySummary summary;
+  final DateTime selectedMonth;
+  final int touchedIndex;
+  final ValueChanged<int> onTouch;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  const _Body({
+    required this.summary,
+    required this.selectedMonth,
+    required this.touchedIndex,
+    required this.onTouch,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = kAmountFormat.format(summary.total);
+    final currency = summary.byCurrency.isNotEmpty
+        ? summary.byCurrency.first.currency
+        : 'JPY';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          IconButton(onPressed: onPrev, icon: const Icon(Icons.chevron_left)),
+          Text('${selectedMonth.year}年${selectedMonth.month}月',
+              style: Theme.of(context).textTheme.titleMedium),
+          IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right)),
+        ]),
+        const SizedBox(height: 8),
+        Center(
+          child: Column(children: [
+            Text('支出合計', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            Text(
+              '¥$total $currency',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary),
+            ),
+            Text('${summary.count} 件',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+          ]),
+        ),
+        const SizedBox(height: 24),
+        if (summary.byCategory.isNotEmpty) ...[
+          SizedBox(
+            height: 220,
+            child: PieChart(
+              PieChartData(
+                pieTouchData: PieTouchData(
+                  touchCallback: (event, response) {
+                    onTouch(response?.touchedSection != null
+                        ? response!.touchedSection!.touchedSectionIndex
+                        : -1);
+                  },
+                ),
+                sections: summary.byCategory.asMap().entries.map((e) {
+                  final i = e.key;
+                  final cat = e.value;
+                  final isTouched = i == touchedIndex;
+                  final color = kCategoryColors[i % kCategoryColors.length];
+                  final pct = summary.total > 0
+                      ? cat.total / summary.total * 100
+                      : 0.0;
+                  return PieChartSectionData(
+                    color: color,
+                    value: cat.total,
+                    radius: isTouched ? 80 : 65,
+                    title: isTouched ? '${pct.toStringAsFixed(1)}%' : '',
+                    titleStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
+                  );
+                }).toList(),
+                centerSpaceRadius: 50,
+                sectionsSpace: 2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...summary.byCategory.asMap().entries.map((e) {
+            final i = e.key;
+            final cat = e.value;
+            final color = kCategoryColors[i % kCategoryColors.length];
+            final emoji = kCategoryEmoji[cat.category] ?? '📦';
+            final catAmount = kAmountFormat.format(cat.total);
+            final pct = summary.total > 0 ? cat.total / summary.total * 100 : 0.0;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                      color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+                Text('$emoji ${cat.category}',
+                    style: const TextStyle(fontSize: 14)),
+                const Spacer(),
+                Text('¥$catAmount',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 44,
+                  child: Text('${pct.toStringAsFixed(0)}%',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                ),
+              ]),
+            );
+          }),
+        ] else
+          const Center(child: Text('データなし')),
+      ]),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: auth_service.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+
+class AuthService {
+  AuthService._();
+  static final AuthService instance = AuthService._();
+
+  static const _kTokenKey = 'jwt_token';
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  Future<String?> getToken() => _storage.read(key: _kTokenKey);
+
+  Future<void> saveToken(String token) =>
+      _storage.write(key: _kTokenKey, value: token);
+
+  Future<void> clearToken() => _storage.delete(key: _kTokenKey);
+
+  Future<bool> get isLoggedIn async => (await getToken()) != null;
+}
+
+// ---------------------------------------------------------------------------
+// FILE: bill_item_row.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter/material.dart';
+import '../models/bill.dart';
+import '../constants/categories.dart';
+
+class BillItemRow extends StatelessWidget {
+  final String name;
+  final double amount;
+  final String itemType;
+  final double quantity;
+
+  const BillItemRow({
+    super.key,
+    required this.name,
+    required this.amount,
+    this.itemType = 'item',
+    this.quantity = 1.0,
+  });
+
+  factory BillItemRow.fromModel(BillItem item) => BillItemRow(
+        name: item.name,
+        amount: item.amount,
+        itemType: item.itemType,
+        quantity: item.quantity,
+      );
+
+  factory BillItemRow.fromMap(Map<String, dynamic> map) => BillItemRow(
+        name: map['name'] as String? ?? '',
+        amount: (map['amount'] as num? ?? 0).toDouble(),
+        itemType: map['item_type'] as String? ?? 'item',
+        quantity: (map['quantity'] as num? ?? 1.0).toDouble(),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final isDiscount = itemType == 'discount';
+    final isTax = itemType == 'tax';
+    final amountStr = kAmountFormat.format(amount.abs());
+    final color = isDiscount
+        ? Colors.red
+        : isTax
+            ? Colors.grey
+            : Theme.of(context).colorScheme.onSurface;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        Text(
+          isDiscount ? '➖' : isTax ? '🧾' : '•',
+          style: const TextStyle(fontSize: 12),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(name, style: TextStyle(fontSize: 13, color: color)),
+        ),
+        if (quantity != 1.0)
+          Text(
+            'x${quantity.toInt()}  ',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        Text(
+          isDiscount ? '-¥$amountStr' : '¥$amountStr',
+          style: TextStyle(
+              fontSize: 13, color: color, fontWeight: FontWeight.w500),
+        ),
+      ]),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FILE: bill_item_tile.dart
+// ---------------------------------------------------------------------------
+import 'package:flutter/material.dart';
+import '../models/bill.dart';
+import '../constants/categories.dart';
+import 'bill_item_row.dart';
+
+class BillItemTile extends StatelessWidget {
+  final Bill bill;
+  const BillItemTile({super.key, required this.bill});
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = kCategoryEmoji[bill.category] ?? '📦';
+    final amount = kAmountFormat.format(bill.amount);
+    final merchant =
+        (bill.merchant == null || bill.merchant == '未知商家' || bill.merchant!.isEmpty)
+            ? ''
+            : bill.merchant!;
+    final date = bill.billDate ?? '';
+
+    return ExpansionTile(
+      leading: Text(emoji, style: const TextStyle(fontSize: 28)),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              merchant.isNotEmpty ? merchant : (bill.category ?? '未分類'),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            '¥$amount',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+      subtitle: Text(date, style: Theme.of(context).textTheme.bodySmall),
+      children: bill.items.isEmpty
+          ? []
+          : [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Column(
+                  children: [
+                    const Divider(),
+                    ...bill.items.map((item) => BillItemRow.fromModel(item)),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ],
+    );
+  }
+}
+
+// ============================================================================
+// Total files: 14
+// ============================================================================
