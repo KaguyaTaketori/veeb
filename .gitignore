@@ -51,6 +51,3 @@ app.*.map.json
 dart_code.txt
 gather_dart.sh
 gather_dart.bat
-
-# Backup files
-*.bak
