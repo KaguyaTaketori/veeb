@@ -119,9 +119,13 @@ class MeApi {
             'new_password': newPassword,
           }));
 
+  // FIX: was '/me/tg/bind' (404) — correct path matches backend route /me/tg-bind/request
   Future<Map<String, dynamic>> requestTgBindCode() =>
-      _guard(() => _dio.post('/me/tg/bind').then((r) => r.data as Map<String, dynamic>));
+      _guard(() => _dio
+          .post('/me/tg-bind/request')
+          .then((r) => r.data as Map<String, dynamic>));
 
+  // FIX: was DELETE '/me/tg/bind' (404) — correct path matches backend route /me/tg-bind
   Future<void> deleteTgBind() =>
-      _guard(() => _dio.delete('/me/tg/bind'));
+      _guard(() => _dio.delete('/me/tg-bind'));
 }
