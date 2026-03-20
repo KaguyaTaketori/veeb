@@ -104,7 +104,10 @@ class _AuthInterceptor extends Interceptor {
 
   Future<String?> _doRefresh() async {
     final refreshToken = await AuthService.instance.getRefreshToken();
-    if (refreshToken == null) return null;
+    if (refreshToken == null) {
+      AuthEventBus.instance.logout();
+      return null;
+    }
 
     try {
       final resp = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
@@ -122,6 +125,7 @@ class _AuthInterceptor extends Interceptor {
     } catch (_) {
       // 刷新失败，清除 token，触发登出
       await AuthService.instance.clearTokens();
+      AuthEventBus.instance.logout();
       return null;
     }
   }

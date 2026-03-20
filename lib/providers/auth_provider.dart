@@ -4,6 +4,7 @@ import '../api/auth_api.dart';
 import '../exceptions/app_exception.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/auth_event.dart';
 
 enum AuthStatus { checking, authenticated, unauthenticated }
 
@@ -39,6 +40,14 @@ class AuthState {
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
+    final sub = AuthEventBus.instance.stream.listen((event) {
+      if (event == AuthEvent.logout) {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    });
+
+    ref.onDispose(sub.cancel);
+    
     _init();
     return const AuthState();
   }
