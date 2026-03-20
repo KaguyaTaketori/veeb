@@ -70,6 +70,7 @@ class Bill {
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
+    this.source = 'app',
   });
 
   bool get hasReceipt => receiptUrl.isNotEmpty;
@@ -137,6 +138,7 @@ class Bill {
     String? billDate,
     String? receiptUrl,
     List<BillItem>? items,
+    String? source,
   }) =>
       Bill(
         id: id,
@@ -150,6 +152,7 @@ class Bill {
         items: items ?? this.items,
         createdAt: createdAt,
         updatedAt: updatedAt,
+        source: source ?? this.source,
       );
 }
 

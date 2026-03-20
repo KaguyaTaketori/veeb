@@ -1,5 +1,6 @@
 // lib/providers/bills_provider.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/bills_api.dart';
 import '../models/bill.dart';
@@ -129,6 +130,54 @@ class BillsNotifier extends Notifier<BillsState> {
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
+  }
+
+  void insertBillFromWs(Map<String, dynamic> data) {
+    try {
+      final bill = Bill.fromJson(data);
+      // 避免重复插入（同一 bill_id）
+      final exists = state.bills.any((b) => b.id == bill.id);
+      if (exists) return;
+      state = state.copyWith(
+        bills:      [bill, ...state.bills],
+        monthTotal: state.monthTotal + bill.amount,
+        monthCount: state.monthCount + 1,
+      );
+    } catch (e) {
+      debugPrint('[WS] insertBillFromWs 解析失败: $e');
+    }
+  }
+ 
+  /// WS 推送：更新列表中已有账单
+  void updateBillFromWs(Map<String, dynamic> data) {
+    try {
+      final updated = Bill.fromJson(data);
+      final oldList = state.bills;
+      final idx = oldList.indexWhere((b) => b.id == updated.id);
+      if (idx == -1) return;
+      final old = oldList[idx];
+      final newList = [...oldList];
+      newList[idx] = updated;
+      state = state.copyWith(
+        bills:      newList,
+        monthTotal: state.monthTotal - old.amount + updated.amount,
+      );
+    } catch (e) {
+      debugPrint('[WS] updateBillFromWs 解析失败: $e');
+    }
+  }
+ 
+  /// WS 推送：从列表移除已删除账单
+  void removeBillById(int billId) {
+    final old = state.bills.firstWhere(
+      (b) => b.id == billId,
+      orElse: () => throw StateError('not found'),
+    );
+    state = state.copyWith(
+      bills:      state.bills.where((b) => b.id != billId).toList(),
+      monthTotal: state.monthTotal - old.amount,
+      monthCount: state.monthCount - 1,
+    );
   }
 }
 

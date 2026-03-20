@@ -1,3 +1,4 @@
+// lib/providers/auth_provider.dart  （完整替换）
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/auth_api.dart';
 import '../models/user.dart';
@@ -42,8 +43,10 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  AuthApi get _api => ref.read(authApiProvider);
+  AuthApi get _api   => ref.read(authApiProvider);
   MeApi  get _meApi  => ref.read(meApiProvider);
+
+  // ── 启动时检查本地 token ──────────────────────────────────────────────
 
   Future<void> _init() async {
     final hasToken = await AuthService.instance.hasTokens;
@@ -54,33 +57,40 @@ class AuthNotifier extends Notifier<AuthState> {
     await _loadMe();
   }
 
+  // ── 加载用户信息（简化版：不做双重重试，由拦截器负责 token 刷新）───────
+
   Future<void> _loadMe() async {
     try {
       final user = await _meApi.getMe();
-      state = state.copyWith(status: AuthStatus.authenticated, user: user);
-    } catch (_) {
-      final hasToken = await AuthService.instance.hasTokens;
-      if (!hasToken) {
-        state = state.copyWith(
-            status: AuthStatus.unauthenticated, clearUser: true);
-      } else {
-        try {
-          final user = await _meApi.getMe();
-          state = state.copyWith(
-              status: AuthStatus.authenticated, user: user);
-        } catch (_) {
-          await AuthService.instance.clearTokens();
-          state = state.copyWith(
-              status: AuthStatus.unauthenticated, clearUser: true);
-        }
-      }
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user:   user,
+        clearError: true,
+      );
+    } catch (e) {
+      // 拦截器已经尝试过刷新 token：
+      //   - 刷新成功 → retry 成功 → 不会走到这里
+      //   - 刷新成功 → retry 仍 401 → 拦截器清除 token，抛出异常 → 走这里
+      //   - 刷新失败 → 拦截器清除 token，抛出异常 → 走这里
+      // 所以走到这里时，token 已经被拦截器清除了，直接登出即可
+      await AuthService.instance.clearTokens();
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        clearError: true,
+      );
     }
   }
+
+  // ── 登录 ──────────────────────────────────────────────────────────────
 
   Future<void> login(String identifier, String password) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final data = await _api.login(identifier: identifier, password: password);
+      final data = await _api.login(
+        identifier: identifier,
+        password:   password,
+      );
       await AuthService.instance.saveTokens(
         accessToken:  data['access_token']  as String,
         refreshToken: data['refresh_token'] as String,
@@ -93,6 +103,8 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  // ── 退出登录 ──────────────────────────────────────────────────────────
+
   Future<void> logout() async {
     final refreshToken = await AuthService.instance.getRefreshToken();
     if (refreshToken != null) {
@@ -101,6 +113,8 @@ class AuthNotifier extends Notifier<AuthState> {
     await AuthService.instance.clearTokens();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
+
+  // ── 刷新用户信息 ──────────────────────────────────────────────────────
 
   Future<void> refreshProfile() => _loadMe();
 
