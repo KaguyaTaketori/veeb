@@ -135,6 +135,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
+// class HomeScreen extends StatefulWidget {
+//   const HomeScreen({super.key});
+
+//   @override
+//   State<HomeScreen> createState() => _HomeScreenState();
+// }
+
+// class _HomeScreenState extends State<HomeScreen> {
+//   int _currentIndex = 0;
+
+//   final _screens = const [
+//     BillsListScreen(),
+//     OcrScreen(),
+//     StatsScreen(),
+//   ];
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: _screens[_currentIndex],
+//       bottomNavigationBar: NavigationBar(
+//         selectedIndex: _currentIndex,
+//         onDestinationSelected: (i) => setState(() => _currentIndex = i),
+//         destinations: const [
+//           NavigationDestination(icon: Icon(Icons.receipt_long), label: '流水'),
+//           NavigationDestination(icon: Icon(Icons.camera_alt), label: '記録'),
+//           NavigationDestination(icon: Icon(Icons.bar_chart), label: '統計'),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// 在 main.dart 或 home_screen.dart 中替换 HomeScreen
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -145,7 +180,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final _screens = const [
+  final _screens = const[
     BillsListScreen(),
     OcrScreen(),
     StatsScreen(),
@@ -153,17 +188,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.receipt_long), label: '流水'),
-          NavigationDestination(icon: Icon(Icons.camera_alt), label: '記録'),
-          NavigationDestination(icon: Icon(Icons.bar_chart), label: '統計'),
-        ],
-      ),
+    // 使用 LayoutBuilder 动态判断屏幕宽度
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 如果宽度大于 800px（比如 iPad横屏 或 PC/Mac） -> 使用侧边栏 NavigationRail
+        if (constraints.maxWidth > 800) {
+          return Scaffold(
+            backgroundColor: Colors.grey.shade50,
+            body: Row(
+              children:[
+                NavigationRail(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (i) => setState(() => _currentIndex = i),
+                  labelType: NavigationRailLabelType.all,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  selectedIconTheme: IconThemeData(color: Theme.of(context).colorScheme.primary),
+                  destinations: const[
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: Text('流水'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.camera_alt_outlined),
+                      selectedIcon: Icon(Icons.camera_alt),
+                      label: Text('記録'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.bar_chart_outlined),
+                      selectedIcon: Icon(Icons.bar_chart),
+                      label: Text('統計'),
+                    ),
+                  ],
+                ),
+                // 右侧加一条极细的分割线
+                VerticalDivider(thickness: 1, width: 1, color: Colors.grey.withOpacity(0.2)),
+                // 主体内容区域
+                Expanded(child: _screens[_currentIndex]),
+              ],
+            ),
+          );
+        }
+
+        // 如果是手机竖屏 -> 使用原先的底部导航栏 BottomNavigationBar
+        return Scaffold(
+          body: _screens[_currentIndex],
+          bottomNavigationBar: NavigationBar(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (i) => setState(() => _currentIndex = i),
+            destinations: const[
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: '流水',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.camera_alt_outlined),
+                selectedIcon: Icon(Icons.camera_alt),
+                label: '記録',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart),
+                label: '統計',
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
