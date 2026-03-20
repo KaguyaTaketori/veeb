@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../constants/categories.dart';
 import '../../models/bill.dart';
 import '../../providers/bills_provider.dart';
+import '../../utils/currency.dart';
 import '../../widgets/bill_item_row.dart';
 import '../add_edit_bill/add_edit_bill_screen.dart';
 
@@ -14,18 +15,18 @@ class BillDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emoji = kCategoryEmoji[bill.category] ?? '📦';
-    final amount = kAmountFormat.format(bill.amount);
+    final emoji  = kCategoryEmoji[bill.category] ?? '📦';
+    final amount = formatAmount(bill.amount, bill.currency);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // 统一的浅灰色背景
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: const Text('詳細', style: TextStyle(fontWeight: FontWeight.bold)),
+        title:
+            const Text('詳細', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        actions:[
-          // 仅保留编辑按钮在右上角，删除移到底部
+        actions: [
           TextButton.icon(
             onPressed: () async {
               final updated = await Navigator.push<bool>(
@@ -46,19 +47,17 @@ class BillDetailScreen extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680), // 宽屏保护
+          constraints: const BoxConstraints(maxWidth: 680),
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            children:[
-              // 1. 顶部超大金额头部
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            children: [
               _buildAmountHeader(context, emoji, amount),
               const SizedBox(height: 32),
-
-              // 2. 基本信息卡片
               _buildInfoCard(context),
               const SizedBox(height: 24),
 
-              // 3. 凭证图片区块
+              // 凭证图片
               if (bill.hasReceipt) ...[
                 _buildSectionTitle('レシート・領収書画像'),
                 const SizedBox(height: 12),
@@ -66,7 +65,7 @@ class BillDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
               ],
 
-              // 4. 明细区块
+              // 明细
               if (bill.items.isNotEmpty) ...[
                 _buildSectionTitle('明細 (${bill.items.length}件)'),
                 const SizedBox(height: 12),
@@ -75,8 +74,6 @@ class BillDetailScreen extends ConsumerWidget {
               ],
 
               const SizedBox(height: 32),
-
-              // 5. 底部删除按钮 (危险操作下放)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.tonal(
@@ -85,17 +82,17 @@ class BillDetailScreen extends ConsumerWidget {
                     foregroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () => _confirmDelete(context, ref),
                   child: const Text(
                     'この記録を削除する',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-              const SizedBox(height: 48), // 底部留白
+              const SizedBox(height: 48),
             ],
           ),
         ),
@@ -103,24 +100,27 @@ class BillDetailScreen extends ConsumerWidget {
     );
   }
 
-  // ── 模块构建方法 ────────────────────────────────────────────────────────
+  // ── 顶部金额区域 ─────────────────────────────────────────────────────
 
-  Widget _buildAmountHeader(BuildContext context, String emoji, String amount) {
+  Widget _buildAmountHeader(
+      BuildContext context, String emoji, String amount) {
     return Column(
-      children:[
-        // 大号圆形 Emoji 容器
+      children: [
         Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            color: Theme.of(context)
+                .colorScheme
+                .primary
+                .withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
           child: Text(emoji, style: const TextStyle(fontSize: 36)),
         ),
         const SizedBox(height: 16),
-        // 分类名称
+        // 分类名
         Text(
           bill.category ?? '未分類',
           style: TextStyle(
@@ -129,11 +129,11 @@ class BillDetailScreen extends ConsumerWidget {
               fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 4),
-        // 超大金额显示
+        // 超大金额
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
-          children:[
+          children: [
             Text(
               bill.currency,
               style: TextStyle(
@@ -147,16 +147,34 @@ class BillDetailScreen extends ConsumerWidget {
               amount,
               style: TextStyle(
                 fontSize: 48,
-                fontWeight: FontWeight.w900, // 与其他页面的金额保持统一的极粗字重
+                fontWeight: FontWeight.w900,
                 height: 1.0,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
         ),
+        // 来源标签（Bot 记录显示）
+        if (bill.sourceLabel != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${bill.sourceLabel!} から記録',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ),
+        ],
       ],
     );
   }
+
+  // ── 基本信息卡片 ─────────────────────────────────────────────────────
 
   Widget _buildInfoCard(BuildContext context) {
     return Card(
@@ -167,12 +185,13 @@ class BillDetailScreen extends ConsumerWidget {
         side: BorderSide(color: Colors.grey.withOpacity(0.2)),
       ),
       child: Column(
-        children:[
+        children: [
           _buildInfoRow(
             icon: Icons.store_outlined,
             label: '商家',
             value: bill.merchant ?? '未入力',
-            isValueFaded: bill.merchant == null || bill.merchant!.isEmpty,
+            isValueFaded:
+                bill.merchant == null || bill.merchant!.isEmpty,
           ),
           const Divider(height: 1, indent: 48),
           _buildInfoRow(
@@ -187,7 +206,7 @@ class BillDetailScreen extends ConsumerWidget {
               label: '備考',
               value: bill.description!,
             ),
-          ]
+          ],
         ],
       ),
     );
@@ -200,17 +219,19 @@ class BillDetailScreen extends ConsumerWidget {
     bool isValueFaded = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // 兼容多行备注
-        children:[
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Icon(icon, size: 20, color: Colors.grey[500]),
           const SizedBox(width: 12),
           SizedBox(
             width: 70,
             child: Text(
               label,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              style:
+                  TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
           ),
           Expanded(
@@ -218,8 +239,12 @@ class BillDetailScreen extends ConsumerWidget {
               value,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: isValueFaded ? FontWeight.normal : FontWeight.w500,
-                color: isValueFaded ? Colors.grey[400] : Colors.black87,
+                fontWeight: isValueFaded
+                    ? FontWeight.normal
+                    : FontWeight.w500,
+                color: isValueFaded
+                    ? Colors.grey[400]
+                    : Colors.black87,
               ),
               textAlign: TextAlign.right,
             ),
@@ -235,12 +260,21 @@ class BillDetailScreen extends ConsumerWidget {
       child: Text(
         title,
         style: const TextStyle(
-            fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87),
       ),
     );
   }
 
+  // ── 明细卡片 ─────────────────────────────────────────────────────────
+
   Widget _buildItemsCard(BuildContext context) {
+    // 明细合计（amount 已是 float）
+    final itemsTotal =
+        bill.items.fold(0.0, (sum, e) => sum + e.amount);
+    final itemsTotalStr = formatAmount(itemsTotal, bill.currency);
+
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surface,
@@ -251,21 +285,22 @@ class BillDetailScreen extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children:[
-            ...bill.items.map((item) => BillItemRow.fromModel(item)),
+          children: [
+            ...bill.items.map((item) => BillItemRow.fromModel(item, currency: bill.currency)),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Divider(height: 1),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children:[
+              children: [
                 Text(
                   '明細合計',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(
+                      color: Colors.grey[600], fontSize: 13),
                 ),
                 Text(
-                  '¥${kAmountFormat.format(bill.items.fold(0.0, (sum, e) => sum + e.amount))}',
+                  '${bill.currency} $itemsTotalStr',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 15),
                 ),
@@ -277,21 +312,24 @@ class BillDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+  // ── 删除确认 ─────────────────────────────────────────────────────────
+
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('削除確認'),
-        content: const Text('この記録を削除しますか？\nこの操作は元に戻せません。'),
-        actions:[
+        content:
+            const Text('この記録を削除しますか？\nこの操作は元に戻せません。'),
+        actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('キャンセル'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+                backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('削除する'),
           ),
@@ -308,7 +346,7 @@ class BillDetailScreen extends ConsumerWidget {
   }
 }
 
-// ── 凭证图片组件 ─────────────────────────────────────────────────────────
+// ── 凭证图片组件（不变）────────────────────────────────────────────────
 
 class _ReceiptImage extends StatelessWidget {
   final String url;
@@ -335,32 +373,34 @@ class _ReceiptImage extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              border:
+                  Border.all(color: Colors.grey.withOpacity(0.3)),
             ),
             child: const Center(
-              child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+              child: Icon(Icons.broken_image,
+                  size: 40, color: Colors.grey),
             ),
           ),
-          loadingBuilder: (_, child, progress) => progress == null
-              ? child
-              : SizedBox(
-                  height: 160,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: progress.expectedTotalBytes != null
-                          ? progress.cumulativeBytesLoaded /
-                              progress.expectedTotalBytes!
-                          : null,
+          loadingBuilder: (_, child, progress) =>
+              progress == null
+                  ? child
+                  : SizedBox(
+                      height: 160,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: progress.expectedTotalBytes != null
+                              ? progress.cumulativeBytesLoaded /
+                                  progress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
         ),
       ),
     );
   }
 }
 
-/// 全屏查看大图，支持双指缩放 (保持原样，无需大改)
 class _FullImageScreen extends StatelessWidget {
   final String url;
   const _FullImageScreen({required this.url});

@@ -56,6 +56,7 @@ class Bill {
   final List<BillItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String source;
 
   Bill({
     required this.id,
@@ -94,7 +95,16 @@ class Bill {
             .toList(),
         createdAt: _parseTimestamp(json['created_at']),
         updatedAt: _parseTimestamp(json['updated_at']),
+        source: json['source'] as String? ?? 'app',
       );
+
+  String? get sourceLabel {
+    switch (source) {
+      case 'bot': return 'Bot';
+      case 'web': return 'Web';
+      default:    return null;
+    }
+  }
 
   static DateTime _parseTimestamp(dynamic raw) {
     if (raw == null) return DateTime.fromMillisecondsSinceEpoch(0);
