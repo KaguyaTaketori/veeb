@@ -22,7 +22,7 @@ class BillItem {
   });
 
   factory BillItem.fromJson(Map<String, dynamic> json) => BillItem(
-        id: json['id'],
+        id: json['id'] as int?,
         name: json['name'] as String,
         nameRaw: json['name_raw'] as String? ?? '',
         quantity: (json['quantity'] ?? 1.0).toDouble(),
@@ -81,7 +81,7 @@ class Bill {
   }
 
   factory Bill.fromJson(Map<String, dynamic> json) => Bill(
-        id: json['id'] as int,
+        id: (json['id'] as int?) ?? 0,
         amount: (json['amount'] ?? 0).toDouble(),
         currency: json['currency'] as String? ?? 'JPY',
         category: json['category'] as String?,
