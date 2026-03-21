@@ -63,7 +63,25 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
       _error = null;
     });
     try {
-      await _billsApi.createBill(_result!.toJson());
+      final groupId = ref.read(currentGroupIdProvider);
+      final accounts = ref.read(accountsProvider).accounts;
+      if (groupId == null || accounts.isEmpty) {
+        // 提示用户先创建账本
+        return;
+      }
+      await ref.read(transactionsApiProvider).createTransaction({
+        'type':             'expense',
+        'amount':           _result!.amount,
+        'currency_code':    _result!.currency,
+        'exchange_rate':    1.0,
+        'account_id':       accounts.first.id,
+        'category_id':      _getCategoryId(_result!.category),
+        'group_id':         groupId,
+        'note':             _result!.description,
+        'transaction_date': DateTime.now().millisecondsSinceEpoch / 1000.0,
+        'receipt_url':      _uploadedReceiptUrl ?? '',
+        'items':            _result!.items.map((e) => e.toJson()).toList(),
+      });
       setState(() {
         _result = null;
       });

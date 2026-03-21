@@ -24,4 +24,13 @@ class GroupDao extends DatabaseAccessor<AppDatabase> with _$GroupDaoMixin {
           syncStatus: const Value('synced'),
         ),
       );
+
+  Future<GroupData?> getById(int id) =>
+      (select(groups)..where((g) => g.id.equals(id))).getSingleOrNull();
+
+  Future<GroupData?> getByRemoteId(int remoteId) =>
+      (select(groups)..where((g) => g.remoteId.equals(remoteId))).getSingleOrNull();
+
+  Future<void> updateGroup(int id, GroupsCompanion entry) =>
+      (update(groups)..where((g) => g.id.equals(id))).write(entry);
 }
