@@ -67,7 +67,7 @@ class BillsApi {
 
   Future<Map<String, dynamic>> ocrBill(
           String imageBase64, String mimeType) =>
-      _guard(() => _dio.post('/bills/ocr', data: {
+      _guard(() => _dio.post('/transactions/ocr', data: {
             'image_base64': imageBase64,
             'mime_type': mimeType,
           }).then((r) => r.data));

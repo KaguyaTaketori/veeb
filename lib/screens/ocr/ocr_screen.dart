@@ -8,6 +8,7 @@ import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/bill.dart' show Bill;
 import '../../providers/accounts_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/bills_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/transactions_provider.dart';
@@ -45,26 +46,24 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
     setState(() { _loading = true; _error = null; _result = null; });
 
     try {
-      if (_useLocalOcr) {
+      final isLoggedIn = ref.read(authProvider).status == AuthStatus.authenticated;
+
+      if (!isLoggedIn || _useLocalOcr) {
         await _runLocalOcr(xfile.path);
       } else {
-        await _runCloudOcr(File(xfile.path));
-      }
-    } catch (e) {
-      if (!_useLocalOcr) {
         try {
+          await _runCloudOcr(File(xfile.path));
+        } catch (_) {
           await _runLocalOcr(xfile.path);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('云端识别失败，已切换至本地模式')),
+              const SnackBar(content: Text('已切换至本地识别')),
             );
           }
-        } catch (e2) {
-          setState(() => _error = e2.toString());
         }
-      } else {
-        setState(() => _error = e.toString());
       }
+    } catch (e) {
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
