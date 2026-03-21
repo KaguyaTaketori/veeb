@@ -11,6 +11,8 @@ import '../../providers/accounts_provider.dart';
 import '../../providers/bills_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/transactions_provider.dart';
+import '../../services/ml_kit_ocr_service.dart';
+import '../../services/local_receipt_parser.dart';
 import '../../widgets/bill_item_row.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 
@@ -107,6 +109,24 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
       ),
     ],
   );
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return _LoadingView();
+    } else if (_result != null) {
+      return _ConfirmView(
+        bill: _result!,
+        onConfirm: () => Navigator.pop(context, _result),
+      );
+    } else {
+      return _PickerView(
+        error: _error,
+        onCamera: () => _pickAndOcr(ImageSource.camera),
+        onGallery: () => _pickAndOcr(ImageSource.gallery),
+      );
+    }
+  }
 }
 
 // ── 1. 初始上传引导页 ───────────────────────────────────────────────────

@@ -2,13 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/transactions_api.dart';
 import '../models/transaction.dart';
 import 'group_provider.dart';
+import 'auth_provider.dart';
+import 'database_provider.dart';
  
-final categoriesProvider =
-    FutureProvider.family<List<Category>, int?>((ref, groupId) async {
-  final api = ref.watch(categoriesApiProvider);
-  return api.listCategories(groupId: groupId);
-});
-
 final categoriesProvider =
     FutureProvider.family<List<Category>, int?>((ref, groupId) async {
   final isLoggedIn =

@@ -271,14 +271,14 @@ class _GuestProfileView extends ConsumerWidget {
                       label: '管理账户',
                       onTap: () => Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) => const ManageAccountsScreen())),
+                              builder: (_) => ManageAccountsScreen())),
                     ),
                     _SettingItem(
                       icon: Icons.category_outlined,
                       label: '管理分类',
                       onTap: () => Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) => const ManageCategoriesScreen())),
+                              builder: (_) => ManageCategoriesScreen())),
                     ),
                   ],
                 ),
@@ -455,14 +455,14 @@ class _LoggedInProfileView extends ConsumerWidget {
                       label: '管理账户',
                       onTap: () => Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) => const ManageAccountsScreen())),
+                              builder: (_) => ManageAccountsScreen())),
                     ),
                     _SettingItem(
                       icon: Icons.category_outlined,
                       label: '管理分类',
                       onTap: () => Navigator.push(context,
                           MaterialPageRoute(
-                              builder: (_) => const ManageCategoriesScreen())),
+                              builder: (_) => ManageCategoriesScreen())),
                     ),
                   ],
                 ),
