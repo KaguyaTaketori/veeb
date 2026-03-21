@@ -1,15 +1,25 @@
+// lib/screens/settings/manage_categories_screen.dart
+//
+// 变更说明（第二层迁移 #2）：
+//   - _AddCategorySheetState.build()：
+//       emoji 选择器：原 Wrap + GestureDetector + Container × 24 → VeeEmojiGrid
+//       颜色选择器：原 Wrap + GestureDetector + Container × 12 → VeeColorGrid
+//   - 删除了 _emojis / _colors 常量内联的所有渲染逻辑，由组件内部处理
+//   - VeeCategoryGrid 的 canDelete 行为保持不变（删除按钮由组件管理）
+//   - 其余逻辑、样式与原版完全一致
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vee_app/utils/vee_colors.dart';
 import 'package:vee_app/widgets/ui_core/vee_category_grid.dart';
+import 'package:vee_app/widgets/ui_core/vee_color_grid.dart'; // ← 新增
 import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../api/client.dart';
 import '../../api/transactions_api.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
@@ -87,7 +97,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
   }
 }
 
-// ── 区块标题 ──────────────────────────────────────────────────────────────────
+// ── 区块标题（与原版相同）────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final String title;
@@ -135,6 +145,7 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
   bool _saving = false;
   String? _error;
 
+  // 迁移 #2：常量列表保留（作为数据源），渲染逻辑移入组件
   static const _emojis = [
     '🍜',
     '🍕',
@@ -261,7 +272,7 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             Text('添加分类', style: context.veeText.sectionTitle),
             const SizedBox(height: VeeTokens.spacingLg),
 
-            if (_error != null) ...[VeeErrorBanner(message: _error!)],
+            if (_error != null) VeeErrorBanner(message: _error!),
 
             // 名称
             TextField(
@@ -287,86 +298,30 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             ),
             const SizedBox(height: VeeTokens.spacingMd),
 
-            // emoji
+            // ── emoji 选择器（迁移 #2：Wrap × 24 → VeeEmojiGrid）────────────
             Text(
               '图标',
               style: context.veeText.caption.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: VeeTokens.spacingXs),
-            Wrap(
-              spacing: VeeTokens.spacingXs,
-              runSpacing: VeeTokens.spacingXs,
-              children: _emojis.map((e) {
-                final selected = _icon == e;
-                return GestureDetector(
-                  onTap: () => setState(() => _icon = e),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? VeeTokens.selectedTint(
-                              Theme.of(context).colorScheme.primary,
-                            )
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(VeeTokens.rSm),
-                      border: Border.all(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
-                        width: 1.5,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(e, style: const TextStyle(fontSize: 22)),
-                  ),
-                );
-              }).toList(),
+            VeeEmojiGrid(
+              emojis: _emojis,
+              selectedEmoji: _icon,
+              onSelected: (e) => setState(() => _icon = e),
+              crossAxisCount: 6, // 与原 Wrap 列数保持视觉一致
             ),
             const SizedBox(height: VeeTokens.spacingMd),
 
-            // 颜色
+            // ── 颜色选择器（迁移 #2：Wrap × 12 → VeeColorGrid）──────────────
             Text(
               '颜色',
               style: context.veeText.caption.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: VeeTokens.spacingXs),
-            Wrap(
-              spacing: VeeTokens.spacingXs,
-              runSpacing: VeeTokens.spacingXs,
-              children: _colors.map((c) {
-                final color = VeeColors.fromHex(c);
-                final selected = _color == c;
-                return GestureDetector(
-                  onTap: () => setState(() => _color = c),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: selected
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: VeeTokens.overlayTint(color),
-                                blurRadius: 6,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: selected
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: VeeTokens.iconSm,
-                          )
-                        : null,
-                  ),
-                );
-              }).toList(),
+            VeeColorGrid(
+              colors: _colors,
+              selected: _color,
+              onSelected: (hex) => setState(() => _color = hex),
             ),
             const SizedBox(height: VeeTokens.spacingLg),
 

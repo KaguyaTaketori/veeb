@@ -1,3 +1,10 @@
+// lib/screens/transactions/transactions_screen.dart
+//
+// 变更说明（Bug Fix #1 调用侧）：
+//   - VeeMonthSelectorCard 新增 onMonthSelected 参数
+//   - 用户通过弹窗选择月份后，正确更新 selectedMonth 并触发数据加载
+//   - 其余逻辑、样式与原版完全一致
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +64,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           keyword: _searchCtrl.text.trim(),
           typeFilter: _typeFilter,
         );
+  }
+
+  // ── Bug Fix #1：弹窗选月的处理 ──────────────────────────────────────────
+
+  void _onMonthSelected(DateTime picked) {
+    if (picked.year == selectedMonth.year &&
+        picked.month == selectedMonth.month) {
+      return;
+    }
+    setState(() => selectedMonth = picked);
+    onMonthChanged();
   }
 
   void _toggleSearch() {
@@ -205,6 +223,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         canGoNext: !isCurrentMonth,
         onPrev: prevMonth,
         onNext: nextMonth,
+        // ↓ Bug Fix #1：接入弹窗选月回调
+        onMonthSelected: _onMonthSelected,
         child: Column(
           children: [
             const SizedBox(height: VeeTokens.s12),
@@ -295,6 +315,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Slidable row（与原版完全相同）
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _SlidableRow extends StatefulWidget {
   final Widget child;
   final Future<bool> Function() onConfirmDelete;
@@ -319,20 +343,14 @@ class _SlidableRowState extends State<_SlidableRow> {
     return Dismissible(
       key: widget.key!,
       direction: DismissDirection.endToStart,
-
       dismissThresholds: const {DismissDirection.endToStart: 0.40},
-
       resizeDuration: VeeTokens.durationSlow,
       movementDuration: const Duration(milliseconds: 300),
-
       onUpdate: (details) {
         setState(() => _dragProgress = details.progress);
       },
-
       confirmDismiss: (_) => widget.onConfirmDelete(),
-
       onDismissed: (_) => widget.onDeleted(),
-
       background: AnimatedContainer(
         duration: VeeTokens.durationFast,
         alignment: Alignment.centerRight,
@@ -355,14 +373,13 @@ class _SlidableRowState extends State<_SlidableRow> {
           ),
         ),
       ),
-
       child: widget.child,
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 流水列表 Tile
+// Transaction tile（与原版完全相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TransactionTile extends StatelessWidget {

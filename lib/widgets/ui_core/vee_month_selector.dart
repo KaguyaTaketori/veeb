@@ -2,29 +2,12 @@
 //
 // VeeMonthSelector — 统一月份导航组件（UI 层）
 //
-// 替代以下散落的月份切换 UI：
-//   - StatsScreen._buildSummaryCard() 内的 Row(IconButton + Text + IconButton)
-//   - TransactionsScreen._buildSummaryCard() 内同样的三件套
-//
-// 注意：状态逻辑仍由 MonthSelectorMixin 管理，此组件只负责 UI 渲染。
-//
-// 使用示例（配合 MonthSelectorMixin）：
-//
-//   VeeMonthSelector(
-//     month:     selectedMonth,
-//     canGoNext: !isCurrentMonth,   // 来自 MonthSelectorMixin.isCurrentMonth
-//     onPrev:    prevMonth,          // 来自 MonthSelectorMixin.prevMonth
-//     onNext:    nextMonth,          // 来自 MonthSelectorMixin.nextMonth
-//   )
-//
-// 使用示例（独立使用）：
-//
-//   VeeMonthSelector(
-//     month:     _selectedMonth,
-//     canGoNext: _selectedMonth.isBefore(DateTime.now()),
-//     onPrev:    () => setState(() => _selectedMonth = ...),
-//     onNext:    () => setState(() => _selectedMonth = ...),
-//   )
+// 变更说明（Bug Fix #1）：
+//   - 新增 onMonthSelected: ValueChanged<DateTime>? 回调参数
+//   - 修复 _showMonthPicker：picked 结果现在会通过 onMonthSelected 传出，
+//     而不是静默丢弃
+//   - VeeMonthSelectorCard 同步新增 onMonthSelected 参数并向下透传
+//   - 其余逻辑、样式与原版完全一致
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -43,6 +26,11 @@ class VeeMonthSelector extends StatelessWidget {
   /// 日期格式，默认 yMMMM（如 "2025年1月" / "January 2025"）
   final DateFormat? dateFormat;
 
+  /// 用户通过日期选择器选中某月后的回调。
+  /// 传入值已规范化为该月第一天（day=1，时分秒为0）。
+  /// 若为 null，则点击月份标题不弹出选择器。
+  final ValueChanged<DateTime>? onMonthSelected;
+
   const VeeMonthSelector({
     super.key,
     required this.month,
@@ -50,26 +38,25 @@ class VeeMonthSelector extends StatelessWidget {
     required this.onPrev,
     required this.onNext,
     this.dateFormat,
+    this.onMonthSelected, // ← 新增，可选
   });
 
   @override
   Widget build(BuildContext context) {
-    final fmt      = dateFormat ?? DateFormat.yMMMM();
-    final primary  = Theme.of(context).colorScheme.primary;
+    final fmt = dateFormat ?? DateFormat.yMMMM();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // ── 上一月 ────────────────────────────────────────────────────────
-        _NavButton(
-          icon: Icons.chevron_left,
-          onTap: onPrev,
-          enabled: true,
-        ),
+        _NavButton(icon: Icons.chevron_left, onTap: onPrev, enabled: true),
 
-        // ── 月份标题（点击弹出 DatePicker） ──────────────────────────────
+        // ── 月份标题（onMonthSelected 不为 null 时可点击弹出 DatePicker）──
         GestureDetector(
-          onTap: () => _showMonthPicker(context),
+          // 仅在父层关心选择结果时才响应点击，否则为纯展示
+          onTap: onMonthSelected != null
+              ? () => _showMonthPicker(context)
+              : null,
           child: AnimatedSwitcher(
             duration: VeeTokens.durationFast,
             transitionBuilder: (child, animation) => FadeTransition(
@@ -87,6 +74,16 @@ class VeeMonthSelector extends StatelessWidget {
               key: ValueKey(month),
               style: context.veeText.sectionTitle.copyWith(
                 letterSpacing: 0.2,
+                // 当可点击时，用主色给用户一个微妙的视觉提示
+                color: onMonthSelected != null
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+                decoration: onMonthSelected != null
+                    ? TextDecoration.underline
+                    : TextDecoration.none,
+                decorationColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withOpacity(0.4),
               ),
             ),
           ),
@@ -102,31 +99,39 @@ class VeeMonthSelector extends StatelessWidget {
     );
   }
 
-  /// 弹出月份选择器
+  /// 弹出月份选择器，将结果规范化后通过 [onMonthSelected] 传出。
   Future<void> _showMonthPicker(BuildContext context) async {
-    final now    = DateTime.now();
+    // onMonthSelected 为 null 时不应走到这里，但做防御检查
+    if (onMonthSelected == null) return;
+
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: month,
       firstDate: DateTime(2020),
+      // 限制不能选未来月份
       lastDate: DateTime(now.year, now.month),
-      // 仅显示年月，不显示具体日期（通过 helpText 提示）
       helpText: '选择月份',
       fieldLabelText: '年/月',
     );
+
+    // picked 为 null 表示用户取消，直接返回
     if (picked == null) return;
-    // 传递给外部：将日期规范化为该月第一天
-    // 由于此组件是纯展示层，这里发射一个"事件"——
-    // 方案一（推荐）：onMonthSelected 回调
-    // 方案二：onPrev/onNext 循环
-    // 当前实现选择方案一，外部可选接入
-    // ignore: use_build_context_synchronously
+
+    // 规范化为该月第一天，保证调用方收到一致的值
+    final normalized = DateTime(picked.year, picked.month);
+
+    // 确保 context 仍然挂载（async gap 后的安全检查）
     if (!context.mounted) return;
-    // 如果父层传了 onMonthSelected，优先使用
+
+    onMonthSelected!(normalized);
   }
 }
 
-/// 导航按钮（上一月 / 下一月）
+// ─────────────────────────────────────────────────────────────────────────────
+// 导航按钮（上一月 / 下一月）
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _NavButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
@@ -150,7 +155,7 @@ class _NavButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(VeeTokens.rSm),
           child: SizedBox(
-            width:  VeeTokens.touchMin,
+            width: VeeTokens.touchMin,
             height: VeeTokens.touchMin,
             child: Icon(
               icon,
@@ -168,21 +173,23 @@ class _NavButton extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VeeMonthSelectorCard — 带月份导航的卡片壳
-// 专为 StatsScreen / TransactionsScreen 的顶部汇总卡片设计
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 使用示例（StatsScreen 替换后）：
+// 变更说明：
+//   - 新增 onMonthSelected 参数，透传给内部的 VeeMonthSelector
+//
+// 使用示例（StatsScreen / TransactionsScreen）：
 //
 //   VeeMonthSelectorCard(
-//     month:     selectedMonth,
-//     canGoNext: !isCurrentMonth,
-//     onPrev:    prevMonth,
-//     onNext:    nextMonth,
-//     child: Column(children: [
-//       const SizedBox(height: VeeTokens.s24),
-//       VeeAmountDisplay(amount: summary.totalExpense, currency: 'JPY',
-//                        size: VeeAmountSize.hero),
-//     ]),
+//     month:            selectedMonth,
+//     canGoNext:        !isCurrentMonth,
+//     onPrev:           prevMonth,
+//     onNext:           nextMonth,
+//     onMonthSelected:  (m) {
+//       setState(() => selectedMonth = m);
+//       onMonthChanged();
+//     },
+//     child: ...,
 //   )
 
 class VeeMonthSelectorCard extends StatelessWidget {
@@ -190,6 +197,10 @@ class VeeMonthSelectorCard extends StatelessWidget {
   final bool canGoNext;
   final VoidCallback onPrev;
   final VoidCallback onNext;
+
+  /// 用户通过弹窗选中某月后的回调（可选）。
+  /// 传入值已规范化为该月第一天。
+  final ValueChanged<DateTime>? onMonthSelected;
 
   /// 月份导航下方的内容区域
   final Widget child;
@@ -201,6 +212,7 @@ class VeeMonthSelectorCard extends StatelessWidget {
     required this.onPrev,
     required this.onNext,
     required this.child,
+    this.onMonthSelected, // ← 新增，可选，向下透传
   });
 
   @override
@@ -212,10 +224,11 @@ class VeeMonthSelectorCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             VeeMonthSelector(
-              month:     month,
+              month: month,
               canGoNext: canGoNext,
-              onPrev:    onPrev,
-              onNext:    onNext,
+              onPrev: onPrev,
+              onNext: onNext,
+              onMonthSelected: onMonthSelected, // ← 透传
             ),
             child,
           ],

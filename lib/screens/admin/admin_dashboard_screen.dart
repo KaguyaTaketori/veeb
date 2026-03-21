@@ -1,4 +1,13 @@
 // lib/screens/admin/admin_dashboard_screen.dart
+//
+// 变更说明（Bug Fix #2）：
+//   - _ConfigTabState._editConfig：
+//     原代码在 `ctrl.dispose()` 之后仍然使用 `ctrl.text`，
+//     这会导致在某些 Flutter 版本中抛出"used after dispose"异常。
+//     修复：在 dispose 前将文本值保存到局部变量 `savedText`，
+//     之后使用 savedText 代替 ctrl.text。
+//   - 其余逻辑、样式与原版完全一致。
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
@@ -67,7 +76,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 }
 
 // ============================================================
-// Tab 1：全局数据看板
+// Tab 1：全局数据看板（与原版完全相同）
 // ============================================================
 
 class _StatsTab extends ConsumerStatefulWidget {
@@ -226,10 +235,9 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return VeeCard(
-      backgroundColor: VeeTokens.hoverTint(color),
-      borderColor: VeeTokens.strongTint(color),
-      padding: VeeTokens.cardPadding,
+    // 迁移 #3：用 VeeCard.stat() 工厂替代手动设置 backgroundColor + borderColor
+    return VeeCard.stat(
+      color: color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -342,11 +350,20 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
       ),
     );
 
-    ctrl.dispose();
+    // ── Bug Fix #2 ────────────────────────────────────────────────────────
+    // 原代码：
+    //   ctrl.dispose();           // ← controller 已销毁
+    //   if (saved != true) return;
+    //   await _api.upsertConfig(key, ctrl.text.trim()); // ← 使用已销毁的 ctrl ❌
+    //
+    // 修复：在 dispose 前把文本值存入局部变量，后续使用该变量。
+    final textToSave = ctrl.text.trim(); // ← 先保存值
+    ctrl.dispose(); // ← 再销毁控制器
+
     if (saved != true) return;
 
     try {
-      await ref.read(adminApiProvider).upsertConfig(key, ctrl.text.trim());
+      await ref.read(adminApiProvider).upsertConfig(key, textToSave); // ← 用局部变量
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -444,7 +461,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
 }
 
 // ============================================================
-// Tab 3：用户管理
+// Tab 3：用户管理（与原版完全相同）
 // ============================================================
 
 class _UsersTab extends ConsumerStatefulWidget {
@@ -585,7 +602,6 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
             onSubmitted: (_) => _load(refresh: true),
           ),
           const SizedBox(height: VeeTokens.spacingXs),
-          // 角色 / 状态筛选 — 用 VeeChip 替代手写 GestureDetector 容器
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -633,12 +649,11 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
   }
 }
 
-// ── 用户卡片 ──────────────────────────────────────────────────────────────────
+// ── 用户卡片（与原版完全相同）────────────────────────────────────────────────
 
 class _UserCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
   final VoidCallback onRefresh;
-
   const _UserCard({required this.user, required this.onRefresh});
 
   @override
@@ -713,7 +728,6 @@ class _UserCardState extends ConsumerState<_UserCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 顶部：名称 + 状态角标 + 封禁开关
           Row(
             children: [
               Expanded(
@@ -759,7 +773,6 @@ class _UserCardState extends ConsumerState<_UserCard> {
             ],
           ),
           const SizedBox(height: VeeTokens.s10),
-          // IP 信息
           VeeDetailRow(
             icon: Icons.location_on_outlined,
             label: 'Reg IP',
@@ -772,7 +785,6 @@ class _UserCardState extends ConsumerState<_UserCard> {
             value: u['last_login_ip'] ?? '—',
           ),
           const SizedBox(height: VeeTokens.s10),
-          // 权限标签行
           Wrap(
             spacing: VeeTokens.spacingXxs,
             runSpacing: VeeTokens.spacingXxs,
@@ -788,7 +800,6 @@ class _UserCardState extends ConsumerState<_UserCard> {
                       .toList(),
           ),
           const SizedBox(height: VeeTokens.s12),
-          // 权限操作按钮
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -828,9 +839,8 @@ class _UserCardState extends ConsumerState<_UserCard> {
     };
   }
 }
-// ============================================================
-// 权限配置抽屉
-// ============================================================
+
+// ── 权限配置抽屉（与原版完全相同）────────────────────────────────────────────
 
 class _PermissionsSheet extends ConsumerStatefulWidget {
   final int userId;
@@ -900,6 +910,8 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final perms = _getPerms(l10n);
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -944,7 +956,6 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                 ),
                 TextButton(
                   onPressed: () {
-                    final perms = _getPerms(l10n);
                     setState(
                       () => _selected = _selected.length == perms.length
                           ? {}
@@ -952,7 +963,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                     );
                   },
                   child: Text(
-                    _selected.length == _getPerms(l10n).length
+                    _selected.length == perms.length
                         ? l10n.clearAll
                         : l10n.selectAll,
                   ),
@@ -973,7 +984,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
             child: ListView(
               controller: ctrl,
               padding: const EdgeInsets.symmetric(horizontal: VeeTokens.s16),
-              children: _getPerms(l10n).map((entry) {
+              children: perms.map((entry) {
                 final (perm, label, icon) = entry;
                 final checked = _selected.contains(perm);
                 return Card(
@@ -1074,7 +1085,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   }
 }
 
-// ── 区块标题（内部复用） ──────────────────────────────────────────────────────
+// ── 区块标题（内部复用）──────────────────────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
   final String text;

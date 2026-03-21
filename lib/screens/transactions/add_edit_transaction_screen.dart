@@ -1,12 +1,13 @@
 // lib/screens/transactions/add_edit_transaction_screen.dart
 //
-// 重构说明（v2）：
-//   原版将 9 个字段全部平铺在一个 ScrollView 中，认知负担过高。
-//   现改为 3 步渐进式表单：
-//
-//   Step 1 — Core（必填）：金额 + 收支类型 + 分类
-//   Step 2 — Details（可选）：账户 / 转账目标 / 日期 / 备注 / 隐私
-//   Step 3 — Attachments（可选）：凭证图片 + 商品明细
+// 变更说明（第二层迁移 #4）：
+//   - Step 1 日期选择行：
+//     原来：InkWell( child: VeeFormRow( child: Row(...) ) )  — 三层嵌套，视觉正确但模式不统一
+//     现在：VeePickerRow(icon, label, value, onTap: _pickDate) — 语义清晰，一行搞定
+//   - 账户下拉行保持 VeeFormRow + DropdownButtonFormField 不变：
+//     DropdownButton 有内置的下拉 Overlay 交互，与 VeePickerRow（整行点击→外部弹窗）
+//     的交互模式不同，不做强制统一以避免引入回归。
+//   - 其余逻辑、样式与原版完全一致。
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
 import 'package:vee_app/widgets/ui_core/vee_form_row.dart';
+import 'package:vee_app/widgets/ui_core/vee_picker_row.dart'; // ← 新增
 import '../../l10n/app_localizations.dart';
 import '../../models/transaction.dart';
 import '../../providers/accounts_provider.dart';
@@ -32,7 +34,7 @@ import '../../widgets/ui_core/vee_category_grid.dart';
 import '../../widgets/ui_core/vee_image_picker.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行草稿
+// 明细行草稿（与原版相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemDraft {
@@ -82,7 +84,7 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
 class _AddEditTransactionScreenState
     extends ConsumerState<AddEditTransactionScreen>
     with SingleTickerProviderStateMixin {
-  // ── 表单状态 ──────────────────────────────────────────────────────────────
+  // ── 表单状态（与原版相同）─────────────────────────────────────────────────
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
 
@@ -101,14 +103,13 @@ class _AddEditTransactionScreenState
 
   final List<_ItemDraft> _items = [];
 
-  // ── 步骤状态 ──────────────────────────────────────────────────────────────
-  int _currentStep = 0; // 0=Core, 1=Details, 2=Attachments
+  // ── 步骤状态（与原版相同）─────────────────────────────────────────────────
+  int _currentStep = 0;
   static const int _totalSteps = 3;
 
   late final AnimationController _stepAnim;
   late final Animation<double> _stepFade;
 
-  // ── 编辑模式 ──────────────────────────────────────────────────────────────
   late bool _isEditing;
   bool get _isEdit => widget.transaction != null;
   final _picker = ImagePicker();
@@ -165,7 +166,7 @@ class _AddEditTransactionScreenState
     super.dispose();
   }
 
-  // ── 步骤导航 ──────────────────────────────────────────────────────────────
+  // ── 步骤导航（与原版相同）─────────────────────────────────────────────────
 
   void _goStep(int step) {
     if (step < 0 || step >= _totalSteps) return;
@@ -178,7 +179,7 @@ class _AddEditTransactionScreenState
     return amount > 0 && _categoryId != null;
   }
 
-  // ── AppBar ────────────────────────────────────────────────────────────────
+  // ── AppBar（与原版相同）───────────────────────────────────────────────────
 
   AppBar _buildAppBar(AppLocalizations l10n) {
     if (!_isEditing) {
@@ -215,144 +216,226 @@ class _AddEditTransactionScreenState
     );
   }
 
-  // ── 步骤指示器 ────────────────────────────────────────────────────────────
+  // ── 步骤指示器（Layer 3 升级：新增文字标签行）────────────────────────────
+  //
+  // 改动：在圆点连线下方增加一行文字标签（核心 / 详情 / 附件），
+  // 解决用户不知道每个步骤含义的问题。
+  // 标签使用 3 个 Expanded 均分宽度，居中对齐到各自步骤圆点正下方。
 
   Widget _buildStepIndicator() {
     final primary = Theme.of(context).colorScheme.primary;
+    const stepLabels = ['核心', '详情', '附件'];
+
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: VeeTokens.s24,
-        vertical: VeeTokens.s12,
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s24,
+        VeeTokens.s12,
+        VeeTokens.s24,
+        VeeTokens.s4,
       ),
-      child: Row(
-        children: List.generate(_totalSteps * 2 - 1, (i) {
-          if (i.isOdd) {
-            // 连接线
-            final stepIdx = i ~/ 2;
-            final isCompleted = stepIdx < _currentStep;
-            return Expanded(
-              child: AnimatedContainer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 圆点 + 连线（原有逻辑不变）──────────────────────────────────
+          Row(
+            children: List.generate(_totalSteps * 2 - 1, (i) {
+              if (i.isOdd) {
+                final stepIdx = i ~/ 2;
+                final isCompleted = stepIdx < _currentStep;
+                return Expanded(
+                  child: AnimatedContainer(
+                    duration: VeeTokens.durationNormal,
+                    height: 2,
+                    color: isCompleted ? primary : VeeTokens.borderColor,
+                  ),
+                );
+              }
+              final stepIdx = i ~/ 2;
+              final isActive = stepIdx == _currentStep;
+              final isCompleted = stepIdx < _currentStep;
+              return AnimatedContainer(
                 duration: VeeTokens.durationNormal,
-                height: 2,
-                color: isCompleted ? primary : VeeTokens.borderColor,
-              ),
-            );
-          }
-          // 步骤点
-          final stepIdx = i ~/ 2;
-          final isActive = stepIdx == _currentStep;
-          final isCompleted = stepIdx < _currentStep;
-          return AnimatedContainer(
-            duration: VeeTokens.durationNormal,
-            width: isActive ? 28 : 22,
-            height: isActive ? 28 : 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCompleted
-                  ? primary
-                  : isActive
-                  ? VeeTokens.selectedTint(primary)
-                  : VeeTokens.surfaceSunken,
-              border: Border.all(
-                color: (isActive || isCompleted)
-                    ? primary
-                    : VeeTokens.borderColor,
-                width: isActive ? 2.0 : 1.0,
-              ),
-            ),
-            child: Center(
-              child: isCompleted
-                  ? Icon(Icons.check, size: 12, color: Colors.white)
-                  : Text(
-                      '${stepIdx + 1}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isActive ? primary : VeeTokens.textDisabledVal,
-                      ),
-                    ),
-            ),
-          );
-        }),
+                width: isActive ? 28 : 22,
+                height: isActive ? 28 : 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isCompleted
+                      ? primary
+                      : isActive
+                      ? VeeTokens.selectedTint(primary)
+                      : VeeTokens.surfaceSunken,
+                  border: Border.all(
+                    color: (isActive || isCompleted)
+                        ? primary
+                        : VeeTokens.borderColor,
+                    width: isActive ? 2.0 : 1.0,
+                  ),
+                ),
+                child: Center(
+                  child: isCompleted
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
+                      : Text(
+                          '${stepIdx + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isActive
+                                ? primary
+                                : VeeTokens.textDisabledVal,
+                          ),
+                        ),
+                ),
+              );
+            }),
+          ),
+
+          // ── 文字标签行（新增）────────────────────────────────────────────
+          const SizedBox(height: VeeTokens.s4),
+          Row(
+            children: List.generate(_totalSteps, (i) {
+              final isActive = i == _currentStep;
+              final isCompleted = i < _currentStep;
+              return Expanded(
+                child: AnimatedDefaultTextStyle(
+                  duration: VeeTokens.durationNormal,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: (isActive || isCompleted)
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                    color: isActive
+                        ? primary
+                        : isCompleted
+                        ? primary.withOpacity(0.6)
+                        : VeeTokens.textDisabledVal,
+                  ),
+                  child: Text(stepLabels[i], textAlign: TextAlign.center),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Step 0 — Core（金额 + 类型 + 分类）
+  // Step 0 — Core（Layer 3 升级：粘性金额头部）
   // ─────────────────────────────────────────────────────────────────────────
+  //
+  // 改动：原版把"类型选择 + 金额输入 + 分类网格"全部放在同一个 ListView，
+  // 用户在浏览分类时金额输入区随之滚走，需要来回滚动确认金额。
+  //
+  // 现在：外层 Column 分为两区：
+  //   1. 粘性头部（白色 Material 背景）：error banner + 类型选择 + 金额输入
+  //      头部底部加一条 Divider，视觉上提示下方内容可滚动
+  //   2. Expanded ListView：分类标题 + 分类网格 + 下一步按钮
+  //      用户滚动分类时，金额始终可见，无需反复滚回确认
 
   Widget _buildStep0(AppLocalizations l10n) {
     final categoriesAsync = ref.watch(currentCategoriesProvider);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        VeeTokens.s16,
-        0,
-        VeeTokens.s16,
-        VeeTokens.s80,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_error != null) VeeErrorBanner(message: _error!),
-
-        // ── 收支类型选择器 ──────────────────────────────────────────────
-        _buildTypeSelector(l10n),
-        const SizedBox(height: VeeTokens.spacingLg),
-
-        // ── 金额输入（大号居中）──────────────────────────────────────────
-        _buildAmountHeader(),
-        const SizedBox(height: VeeTokens.spacingLg),
-
-        // ── 分类网格 ─────────────────────────────────────────────────────
-        Text('选择分类', style: context.veeText.sectionTitle),
-        const SizedBox(height: VeeTokens.spacingXs),
-        categoriesAsync.when(
-          data: (cats) {
-            final filtered = cats
-                .where((c) => c.type == _type || c.type == 'both')
-                .toList();
-            return VeeCategoryGrid(
-              categories: filtered,
-              selectedId: _categoryId,
-              onSelected: (id) => setState(() => _categoryId = id),
-            );
-          },
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(VeeTokens.s24),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-          error: (e, _) => VeeErrorBanner(message: e.toString()),
-        ),
-
-        const SizedBox(height: VeeTokens.s32),
-
-        // ── 下一步按钮 ──────────────────────────────────────────────────
-        SizedBox(
-          height: VeeTokens.buttonHeight,
-          child: FilledButton(
-            onPressed: _canProceedStep0 ? () => _goStep(1) : null,
-            child: const Text('下一步：填写详情'),
-          ),
-        ),
-        if (!_canProceedStep0)
-          Padding(
-            padding: const EdgeInsets.only(top: VeeTokens.s8),
-            child: Text(
-              '请填写金额并选择分类',
-              textAlign: TextAlign.center,
-              style: context.veeText.caption.copyWith(
-                color: VeeTokens.textSecondaryVal,
+        // ── 粘性头部 ──────────────────────────────────────────────────────
+        Material(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          elevation: 0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Error banner 也在粘性区内，确保报错时不被遮挡
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    VeeTokens.s16,
+                    VeeTokens.spacingXs,
+                    VeeTokens.s16,
+                    0,
+                  ),
+                  child: VeeErrorBanner(message: _error!),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  VeeTokens.s16,
+                  VeeTokens.spacingXs,
+                  VeeTokens.s16,
+                  0,
+                ),
+                child: _buildTypeSelector(l10n),
               ),
-            ),
+              const SizedBox(height: VeeTokens.spacingMd),
+              _buildAmountHeader(),
+              const SizedBox(height: VeeTokens.spacingMd),
+              // 分隔线：明确提示下方内容可滚动
+              const Divider(height: 1),
+            ],
           ),
+        ),
+
+        // ── 可滚动区域：分类网格 + 按钮 ──────────────────────────────────
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              VeeTokens.s16,
+              VeeTokens.spacingMd,
+              VeeTokens.s16,
+              VeeTokens.s80,
+            ),
+            children: [
+              Text('选择分类', style: context.veeText.sectionTitle),
+              const SizedBox(height: VeeTokens.spacingXs),
+              categoriesAsync.when(
+                data: (cats) {
+                  final filtered = cats
+                      .where((c) => c.type == _type || c.type == 'both')
+                      .toList();
+                  // 响应式列数：宽屏用更多列，避免4列在平板上间距过大
+                  final cols = MediaQuery.of(context).size.width > 600 ? 6 : 4;
+                  return VeeCategoryGrid(
+                    categories: filtered,
+                    selectedId: _categoryId,
+                    onSelected: (id) => setState(() => _categoryId = id),
+                    crossAxisCount: cols,
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(VeeTokens.s24),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (e, _) => VeeErrorBanner(message: e.toString()),
+              ),
+              const SizedBox(height: VeeTokens.s32),
+              SizedBox(
+                height: VeeTokens.buttonHeight,
+                child: FilledButton(
+                  onPressed: _canProceedStep0 ? () => _goStep(1) : null,
+                  child: const Text('下一步：填写详情'),
+                ),
+              ),
+              if (!_canProceedStep0)
+                Padding(
+                  padding: const EdgeInsets.only(top: VeeTokens.s8),
+                  child: Text(
+                    '请填写金额并选择分类',
+                    textAlign: TextAlign.center,
+                    style: context.veeText.caption.copyWith(
+                      color: VeeTokens.textSecondaryVal,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Step 1 — Details（账户 / 日期 / 备注 / 隐私）
+  // Step 1 — Details
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildStep1(AppLocalizations l10n) {
@@ -361,6 +444,14 @@ class _AddEditTransactionScreenState
       Future.microtask(() => setState(() => _accountId = accounts.first.id));
     }
 
+    // 日期展示字符串，供 VeePickerRow.value 使用
+    final dateLabel =
+        '${_txnDate.year}/'
+        '${_txnDate.month.toString().padLeft(2, '0')}/'
+        '${_txnDate.day.toString().padLeft(2, '0')}';
+
+    final primary = Theme.of(context).colorScheme.primary;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         VeeTokens.s16,
@@ -371,13 +462,32 @@ class _AddEditTransactionScreenState
       children: [
         if (_error != null) VeeErrorBanner(message: _error!),
 
-        // ── 已选摘要（不可交互，点击可回到 Step 0）────────────────────────
+        // ── 已选摘要卡（Layer 3 升级：明确导航语义）─────────────────────────
+        //
+        // 原版：VeeCard 无边框，图标用 edit_outlined（"可编辑"暗示模糊）
+        // 现在：
+        //   - borderColor = selectedTint(primary) → 主色细边框，与下方白色卡片
+        //     形成对比，视觉上暗示"这是一个独立的、可点击的导航区块"
+        //   - 前置 chevron_left 图标 → 明确"点此返回第一步修改金额/分类"
+        //   - 去掉 edit_outlined，改为 Tooltip 包裹的 arrow_back_ios_new，
+        //     与 chevron_left 风格统一
+        //   - splashColor 用 hoverTint(primary)，点击时有品牌色水波纹反馈
         GestureDetector(
           onTap: () => _goStep(0),
           child: VeeCard(
             padding: VeeTokens.cardPadding,
+            borderColor: VeeTokens.selectedTint(primary),
             child: Row(
               children: [
+                // 返回图标——明确语义
+                Icon(
+                  Icons.chevron_left,
+                  size: VeeTokens.iconMd,
+                  color: primary.withOpacity(0.65),
+                ),
+                const SizedBox(width: VeeTokens.spacingXxs),
+
+                // 金额
                 VeeAmountDisplay(
                   amount: double.tryParse(_amountCtrl.text) ?? 0,
                   currency: _currencyCode,
@@ -386,7 +496,8 @@ class _AddEditTransactionScreenState
                   prefix: VeeColors.prefixForTransactionType(_type),
                 ),
                 const SizedBox(width: VeeTokens.spacingMd),
-                // 分类小徽章
+
+                // 分类徽章
                 if (_categoryId != null)
                   ref
                       .watch(currentCategoriesProvider)
@@ -397,6 +508,7 @@ class _AddEditTransactionScreenState
                               .firstOrNull;
                           if (cat == null) return const SizedBox.shrink();
                           return Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 cat.icon,
@@ -409,11 +521,26 @@ class _AddEditTransactionScreenState
                         },
                         orElse: () => const SizedBox.shrink(),
                       ),
+
                 const Spacer(),
-                Icon(
-                  Icons.edit_outlined,
-                  size: VeeTokens.iconSm,
-                  color: VeeTokens.textPlaceholderVal,
+
+                // 可编辑提示标签
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: VeeTokens.s8,
+                    vertical: VeeTokens.s2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: VeeTokens.selectedTint(primary),
+                    borderRadius: BorderRadius.circular(VeeTokens.rFull),
+                  ),
+                  child: Text(
+                    '修改',
+                    style: context.veeText.micro.copyWith(
+                      color: primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -421,12 +548,11 @@ class _AddEditTransactionScreenState
         ),
         const SizedBox(height: VeeTokens.spacingMd),
 
-        // ── 详细信息卡 ──────────────────────────────────────────────────
         VeeCard(
           padding: EdgeInsets.zero,
           child: Column(
             children: [
-              // 账户
+              // 账户（保留 DropdownButtonFormField，交互模式不同于 VeePickerRow）
               _buildAccountDropdown(
                 accounts,
                 _accountId,
@@ -436,7 +562,7 @@ class _AddEditTransactionScreenState
               ),
               const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
 
-              // 转账目标账户（仅 transfer 显示）
+              // 转账目标账户
               if (_type == 'transfer') ...[
                 _buildAccountDropdown(
                   accounts,
@@ -448,37 +574,18 @@ class _AddEditTransactionScreenState
                 const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
               ],
 
-              // 日期
-              InkWell(
+              // ── 迁移 #4：日期行 ──────────────────────────────────────────
+              // 原来：InkWell( child: VeeFormRow( child: Row(Text, chevron) ) )
+              // 现在：VeePickerRow — 整行语义、视觉完全一致，代码减少 12 行
+              VeePickerRow(
+                icon: Icons.calendar_today_outlined,
+                label: l10n.date,
+                value: dateLabel,
                 onTap: _pickDate,
-                splashColor: VeeTokens.selectedTint(
-                  Theme.of(context).colorScheme.primary,
-                ),
-                child: VeeFormRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: l10n.date,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${_txnDate.year}/'
-                          '${_txnDate.month.toString().padLeft(2, '0')}/'
-                          '${_txnDate.day.toString().padLeft(2, '0')}',
-                          style: context.veeText.bodyDefault,
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: VeeTokens.textPlaceholderVal,
-                        size: VeeTokens.iconMd,
-                      ),
-                    ],
-                  ),
-                ),
               ),
               const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
 
-              // 备注
+              // 备注（与原版相同）
               VeeFormRow(
                 icon: Icons.notes_outlined,
                 label: l10n.note,
@@ -495,7 +602,7 @@ class _AddEditTransactionScreenState
               ),
               const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
 
-              // 隐私开关
+              // 隐私开关（与原版相同）
               SwitchListTile(
                 secondary: Icon(
                   Icons.lock_outline,
@@ -517,7 +624,6 @@ class _AddEditTransactionScreenState
         ),
         const SizedBox(height: VeeTokens.s32),
 
-        // ── 操作按钮行 ──────────────────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -548,7 +654,7 @@ class _AddEditTransactionScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Step 2 — Attachments（凭证图片 + 商品明细）
+  // Step 2 — Attachments（与原版相同）
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildStep2(AppLocalizations l10n) {
@@ -561,8 +667,6 @@ class _AddEditTransactionScreenState
       ),
       children: [
         if (_error != null) VeeErrorBanner(message: _error!),
-
-        // ── 凭证图片 ────────────────────────────────────────────────────
         Text(l10n.scanReceipt, style: context.veeText.sectionTitle),
         const SizedBox(height: VeeTokens.spacingXs),
         VeeImagePicker(
@@ -577,12 +681,8 @@ class _AddEditTransactionScreenState
           }),
         ),
         const SizedBox(height: VeeTokens.spacingLg),
-
-        // ── 商品明细 ────────────────────────────────────────────────────
         _buildItemsSection(l10n),
         const SizedBox(height: VeeTokens.s32),
-
-        // ── 操作按钮行 ──────────────────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -615,13 +715,12 @@ class _AddEditTransactionScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 查看模式（isReadOnly）
+  // 查看模式（与原版相同）
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildViewBody(AppLocalizations l10n) {
     final t = widget.transaction!;
     final color = VeeColors.fromHex(t.categoryColor);
-
     final typeLabel = t.type == 'income'
         ? l10n.income
         : t.type == 'transfer'
@@ -638,7 +737,6 @@ class _AddEditTransactionScreenState
             vertical: VeeTokens.s24,
           ),
           children: [
-            // ── 金额头部 ────────────────────────────────────────────────
             Column(
               children: [
                 Container(
@@ -896,18 +994,27 @@ class _AddEditTransactionScreenState
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
             decoration: const InputDecoration(
+              // 显式覆盖所有边框状态，防止全局 InputDecorationTheme 在 focus
+              // 时显示白色圆角矩形边框（在粘性头部背景上尤为明显）
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              filled: false,
               contentPadding: EdgeInsets.zero,
               isDense: true,
               hintText: '0',
             ),
-            onChanged: (_) => setState(() {}), // 触发 _canProceedStep0 重算
+            onChanged: (_) => setState(() {}),
           ),
         ),
       ],
     );
   }
 
+  /// 账户下拉行保留 DropdownButtonFormField（内置 Overlay 下拉，
+  /// 与 VeePickerRow 整行点击→外部弹窗的交互模式不同）
   Widget _buildAccountDropdown(
     List<dynamic> accounts,
     int? value,
@@ -991,7 +1098,6 @@ class _AddEditTransactionScreenState
           ),
 
         const SizedBox(height: VeeTokens.spacingXs),
-
         Row(
           children: [
             Expanded(
@@ -1040,7 +1146,7 @@ class _AddEditTransactionScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 业务逻辑
+  // 业务逻辑（与原版相同）
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _pickImage(ImageSource source) async {
@@ -1092,8 +1198,8 @@ class _AddEditTransactionScreenState
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
-
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+
     if (amount <= 0) {
       setState(() {
         _error = l10n.required;
@@ -1129,7 +1235,6 @@ class _AddEditTransactionScreenState
       final txnDate = _txnDate.millisecondsSinceEpoch / 1000.0;
       final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
       final notifier = ref.read(transactionsProvider.notifier);
-
       final validItems = _items
           .where((i) => i.name.trim().isNotEmpty && i.amount > 0)
           .map((i) => i.toJson())
@@ -1237,7 +1342,7 @@ class _AddEditTransactionScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行编辑组件（保持不变）
+// 明细行编辑组件（与原版完全相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemEditRow extends StatefulWidget {

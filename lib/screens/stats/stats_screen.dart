@@ -1,3 +1,10 @@
+// lib/screens/stats/stats_screen.dart
+//
+// 变更说明（Bug Fix #1 调用侧）：
+//   - VeeMonthSelectorCard 新增 onMonthSelected 参数
+//   - 用户通过弹窗选择月份后，正确更新 selectedMonth 并触发数据加载
+//   - 其余逻辑、样式与原版完全一致
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -39,16 +46,34 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     setState(() => _touchedIndex = -1);
   }
 
+  // ── Bug Fix #1：弹窗选月的处理 ──────────────────────────────────────────
+  //
+  // 原来 _showMonthPicker 拿到 picked 后什么都没做。
+  // 现在由 VeeMonthSelectorCard.onMonthSelected 回调触发，
+  // 在这里统一更新 selectedMonth 并调用 onMonthChanged()。
+
+  void _onMonthSelected(DateTime picked) {
+    // picked 已由 VeeMonthSelector 规范化为该月第一天
+    if (picked.year == selectedMonth.year &&
+        picked.month == selectedMonth.month) {
+      return; // 同月无需刷新
+    }
+    setState(() => selectedMonth = picked);
+    onMonthChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n  = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(statsProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.stats)),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
+          constraints: const BoxConstraints(
+            maxWidth: VeeTokens.maxContentWidth,
+          ),
           child: _buildBody(context, state, l10n),
         ),
       ),
@@ -65,18 +90,15 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     }
     if (state.error != null) {
       return VeeEmptyState(
-        icon:        Icons.error_outline,
-        title:       state.error!,
-        iconColor:   VeeTokens.error,
+        icon: Icons.error_outline,
+        title: state.error!,
+        iconColor: VeeTokens.error,
         actionLabel: l10n.retry,
-        onAction:    () => ref.read(statsProvider.notifier).load(selectedMonth),
+        onAction: () => ref.read(statsProvider.notifier).load(selectedMonth),
       );
     }
     if (state.summary == null) {
-      return VeeEmptyState(
-        icon:  Icons.bar_chart,
-        title: l10n.noData,
-      );
+      return VeeEmptyState(icon: Icons.bar_chart, title: l10n.noData);
     }
 
     final summary = state.summary!;
@@ -84,7 +106,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(
         horizontal: VeeTokens.s16,
-        vertical:   VeeTokens.s8,
+        vertical: VeeTokens.s8,
       ),
       children: [
         _buildSummaryCard(context, summary, l10n),
@@ -98,7 +120,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
         ] else ...[
           const SizedBox(height: VeeTokens.spacingXxl),
           VeeEmptyState(
-            icon:  Icons.receipt_long_outlined,
+            icon: Icons.receipt_long_outlined,
             title: l10n.noTransactions,
           ),
         ],
@@ -118,15 +140,16 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
         : 'JPY';
 
     return VeeMonthSelectorCard(
-      month:     selectedMonth,
+      month: selectedMonth,
       canGoNext: !isCurrentMonth,
-      onPrev:    prevMonth,
-      onNext:    nextMonth,
+      onPrev: prevMonth,
+      onNext: nextMonth,
+      // ↓ Bug Fix #1：接入弹窗选月回调
+      onMonthSelected: _onMonthSelected,
       child: Column(
         children: [
           const SizedBox(height: VeeTokens.s24),
 
-          // ── 总支出金额 ────────────────────────────────────────────────
           Text(
             l10n.totalExpense,
             style: context.veeText.caption.copyWith(
@@ -135,27 +158,27 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
           ),
           const SizedBox(height: VeeTokens.s4),
           VeeAmountDisplay(
-            amount:   summary.totalExpense,
+            amount: summary.totalExpense,
             currency: currency,
-            size:     VeeAmountSize.hero,
+            size: VeeAmountSize.hero,
           ),
           const SizedBox(height: VeeTokens.spacingXs),
 
-          // ── 记录数 badge ──────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: VeeTokens.s12,
-              vertical:   VeeTokens.s4,
+              vertical: VeeTokens.s4,
             ),
             decoration: BoxDecoration(
               color: VeeTokens.selectedTint(
-                  Theme.of(context).colorScheme.primary),
+                Theme.of(context).colorScheme.primary,
+              ),
               borderRadius: BorderRadius.circular(VeeTokens.rFull),
             ),
             child: Text(
               l10n.records(summary.count),
               style: context.veeText.micro.copyWith(
-                color:      Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -171,7 +194,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          vertical:   VeeTokens.s32,
+          vertical: VeeTokens.s32,
           horizontal: VeeTokens.s16,
         ),
         child: SizedBox(
@@ -188,27 +211,27 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
                 },
               ),
               sections: summary.byCategory.asMap().entries.map((e) {
-                final i          = e.key;
-                final cat        = e.value;
-                final isTouched  = i == _touchedIndex;
-                final color      = kCategoryColors[i % kCategoryColors.length];
-                final pct        = summary.totalExpense > 0
+                final i = e.key;
+                final cat = e.value;
+                final isTouched = i == _touchedIndex;
+                final color = kCategoryColors[i % kCategoryColors.length];
+                final pct = summary.totalExpense > 0
                     ? cat.total / summary.totalExpense * 100
                     : 0.0;
                 return PieChartSectionData(
-                  color:  color,
-                  value:  cat.total,
+                  color: color,
+                  value: cat.total,
                   radius: isTouched ? 75 : 60,
-                  title:  isTouched ? '${pct.toStringAsFixed(1)}%' : '',
+                  title: isTouched ? '${pct.toStringAsFixed(1)}%' : '',
                   titleStyle: const TextStyle(
-                    color:      Colors.white,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize:   14,
+                    fontSize: 14,
                   ),
                 );
               }).toList(),
               centerSpaceRadius: 55,
-              sectionsSpace:      3,
+              sectionsSpace: 3,
             ),
           ),
         ),
@@ -228,30 +251,26 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: summary.byCategory.length,
-        separatorBuilder: (_, __) => const Divider(
-          height: 1,
-          indent: VeeTokens.dividerIndentLg,
-        ),
+        separatorBuilder: (_, __) =>
+            const Divider(height: 1, indent: VeeTokens.dividerIndentLg),
         itemBuilder: (ctx, i) {
-          final cat       = summary.byCategory[i];
-          final color     = kCategoryColors[i % kCategoryColors.length];
-          final emoji     = kCategoryEmoji[cat.name] ?? '📦';
-          final pct       = summary.totalExpense > 0
+          final cat = summary.byCategory[i];
+          final color = kCategoryColors[i % kCategoryColors.length];
+          final emoji = kCategoryEmoji[cat.name] ?? '📦';
+          final pct = summary.totalExpense > 0
               ? cat.total / summary.totalExpense * 100
               : 0.0;
           final isTouched = i == _touchedIndex;
 
           return _CategoryRow(
-            cat:       cat,
-            color:     color,
-            emoji:     emoji,
-            pct:       pct,
+            cat: cat,
+            color: color,
+            emoji: emoji,
+            pct: pct,
             isTouched: isTouched,
-            isFirst:   i == 0,
-            isLast:    i == summary.byCategory.length - 1,
-            onTap:     () => setState(
-              () => _touchedIndex = isTouched ? -1 : i,
-            ),
+            isFirst: i == 0,
+            isLast: i == summary.byCategory.length - 1,
+            onTap: () => setState(() => _touchedIndex = isTouched ? -1 : i),
             l10n: l10n,
           );
         },
@@ -292,75 +311,76 @@ class _CategoryRow extends StatelessWidget {
       inkRadius = VeeTokens.cardBorderRadiusLg;
     } else if (isFirst) {
       inkRadius = const BorderRadius.vertical(
-          top: Radius.circular(VeeTokens.rXl));
+        top: Radius.circular(VeeTokens.rXl),
+      );
     } else if (isLast) {
       inkRadius = const BorderRadius.vertical(
-          bottom: Radius.circular(VeeTokens.rXl));
+        bottom: Radius.circular(VeeTokens.rXl),
+      );
     } else {
       inkRadius = BorderRadius.zero;
     }
 
     return InkWell(
-      onTap:        onTap,
+      onTap: onTap,
       borderRadius: inkRadius,
       child: AnimatedContainer(
         duration: VeeTokens.durationFast,
         color: isTouched ? VeeTokens.hoverTint(color) : Colors.transparent,
         padding: const EdgeInsets.symmetric(
           horizontal: VeeTokens.s16,
-          vertical:   VeeTokens.s16,
+          vertical: VeeTokens.s16,
         ),
-        child: Row(children: [
-          // ── 分类图标 ────────────────────────────────────────────────
-          Container(
-            width:  VeeTokens.touchMin,
-            height: VeeTokens.touchMin,
-            decoration: BoxDecoration(
-              color:  VeeTokens.selectedTint(color),
-              shape:  BoxShape.circle,
+        child: Row(
+          children: [
+            Container(
+              width: VeeTokens.touchMin,
+              height: VeeTokens.touchMin,
+              decoration: BoxDecoration(
+                color: VeeTokens.selectedTint(color),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(emoji, style: const TextStyle(fontSize: 18)),
             ),
-            alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(width: VeeTokens.spacingMd),
+            const SizedBox(width: VeeTokens.spacingMd),
 
-          // ── 分类名 + 件数 ────────────────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(cat.name, style: context.veeText.cardTitle),
+                  const SizedBox(height: VeeTokens.s2),
+                  Text(
+                    l10n.records(cat.count),
+                    style: context.veeText.caption.copyWith(
+                      color: VeeTokens.textSecondaryVal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(cat.name, style: context.veeText.cardTitle),
+                VeeAmountDisplay(
+                  amount: cat.total,
+                  currency: 'JPY',
+                  size: VeeAmountSize.small,
+                ),
                 const SizedBox(height: VeeTokens.s2),
                 Text(
-                  l10n.records(cat.count),
+                  '${pct.toStringAsFixed(1)}%',
                   style: context.veeText.caption.copyWith(
-                    color: VeeTokens.textSecondaryVal,
+                    color: isTouched ? color : VeeTokens.textSecondaryVal,
+                    fontWeight: isTouched ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ],
             ),
-          ),
-
-          // ── 金额 + 占比 ──────────────────────────────────────────────
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              VeeAmountDisplay(
-                amount:   cat.total,
-                currency: 'JPY',
-                size:     VeeAmountSize.small,
-              ),
-              const SizedBox(height: VeeTokens.s2),
-              Text(
-                '${pct.toStringAsFixed(1)}%',
-                style: context.veeText.caption.copyWith(
-                  color:      isTouched ? color : VeeTokens.textSecondaryVal,
-                  fontWeight: isTouched ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
