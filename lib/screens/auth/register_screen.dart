@@ -6,6 +6,7 @@ import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import 'verify_email_screen.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -20,7 +21,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl  = TextEditingController();
-  bool _obscure = true;
   bool _loading = false;
   String? _error;
 
@@ -93,12 +93,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  _Field(
+                  VeeTextField(
                     controller: _usernameCtrl,
                     label: l10n.username,
-                    icon: Icons.badge_outlined,
                     hint: l10n.usernameFormat,
-                    action: TextInputAction.next,
+                    prefixIcon: Icons.badge_outlined,
+                    textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (v == null || v.trim().length < 3) return l10n.usernameMinLength;
                       if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim())) {
@@ -109,12 +109,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _Field(
+                  VeeTextField(
                     controller: _emailCtrl,
                     label: l10n.email,
-                    icon: Icons.email_outlined,
+                    prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    action: TextInputAction.next,
+                    textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (v == null || !v.contains('@')) return l10n.enterValidEmail;
                       return null;
@@ -122,19 +122,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _Field(
+                  VeeTextField(
                     controller: _passwordCtrl,
                     label: l10n.password,
-                    icon: Icons.lock_outline,
-                    obscure: _obscure,
-                    action: TextInputAction.next,
-                    suffix: IconButton(
-                      icon: Icon(
-                          _obscure ? Icons.visibility_off_outlined
-                                   : Icons.visibility_outlined,
-                          size: 20),
-                      onPressed: () => setState(() => _obscure = !_obscure),
-                    ),
+                    prefixIcon: Icons.lock_outline,
+                    isPassword: true,
+                    textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (v == null || v.length < 8) return l10n.passwordMinLength;
                       if (!v.contains(RegExp(r'[0-9]'))) return l10n.passwordNeedsNumber;
@@ -144,12 +137,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _Field(
+                  VeeTextField(
                     controller: _confirmCtrl,
                     label: l10n.confirmPassword,
-                    icon: Icons.lock_outline,
-                    obscure: _obscure,
-                    action: TextInputAction.done,
+                    prefixIcon: Icons.lock_outline,
+                    isPassword: true,
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                     validator: (v) =>
                         v != _passwordCtrl.text ? l10n.passwordsDoNotMatch : null,
@@ -189,61 +182,4 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
-}
-
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final String? hint;
-  final bool obscure;
-  final TextInputType? keyboardType;
-  final TextInputAction? action;
-  final Widget? suffix;
-  final String? Function(String?)? validator;
-  final void Function(String)? onSubmitted;
-
-  const _Field({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.hint,
-    this.obscure = false,
-    this.keyboardType,
-    this.action,
-    this.suffix,
-    this.validator,
-    this.onSubmitted,
-  });
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboardType,
-        textInputAction: action,
-        onFieldSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: const TextStyle(fontSize: 13),
-          prefixIcon: Icon(icon, size: 20),
-          suffixIcon: suffix,
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade300)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade300)),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary, width: 1.5)),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        validator: validator,
-      );
 }

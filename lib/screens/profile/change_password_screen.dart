@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/ui_core/vee_submit_button.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -17,7 +18,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _oldCtrl  = TextEditingController();
   final _newCtrl  = TextEditingController();
   final _confCtrl = TextEditingController();
-  bool _obscure = true, _loading = false;
+  bool _loading = false;
   String? _error;
 
   @override
@@ -71,11 +72,27 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   VeeErrorBanner(message: _error!),
                   const SizedBox(height: 16),
                 ],
-                _pwField(_oldCtrl, l10n.currentPassword),
+                VeeTextField(
+                  controller: _oldCtrl,
+                  label: l10n.currentPassword,
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 14),
-                _pwField(_newCtrl, l10n.newPassword, hint: l10n.passwordMinLength),
+                VeeTextField(
+                  controller: _newCtrl,
+                  label: l10n.newPassword,
+                  hint: l10n.passwordMinLength,
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 14),
-                _pwField(_confCtrl, l10n.confirmNewPassword),
+                VeeTextField(
+                  controller: _confCtrl,
+                  label: l10n.confirmNewPassword,
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: true,
+                ),
                 const SizedBox(height: 28),
                 VeeSubmitButton(
                   label: l10n.confirm,
@@ -89,29 +106,4 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       ),
     );
   }
-
-  Widget _pwField(TextEditingController ctrl, String label, {String? hint}) =>
-      TextFormField(
-        controller: ctrl,
-        obscureText: _obscure,
-        decoration: InputDecoration(
-          labelText: label, hintText: hint,
-          hintStyle: const TextStyle(fontSize: 13),
-          prefixIcon: const Icon(Icons.lock_outline, size: 20),
-          suffixIcon: IconButton(
-            icon: Icon(_obscure ? Icons.visibility_off_outlined
-                                 : Icons.visibility_outlined, size: 20),
-            onPressed: () => setState(() => _obscure = !_obscure),
-          ),
-          filled: true, fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade300)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade300)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.primary, width: 1.5)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      );
 }
