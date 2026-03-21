@@ -1,9 +1,19 @@
 // lib/screens/transactions/add_edit_transaction_screen.dart
+//
+// 重构说明（v2）：
+//   原版将 9 个字段全部平铺在一个 ScrollView 中，认知负担过高。
+//   现改为 3 步渐进式表单：
+//
+//   Step 1 — Core（必填）：金额 + 收支类型 + 分类
+//   Step 2 — Details（可选）：账户 / 转账目标 / 日期 / 备注 / 隐私
+//   Step 3 — Attachments（可选）：凭证图片 + 商品明细
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
+import 'package:vee_app/widgets/ui_core/vee_form_row.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/transaction.dart';
 import '../../providers/accounts_provider.dart';
@@ -11,22 +21,25 @@ import '../../providers/categories_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../utils/currency.dart';
+import '../../utils/vee_colors.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_card.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_confirm_dialog.dart';
 import '../../widgets/ui_core/vee_amount_display.dart';
+import '../../widgets/ui_core/vee_category_grid.dart';
+import '../../widgets/ui_core/vee_image_picker.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行草稿（编辑用内部 DTO）
+// 明细行草稿
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemDraft {
   String name;
   double amount;
   double quantity;
-  String itemType; // item / discount / tax
+  String itemType;
 
   _ItemDraft({
     this.name = '',
@@ -36,13 +49,13 @@ class _ItemDraft {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'name_raw': name,
-        'quantity': quantity,
-        'amount': amount,
-        'item_type': itemType,
-        'sort_order': 0,
-      };
+    'name': name,
+    'name_raw': name,
+    'quantity': quantity,
+    'amount': amount,
+    'item_type': itemType,
+    'sort_order': 0,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,11 +80,11 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditTransactionScreenState
-    extends ConsumerState<AddEditTransactionScreen> {
-  final _formKey = GlobalKey<FormState>();
+    extends ConsumerState<AddEditTransactionScreen>
+    with SingleTickerProviderStateMixin {
+  // ── 表单状态 ──────────────────────────────────────────────────────────────
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
-  final _picker = ImagePicker();
 
   String _type = 'expense';
   String _currencyCode = 'JPY';
@@ -87,14 +100,31 @@ class _AddEditTransactionScreenState
   String? _error;
 
   final List<_ItemDraft> _items = [];
-  late bool _isEditing;
 
+  // ── 步骤状态 ──────────────────────────────────────────────────────────────
+  int _currentStep = 0; // 0=Core, 1=Details, 2=Attachments
+  static const int _totalSteps = 3;
+
+  late final AnimationController _stepAnim;
+  late final Animation<double> _stepFade;
+
+  // ── 编辑模式 ──────────────────────────────────────────────────────────────
+  late bool _isEditing;
   bool get _isEdit => widget.transaction != null;
+  final _picker = ImagePicker();
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _isEditing = !widget.isReadOnly;
+
+    _stepAnim = AnimationController(
+      vsync: this,
+      duration: VeeTokens.durationNormal,
+    )..forward();
+    _stepFade = CurvedAnimation(parent: _stepAnim, curve: Curves.easeInOut);
 
     final t = widget.transaction;
     if (t != null) {
@@ -109,18 +139,21 @@ class _AddEditTransactionScreenState
       _amountCtrl.text = t.amount.toStringAsFixed(0);
       _noteCtrl.text = t.note ?? '';
       for (final item in t.items) {
-        _items.add(_ItemDraft(
-          name: item.name,
-          amount: item.amount,
-          quantity: item.quantity,
-          itemType: item.itemType,
-        ));
+        _items.add(
+          _ItemDraft(
+            name: item.name,
+            amount: item.amount,
+            quantity: item.quantity,
+            itemType: item.itemType,
+          ),
+        );
       }
     } else {
       _txnDate = DateTime(
-          widget.selectedMonth.year,
-          widget.selectedMonth.month,
-          DateTime.now().day);
+        widget.selectedMonth.year,
+        widget.selectedMonth.month,
+        DateTime.now().day,
+      );
     }
   }
 
@@ -128,7 +161,21 @@ class _AddEditTransactionScreenState
   void dispose() {
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _stepAnim.dispose();
     super.dispose();
+  }
+
+  // ── 步骤导航 ──────────────────────────────────────────────────────────────
+
+  void _goStep(int step) {
+    if (step < 0 || step >= _totalSteps) return;
+    setState(() => _currentStep = step);
+    _stepAnim.forward(from: 0);
+  }
+
+  bool get _canProceedStep0 {
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    return amount > 0 && _categoryId != null;
   }
 
   // ── AppBar ────────────────────────────────────────────────────────────────
@@ -148,8 +195,9 @@ class _AddEditTransactionScreenState
       );
     }
 
+    final stepTitles = [l10n.addTransaction, '详情信息', '附件'];
     return AppBar(
-      title: Text(_isEdit ? l10n.edit : l10n.addTransaction),
+      title: Text(_isEdit ? l10n.edit : stepTitles[_currentStep]),
       centerTitle: true,
       actions: [
         if (_saving || _uploadingImg)
@@ -157,126 +205,549 @@ class _AddEditTransactionScreenState
             child: Padding(
               padding: EdgeInsets.only(right: VeeTokens.s16),
               child: SizedBox(
-                  width: VeeTokens.iconMd,
-                  height: VeeTokens.iconMd,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                width: VeeTokens.iconMd,
+                height: VeeTokens.iconMd,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(right: VeeTokens.spacingXs),
-            child: FilledButton.tonal(
-                onPressed: _save, child: Text(l10n.save)),
           ),
       ],
     );
   }
 
-  // ── 查看模式 body ─────────────────────────────────────────────────────────
+  // ── 步骤指示器 ────────────────────────────────────────────────────────────
+
+  Widget _buildStepIndicator() {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: VeeTokens.s24,
+        vertical: VeeTokens.s12,
+      ),
+      child: Row(
+        children: List.generate(_totalSteps * 2 - 1, (i) {
+          if (i.isOdd) {
+            // 连接线
+            final stepIdx = i ~/ 2;
+            final isCompleted = stepIdx < _currentStep;
+            return Expanded(
+              child: AnimatedContainer(
+                duration: VeeTokens.durationNormal,
+                height: 2,
+                color: isCompleted ? primary : VeeTokens.borderColor,
+              ),
+            );
+          }
+          // 步骤点
+          final stepIdx = i ~/ 2;
+          final isActive = stepIdx == _currentStep;
+          final isCompleted = stepIdx < _currentStep;
+          return AnimatedContainer(
+            duration: VeeTokens.durationNormal,
+            width: isActive ? 28 : 22,
+            height: isActive ? 28 : 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCompleted
+                  ? primary
+                  : isActive
+                  ? VeeTokens.selectedTint(primary)
+                  : VeeTokens.surfaceSunken,
+              border: Border.all(
+                color: (isActive || isCompleted)
+                    ? primary
+                    : VeeTokens.borderColor,
+                width: isActive ? 2.0 : 1.0,
+              ),
+            ),
+            child: Center(
+              child: isCompleted
+                  ? Icon(Icons.check, size: 12, color: Colors.white)
+                  : Text(
+                      '${stepIdx + 1}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isActive ? primary : VeeTokens.textDisabledVal,
+                      ),
+                    ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 0 — Core（金额 + 类型 + 分类）
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildStep0(AppLocalizations l10n) {
+    final categoriesAsync = ref.watch(currentCategoriesProvider);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s16,
+        0,
+        VeeTokens.s16,
+        VeeTokens.s80,
+      ),
+      children: [
+        if (_error != null) VeeErrorBanner(message: _error!),
+
+        // ── 收支类型选择器 ──────────────────────────────────────────────
+        _buildTypeSelector(l10n),
+        const SizedBox(height: VeeTokens.spacingLg),
+
+        // ── 金额输入（大号居中）──────────────────────────────────────────
+        _buildAmountHeader(),
+        const SizedBox(height: VeeTokens.spacingLg),
+
+        // ── 分类网格 ─────────────────────────────────────────────────────
+        Text('选择分类', style: context.veeText.sectionTitle),
+        const SizedBox(height: VeeTokens.spacingXs),
+        categoriesAsync.when(
+          data: (cats) {
+            final filtered = cats
+                .where((c) => c.type == _type || c.type == 'both')
+                .toList();
+            return VeeCategoryGrid(
+              categories: filtered,
+              selectedId: _categoryId,
+              onSelected: (id) => setState(() => _categoryId = id),
+            );
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(VeeTokens.s24),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (e, _) => VeeErrorBanner(message: e.toString()),
+        ),
+
+        const SizedBox(height: VeeTokens.s32),
+
+        // ── 下一步按钮 ──────────────────────────────────────────────────
+        SizedBox(
+          height: VeeTokens.buttonHeight,
+          child: FilledButton(
+            onPressed: _canProceedStep0 ? () => _goStep(1) : null,
+            child: const Text('下一步：填写详情'),
+          ),
+        ),
+        if (!_canProceedStep0)
+          Padding(
+            padding: const EdgeInsets.only(top: VeeTokens.s8),
+            child: Text(
+              '请填写金额并选择分类',
+              textAlign: TextAlign.center,
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 1 — Details（账户 / 日期 / 备注 / 隐私）
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildStep1(AppLocalizations l10n) {
+    final accounts = ref.watch(accountsProvider).accounts;
+    if (_accountId == null && accounts.isNotEmpty) {
+      Future.microtask(() => setState(() => _accountId = accounts.first.id));
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s16,
+        0,
+        VeeTokens.s16,
+        VeeTokens.s80,
+      ),
+      children: [
+        if (_error != null) VeeErrorBanner(message: _error!),
+
+        // ── 已选摘要（不可交互，点击可回到 Step 0）────────────────────────
+        GestureDetector(
+          onTap: () => _goStep(0),
+          child: VeeCard(
+            padding: VeeTokens.cardPadding,
+            child: Row(
+              children: [
+                VeeAmountDisplay(
+                  amount: double.tryParse(_amountCtrl.text) ?? 0,
+                  currency: _currencyCode,
+                  size: VeeAmountSize.medium,
+                  color: VeeColors.forTransactionType(_type),
+                  prefix: VeeColors.prefixForTransactionType(_type),
+                ),
+                const SizedBox(width: VeeTokens.spacingMd),
+                // 分类小徽章
+                if (_categoryId != null)
+                  ref
+                      .watch(currentCategoriesProvider)
+                      .maybeWhen(
+                        data: (cats) {
+                          final cat = cats
+                              .where((c) => c.id == _categoryId)
+                              .firstOrNull;
+                          if (cat == null) return const SizedBox.shrink();
+                          return Row(
+                            children: [
+                              Text(
+                                cat.icon,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(width: VeeTokens.s4),
+                              Text(cat.name, style: context.veeText.cardTitle),
+                            ],
+                          );
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+                const Spacer(),
+                Icon(
+                  Icons.edit_outlined,
+                  size: VeeTokens.iconSm,
+                  color: VeeTokens.textPlaceholderVal,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: VeeTokens.spacingMd),
+
+        // ── 详细信息卡 ──────────────────────────────────────────────────
+        VeeCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              // 账户
+              _buildAccountDropdown(
+                accounts,
+                _accountId,
+                l10n.account,
+                (v) => setState(() => _accountId = v),
+                l10n,
+              ),
+              const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
+
+              // 转账目标账户（仅 transfer 显示）
+              if (_type == 'transfer') ...[
+                _buildAccountDropdown(
+                  accounts,
+                  _toAccountId,
+                  l10n.to,
+                  (v) => setState(() => _toAccountId = v),
+                  l10n,
+                ),
+                const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
+              ],
+
+              // 日期
+              InkWell(
+                onTap: _pickDate,
+                splashColor: VeeTokens.selectedTint(
+                  Theme.of(context).colorScheme.primary,
+                ),
+                child: VeeFormRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: l10n.date,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_txnDate.year}/'
+                          '${_txnDate.month.toString().padLeft(2, '0')}/'
+                          '${_txnDate.day.toString().padLeft(2, '0')}',
+                          style: context.veeText.bodyDefault,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: VeeTokens.textPlaceholderVal,
+                        size: VeeTokens.iconMd,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
+
+              // 备注
+              VeeFormRow(
+                icon: Icons.notes_outlined,
+                label: l10n.note,
+                child: TextFormField(
+                  controller: _noteCtrl,
+                  maxLines: null,
+                  decoration: InputDecoration(
+                    hintText: l10n.note,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, indent: VeeTokens.dividerIndentStd),
+
+              // 隐私开关
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.lock_outline,
+                  color: VeeTokens.textSecondaryVal,
+                  size: VeeTokens.iconMd,
+                ),
+                title: Text(l10n.private),
+                subtitle: Text(
+                  l10n.shareTransactions,
+                  style: context.veeText.micro.copyWith(
+                    color: VeeTokens.textSecondaryVal,
+                  ),
+                ),
+                value: _isPrivate,
+                onChanged: (v) => setState(() => _isPrivate = v),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: VeeTokens.s32),
+
+        // ── 操作按钮行 ──────────────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _goStep(0),
+                child: const Text('上一步'),
+              ),
+            ),
+            const SizedBox(width: VeeTokens.spacingXs),
+            Expanded(
+              flex: 2,
+              child: FilledButton.tonal(
+                onPressed: _saving ? null : _save,
+                child: const Text('保存（跳过附件）'),
+              ),
+            ),
+            const SizedBox(width: VeeTokens.spacingXs),
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _goStep(2),
+                child: const Text('附件'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 2 — Attachments（凭证图片 + 商品明细）
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildStep2(AppLocalizations l10n) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s16,
+        0,
+        VeeTokens.s16,
+        VeeTokens.s80,
+      ),
+      children: [
+        if (_error != null) VeeErrorBanner(message: _error!),
+
+        // ── 凭证图片 ────────────────────────────────────────────────────
+        Text(l10n.scanReceipt, style: context.veeText.sectionTitle),
+        const SizedBox(height: VeeTokens.spacingXs),
+        VeeImagePicker(
+          pendingFile: _pendingImage,
+          remoteUrl: _receiptUrl,
+          uploading: _uploadingImg,
+          onCamera: () => _pickImage(ImageSource.camera),
+          onGallery: () => _pickImage(ImageSource.gallery),
+          onRemove: () => setState(() {
+            _pendingImage = null;
+            _receiptUrl = '';
+          }),
+        ),
+        const SizedBox(height: VeeTokens.spacingLg),
+
+        // ── 商品明细 ────────────────────────────────────────────────────
+        _buildItemsSection(l10n),
+        const SizedBox(height: VeeTokens.s32),
+
+        // ── 操作按钮行 ──────────────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _goStep(1),
+                child: const Text('上一步'),
+              ),
+            ),
+            const SizedBox(width: VeeTokens.spacingXs),
+            Expanded(
+              flex: 2,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: VeeTokens.iconMd,
+                        height: VeeTokens.iconMd,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('完成保存'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 查看模式（isReadOnly）
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildViewBody(AppLocalizations l10n) {
     final t = widget.transaction!;
-    final color = _parseColor(t.categoryColor);
+    final color = VeeColors.fromHex(t.categoryColor);
 
     final typeLabel = t.type == 'income'
         ? l10n.income
         : t.type == 'transfer'
-            ? l10n.transfer
-            : l10n.expense;
-    final typeColor = t.type == 'income'
-        ? VeeTokens.success
-        : t.type == 'transfer'
-            ? VeeTokens.info
-            : VeeTokens.error;
+        ? l10n.transfer
+        : l10n.expense;
+    final typeColor = VeeColors.forTransactionType(t.type);
 
     return Center(
       child: ConstrainedBox(
-        constraints:
-            const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
+        constraints: const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
         child: ListView(
           padding: const EdgeInsets.symmetric(
-              horizontal: VeeTokens.s16, vertical: VeeTokens.s24),
+            horizontal: VeeTokens.s16,
+            vertical: VeeTokens.s24,
+          ),
           children: [
             // ── 金额头部 ────────────────────────────────────────────────
-            Column(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: VeeTokens.s12, vertical: VeeTokens.spacingXxs),
-                decoration: BoxDecoration(
-                  color: VeeTokens.selectedTint(typeColor),
-                  borderRadius: BorderRadius.circular(VeeTokens.rSm),
-                ),
-                child: Text(typeLabel,
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: VeeTokens.s12,
+                    vertical: VeeTokens.spacingXxs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: VeeTokens.selectedTint(typeColor),
+                    borderRadius: BorderRadius.circular(VeeTokens.rSm),
+                  ),
+                  child: Text(
+                    typeLabel,
                     style: context.veeText.chipLabel.copyWith(
-                        color: typeColor, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: VeeTokens.s12),
-              Container(
-                width: VeeTokens.s64,
-                height: VeeTokens.s64,
-                decoration: BoxDecoration(
+                      color: typeColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: VeeTokens.s12),
+                Container(
+                  width: VeeTokens.s64,
+                  height: VeeTokens.s64,
+                  decoration: BoxDecoration(
                     color: VeeTokens.hoverTint(color),
-                    shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Text(t.categoryIcon ?? '📦',
-                    style: const TextStyle(fontSize: 30)),
-              ),
-              const SizedBox(height: VeeTokens.s12),
-              Text(t.categoryName ?? l10n.uncategorized,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    t.categoryIcon ?? '📦',
+                    style: const TextStyle(fontSize: 30),
+                  ),
+                ),
+                const SizedBox(height: VeeTokens.s12),
+                Text(
+                  t.categoryName ?? l10n.uncategorized,
                   style: context.veeText.caption.copyWith(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500)),
-              const SizedBox(height: VeeTokens.spacingXxs),
-              VeeAmountDisplay(
-                amount: t.amount,
-                currency: t.currencyCode,
-                size: VeeAmountSize.hero,
-                color: typeColor,
-              ),
-            ]),
+                    color: VeeTokens.textSecondaryVal,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: VeeTokens.spacingXxs),
+                VeeAmountDisplay(
+                  amount: t.amount,
+                  currency: t.currencyCode,
+                  size: VeeAmountSize.hero,
+                  color: typeColor,
+                ),
+              ],
+            ),
             const SizedBox(height: VeeTokens.s32),
 
-            // ── 基本信息 ────────────────────────────────────────────────
             VeeCard(
               padding: EdgeInsets.zero,
-              child: Column(children: [
-                _ViewRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: l10n.date,
-                  value:
-                      '${t.date.year}/${t.date.month.toString().padLeft(2, '0')}/${t.date.day.toString().padLeft(2, '0')}',
-                ),
-                if (t.note?.isNotEmpty == true) ...[
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  _ViewRow(
+              child: Column(
+                children: [
+                  VeeDetailRow(
+                    icon: Icons.calendar_today_outlined,
+                    label: l10n.date,
+                    value:
+                        '${t.date.year}/${t.date.month.toString().padLeft(2, '0')}/${t.date.day.toString().padLeft(2, '0')}',
+                  ),
+                  if (t.note?.isNotEmpty == true) ...[
+                    const Divider(
+                      height: 1,
+                      indent: VeeTokens.dividerIndentStd,
+                    ),
+                    VeeDetailRow(
                       icon: Icons.notes_outlined,
                       label: l10n.note,
-                      value: t.note!),
-                ],
-                if (t.isPrivate) ...[
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  _ViewRow(
+                      value: t.note!,
+                    ),
+                  ],
+                  if (t.isPrivate) ...[
+                    const Divider(
+                      height: 1,
+                      indent: VeeTokens.dividerIndentStd,
+                    ),
+                    VeeDetailRow(
                       icon: Icons.lock_outline,
                       label: l10n.private,
-                      value: l10n.yes),
+                      value: l10n.yes,
+                    ),
+                  ],
                 ],
-              ]),
+              ),
             ),
             const SizedBox(height: VeeTokens.spacingLg),
 
-            // ── 凭证 ────────────────────────────────────────────────────
             if (t.hasReceipt) ...[
-              _SectionTitle(l10n.receiptImages),
+              Text(l10n.receiptImages, style: context.veeText.sectionTitle),
               const SizedBox(height: VeeTokens.s12),
-              _ReceiptImage(url: t.receiptUrl),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(VeeTokens.rLg),
+                child: Image.network(
+                  t.receiptUrl,
+                  width: double.infinity,
+                  height: 160,
+                  fit: BoxFit.cover,
+                ),
+              ),
               const SizedBox(height: VeeTokens.spacingLg),
             ],
 
-            // ── 明细 ────────────────────────────────────────────────────
             if (t.items.isNotEmpty) ...[
-              _SectionTitle(l10n.itemsCount(t.items.length)),
+              Text(
+                l10n.itemsCount(t.items.length),
+                style: context.veeText.sectionTitle,
+              ),
               const SizedBox(height: VeeTokens.s12),
               VeeCard(
                 padding: VeeTokens.cardPadding,
@@ -285,22 +756,30 @@ class _AddEditTransactionScreenState
                     final isDisc = item.itemType == 'discount';
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: VeeTokens.s2 + 1),
-                      child: Row(children: [
-                        Text(isDisc ? '➖' : '•',
-                            style: const TextStyle(
-                                fontSize: VeeTokens.iconXs)),
-                        const SizedBox(width: VeeTokens.spacingXs),
-                        Expanded(
-                            child: Text(item.name,
-                                style: context.veeText.caption)),
-                        Text(
-                          '${isDisc ? '-' : ''}${t.currencyCode} ${formatAmount(item.amount.abs(), t.currencyCode)}',
-                          style: context.veeText.caption.copyWith(
+                        vertical: VeeTokens.s2,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            isDisc ? '➖' : '•',
+                            style: const TextStyle(fontSize: VeeTokens.iconXs),
+                          ),
+                          const SizedBox(width: VeeTokens.spacingXs),
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: context.veeText.caption,
+                            ),
+                          ),
+                          Text(
+                            '${isDisc ? '-' : ''}${t.currencyCode} ${formatAmount(item.amount.abs(), t.currencyCode)}',
+                            style: context.veeText.caption.copyWith(
                               fontWeight: FontWeight.w500,
-                              color: isDisc ? VeeTokens.error : null),
-                        ),
-                      ]),
+                              color: isDisc ? VeeTokens.error : null,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   }).toList(),
                 ),
@@ -308,24 +787,25 @@ class _AddEditTransactionScreenState
               const SizedBox(height: VeeTokens.spacingLg),
             ],
 
-            // ── 删除按钮 ────────────────────────────────────────────────
-            const SizedBox(height: VeeTokens.spacingXs),
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonal(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
+                  backgroundColor: VeeTokens.errorSurface,
                   foregroundColor: VeeTokens.error,
-                  padding: const EdgeInsets.symmetric(
-                      vertical: VeeTokens.s16),
+                  padding: const EdgeInsets.symmetric(vertical: VeeTokens.s16),
                   shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(VeeTokens.rLg)),
+                    borderRadius: BorderRadius.circular(VeeTokens.rLg),
+                  ),
                 ),
                 onPressed: () => _confirmDelete(context),
-                child: Text(l10n.deleteThisRecord,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold)),
+                child: Text(
+                  l10n.deleteThisRecord,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: VeeTokens.s48),
@@ -335,226 +815,9 @@ class _AddEditTransactionScreenState
     );
   }
 
-  // ── 编辑模式 body ─────────────────────────────────────────────────────────
-
-  Widget _buildEditBody(AppLocalizations l10n) {
-    final accountsState = ref.watch(accountsProvider);
-    final accounts = accountsState.accounts;
-    final categoriesAsync = ref.watch(currentCategoriesProvider);
-
-    if (_accountId == null && accounts.isNotEmpty) {
-      Future.microtask(
-          () => setState(() => _accountId = accounts.first.id));
-    }
-
-    return Center(
-      child: ConstrainedBox(
-        constraints:
-            const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(
-                horizontal: VeeTokens.s16, vertical: VeeTokens.spacingXs),
-            children: [
-              if (_error != null) VeeErrorBanner(message: _error!),
-
-              _buildTypeSelector(l10n),
-              const SizedBox(height: VeeTokens.spacingLg),
-
-              _buildAmountHeader(),
-              const SizedBox(height: VeeTokens.spacingLg),
-
-              // ── 基本信息卡片 ──────────────────────────────────────────
-              VeeCard(
-                padding: EdgeInsets.zero,
-                child: Column(children: [
-                  categoriesAsync.when(
-                    data: (cats) => _buildCategoryPicker(cats, l10n),
-                    loading: () =>
-                        ListTile(title: Text(l10n.categoryLoading)),
-                    error: (e, _) => ListTile(
-                        title: Text(l10n.categoryLoadError(e.toString()))),
-                  ),
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  _buildAccountDropdown(accounts, _accountId,
-                      l10n.account, (v) => setState(() => _accountId = v),
-                      l10n),
-                  if (_type == 'transfer') ...[
-                    const Divider(
-                        height: 1, indent: VeeTokens.dividerIndentStd),
-                    _buildAccountDropdown(
-                        accounts,
-                        _toAccountId,
-                        l10n.to,
-                        (v) => setState(() => _toAccountId = v),
-                        l10n),
-                  ],
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  InkWell(
-                    onTap: _pickDate,
-                    child: _FormRow(
-                      icon: Icons.calendar_today_outlined,
-                      label: l10n.date,
-                      child: Row(children: [
-                        Expanded(
-                            child: Text(
-                          '${_txnDate.year}/${_txnDate.month.toString().padLeft(2, '0')}/${_txnDate.day.toString().padLeft(2, '0')}',
-                          style: context.veeText.bodyDefault,
-                        )),
-                        Icon(Icons.chevron_right,
-                            color: Colors.grey[400],
-                            size: VeeTokens.iconMd),
-                      ]),
-                    ),
-                  ),
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  _FormRow(
-                    icon: Icons.notes_outlined,
-                    label: l10n.note,
-                    child: TextFormField(
-                      controller: _noteCtrl,
-                      maxLines: null,
-                      decoration: InputDecoration(
-                        hintText: l10n.note,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const Divider(
-                      height: 1, indent: VeeTokens.dividerIndentStd),
-                  SwitchListTile(
-                    secondary: Icon(Icons.lock_outline,
-                        color: Colors.grey[500],
-                        size: VeeTokens.iconMd),
-                    title: Text(l10n.private),
-                    subtitle: Text(l10n.shareTransactions,
-                        style: context.veeText.micro
-                            .copyWith(color: Colors.grey[500])),
-                    value: _isPrivate,
-                    onChanged: (v) => setState(() => _isPrivate = v),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: VeeTokens.spacingMd),
-
-              _buildItemsSection(l10n),
-              const SizedBox(height: VeeTokens.spacingMd),
-
-              _ReceiptSection(
-                pendingFile: _pendingImage,
-                receiptUrl: _receiptUrl,
-                uploading: _uploadingImg,
-                onPickCamera: () => _pickImage(ImageSource.camera),
-                onPickGallery: () => _pickImage(ImageSource.gallery),
-                onRemove: () => setState(() {
-                  _pendingImage = null;
-                  _receiptUrl = '';
-                }),
-              ),
-              const SizedBox(height: VeeTokens.s80),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── 明细编辑区 ────────────────────────────────────────────────────────────
-
-  Widget _buildItemsSection(AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Icon(Icons.receipt_long_outlined,
-              size: VeeTokens.iconSm, color: Colors.grey),
-          const SizedBox(width: VeeTokens.spacingXxs),
-          Text('商品明细', style: context.veeText.sectionTitle),
-          const Spacer(),
-          Text('${_items.length} 项',
-              style: context.veeText.micro
-                  .copyWith(color: Colors.grey[500])),
-        ]),
-        const SizedBox(height: VeeTokens.spacingXs),
-
-        if (_items.isNotEmpty)
-          VeeCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: _items.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final item = entry.value;
-                return Column(children: [
-                  if (idx > 0)
-                    const Divider(height: 1, indent: VeeTokens.s16),
-                  _ItemEditRow(
-                    item: item,
-                    currency: _currencyCode,
-                    onChanged: () => setState(() {}),
-                    onDelete: () =>
-                        setState(() => _items.removeAt(idx)),
-                  ),
-                ]);
-              }).toList(),
-            ),
-          ),
-
-        const SizedBox(height: VeeTokens.spacingXs),
-
-        Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                    color: Colors.grey.withOpacity(0.3)),
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(VeeTokens.rMd)),
-                padding: const EdgeInsets.symmetric(
-                    vertical: VeeTokens.s12),
-              ),
-              onPressed: () =>
-                  setState(() => _items.add(_ItemDraft())),
-              icon: const Icon(Icons.add, size: VeeTokens.iconSm),
-              label: const Text('添加商品'),
-            ),
-          ),
-          const SizedBox(width: VeeTokens.spacingXs),
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                    color: Colors.grey.withOpacity(0.3)),
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(VeeTokens.rMd)),
-                padding: const EdgeInsets.symmetric(
-                    vertical: VeeTokens.s12),
-              ),
-              onPressed: () => setState(() =>
-                  _items.add(_ItemDraft(itemType: 'discount'))),
-              icon: const Icon(Icons.remove_circle_outline,
-                  size: VeeTokens.iconSm),
-              label: const Text('添加折扣'),
-            ),
-          ),
-        ]),
-
-        if (_items.isNotEmpty) ...[
-          const SizedBox(height: VeeTokens.spacingXs),
-          _ItemsSumBar(items: _items, currency: _currencyCode),
-        ],
-      ],
-    );
-  }
-
-  // ── 类型选择器 ────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // 共享子 Widget
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildTypeSelector(AppLocalizations l10n) {
     final types = [
@@ -571,28 +834,30 @@ class _AddEditTransactionScreenState
               _type = t.$1;
               _categoryId = null;
             }),
-            child: Container(
+            child: AnimatedContainer(
+              duration: VeeTokens.durationFast,
               margin: const EdgeInsets.symmetric(
-                  horizontal: VeeTokens.spacingXxs),
-              padding: const EdgeInsets.symmetric(
-                  vertical: VeeTokens.s10),
+                horizontal: VeeTokens.spacingXxs,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: VeeTokens.s10),
               decoration: BoxDecoration(
                 color: selected
                     ? VeeTokens.selectedTint(t.$3)
-                    : Colors.grey.shade100,
-                borderRadius:
-                    BorderRadius.circular(VeeTokens.rMd),
+                    : VeeTokens.surfaceSunken,
+                borderRadius: BorderRadius.circular(VeeTokens.rMd),
                 border: Border.all(
                   color: selected ? t.$3 : Colors.transparent,
                   width: 1.5,
                 ),
               ),
               alignment: Alignment.center,
-              child: Text(t.$2,
-                  style: context.veeText.chipLabel.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: selected ? t.$3 : Colors.grey[600],
-                  )),
+              child: Text(
+                t.$2,
+                style: context.veeText.chipLabel.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: selected ? t.$3 : VeeTokens.textSecondaryVal,
+                ),
+              ),
             ),
           ),
         );
@@ -600,96 +865,190 @@ class _AddEditTransactionScreenState
     );
   }
 
-  // ── 分类选择 ──────────────────────────────────────────────────────────────
-
-  Widget _buildCategoryPicker(
-      List<Category> categories, AppLocalizations l10n) {
-    final filtered = categories
-        .where((c) => c.type == _type || c.type == 'both')
-        .toList();
-    final selected = filtered.firstWhere(
-      (c) => c.id == _categoryId,
-      orElse: () => filtered.isEmpty
-          ? Category(
-              id: -1,
-              name: l10n.pleaseSelect,
-              icon: '❓',
-              color: '#95A5A6',
-              type: 'both',
-              isSystem: false,
-              sortOrder: 0)
-          : filtered.first,
-    );
-
-    return InkWell(
-      onTap: () => _showCategorySheet(filtered, l10n),
-      child: _FormRow(
-        icon: Icons.category_outlined,
-        label: l10n.category,
-        child: Row(children: [
-          Text(selected.icon,
-              style: TextStyle(fontSize: VeeTokens.iconMd + 2)),
-          const SizedBox(width: VeeTokens.spacingXs),
-          Expanded(
-              child: Text(selected.name,
-                  style: context.veeText.bodyDefault)),
-          Icon(Icons.chevron_right,
-              color: Colors.grey[400], size: VeeTokens.iconMd),
-        ]),
-      ),
-    );
-  }
-
-  void _showCategorySheet(
-      List<Category> categories, AppLocalizations l10n) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(VeeTokens.rXl))),
-      builder: (_) => _CategorySheet(
-        categories: categories,
-        selectedId: _categoryId,
-        onSelected: (id) {
-          setState(() => _categoryId = id);
-          Navigator.pop(context);
-        },
-      ),
+  Widget _buildAmountHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        DropdownButton<String>(
+          value: _currencyCode,
+          underline: const SizedBox(),
+          icon: const Icon(Icons.keyboard_arrow_down, size: VeeTokens.iconSm),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          items: [
+            'JPY',
+            'CNY',
+            'USD',
+            'EUR',
+            'HKD',
+          ].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          onChanged: (v) => setState(() => _currencyCode = v!),
+        ),
+        const SizedBox(width: VeeTokens.spacingXs),
+        IntrinsicWidth(
+          child: TextFormField(
+            controller: _amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+              isDense: true,
+              hintText: '0',
+            ),
+            onChanged: (_) => setState(() {}), // 触发 _canProceedStep0 重算
+          ),
+        ),
+      ],
     );
   }
 
-  // ── 账户下拉 ──────────────────────────────────────────────────────────────
-
-  Widget _buildAccountDropdown(List<dynamic> accounts, int? value,
-      String label, ValueChanged<int?> onChanged, AppLocalizations l10n) {
-    return _FormRow(
+  Widget _buildAccountDropdown(
+    List<dynamic> accounts,
+    int? value,
+    String label,
+    ValueChanged<int?> onChanged,
+    AppLocalizations l10n,
+  ) {
+    return VeeFormRow(
       icon: Icons.account_balance_wallet_outlined,
       label: label,
       child: DropdownButtonFormField<int>(
         value: value,
         decoration: const InputDecoration(
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isDense: true),
-        icon: Icon(Icons.chevron_right,
-            color: Colors.grey[400], size: VeeTokens.iconMd),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          isDense: true,
+        ),
+        icon: Icon(
+          Icons.chevron_right,
+          color: VeeTokens.textPlaceholderVal,
+          size: VeeTokens.iconMd,
+        ),
         items: accounts
-            .map((a) => DropdownMenuItem<int>(
-                  value: a.id as int,
-                  child: Text('${a.typeIcon} ${a.name}'),
-                ))
+            .map(
+              (a) => DropdownMenuItem<int>(
+                value: a.id as int,
+                child: Text('${a.typeIcon} ${a.name}'),
+              ),
+            )
             .toList(),
         onChanged: onChanged,
-        validator: (_) => value == null ? l10n.required : null,
       ),
     );
   }
 
-  // ── 图片 ──────────────────────────────────────────────────────────────────
+  Widget _buildItemsSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: VeeTokens.iconSm,
+              color: VeeTokens.textSecondaryVal,
+            ),
+            const SizedBox(width: VeeTokens.spacingXxs),
+            Text('商品明细', style: context.veeText.sectionTitle),
+            const Spacer(),
+            Text(
+              '${_items.length} 项',
+              style: context.veeText.micro.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: VeeTokens.spacingXs),
+
+        if (_items.isNotEmpty)
+          VeeCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: _items.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                return Column(
+                  children: [
+                    if (idx > 0)
+                      const Divider(height: 1, indent: VeeTokens.s16),
+                    _ItemEditRow(
+                      item: item,
+                      currency: _currencyCode,
+                      onChanged: () => setState(() {}),
+                      onDelete: () => setState(() => _items.removeAt(idx)),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+
+        const SizedBox(height: VeeTokens.spacingXs),
+
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: VeeTokens.borderColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(VeeTokens.rMd),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: VeeTokens.s12),
+                ),
+                onPressed: () => setState(() => _items.add(_ItemDraft())),
+                icon: const Icon(Icons.add, size: VeeTokens.iconSm),
+                label: const Text('添加商品'),
+              ),
+            ),
+            const SizedBox(width: VeeTokens.spacingXs),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: VeeTokens.borderColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(VeeTokens.rMd),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: VeeTokens.s12),
+                ),
+                onPressed: () => setState(
+                  () => _items.add(_ItemDraft(itemType: 'discount')),
+                ),
+                icon: const Icon(
+                  Icons.remove_circle_outline,
+                  size: VeeTokens.iconSm,
+                ),
+                label: const Text('添加折扣'),
+              ),
+            ),
+          ],
+        ),
+
+        if (_items.isNotEmpty) ...[
+          const SizedBox(height: VeeTokens.spacingXs),
+          _ItemsSumBar(items: _items, currency: _currencyCode),
+        ],
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 业务逻辑
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _pickImage(ImageSource source) async {
     final xfile = await _picker.pickImage(
-        source: source, imageQuality: 85, maxWidth: 1920);
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1920,
+    );
     if (xfile == null) return;
     setState(() {
       _pendingImage = File(xfile.path);
@@ -706,78 +1065,54 @@ class _AddEditTransactionScreenState
       final mime = filename.toLowerCase().endsWith('.png')
           ? 'image/png'
           : 'image/jpeg';
-      return await ref.read(transactionsProvider.notifier).uploadReceipt(
-          fileBytes: bytes, filename: filename, mimeType: mime);
+      return await ref
+          .read(transactionsProvider.notifier)
+          .uploadReceipt(fileBytes: bytes, filename: filename, mimeType: mime);
     } catch (e) {
-      setState(() => _error =
-          AppLocalizations.of(context)!.operationFailed(e.toString()));
+      setState(
+        () => _error = AppLocalizations.of(
+          context,
+        )!.operationFailed(e.toString()),
+      );
       return null;
     } finally {
       setState(() => _uploadingImg = false);
     }
   }
 
-  // ── 金额头部 ──────────────────────────────────────────────────────────────
-
-  Widget _buildAmountHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        DropdownButton<String>(
-          value: _currencyCode,
-          underline: const SizedBox(),
-          icon: const Icon(Icons.keyboard_arrow_down,
-              size: VeeTokens.iconSm),
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          items: ['JPY', 'CNY', 'USD', 'EUR', 'HKD']
-              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-              .toList(),
-          onChanged: (v) => setState(() => _currencyCode = v!),
-        ),
-        const SizedBox(width: VeeTokens.spacingXs),
-        IntrinsicWidth(
-          child: TextFormField(
-            controller: _amountCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 48, fontWeight: FontWeight.bold),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-              hintText: '0',
-            ),
-            validator: (v) {
-              final l10n = AppLocalizations.of(context)!;
-              if (v == null || v.trim().isEmpty) return l10n.required;
-              if (double.tryParse(v.trim()) == null) return l10n.error;
-              if (double.parse(v.trim()) <= 0) return l10n.error;
-              return null;
-            },
-          ),
-        ),
-      ],
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _txnDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
     );
+    if (picked != null) setState(() => _txnDate = picked);
   }
-
-  // ── 保存 ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
-    if (!_formKey.currentState!.validate()) return;
+
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (amount <= 0) {
+      setState(() {
+        _error = l10n.required;
+        _currentStep = 0;
+      });
+      return;
+    }
     if (_categoryId == null) {
-      setState(() => _error = l10n.required);
+      setState(() {
+        _error = l10n.required;
+        _currentStep = 0;
+      });
       return;
     }
     if (_type == 'transfer' && _toAccountId == null) {
-      setState(() => _error = l10n.required);
+      setState(() {
+        _error = l10n.required;
+        _currentStep = 1;
+      });
       return;
     }
 
@@ -791,10 +1126,8 @@ class _AddEditTransactionScreenState
       if (_pendingImage != null && receiptUrl == null) return;
 
       final groupId = ref.read(currentGroupIdProvider)!;
-      final amount = double.parse(_amountCtrl.text.trim());
       final txnDate = _txnDate.millisecondsSinceEpoch / 1000.0;
-      final note =
-          _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+      final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
       final notifier = ref.read(transactionsProvider.notifier);
 
       final validItems = _items
@@ -832,23 +1165,12 @@ class _AddEditTransactionScreenState
           items: validItems,
         );
       }
-
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _txnDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) setState(() => _txnDate = picked);
   }
 
   Future<void> _confirmDelete(BuildContext ctx) async {
@@ -865,28 +1187,57 @@ class _AddEditTransactionScreenState
     }
   }
 
-  Color _parseColor(String? hex) {
-    if (hex == null) return Colors.grey;
-    try {
-      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return Colors.grey;
-    }
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    if (!_isEditing) {
+      return Scaffold(appBar: _buildAppBar(l10n), body: _buildViewBody(l10n));
+    }
+
     return Scaffold(
       appBar: _buildAppBar(l10n),
-      body: _isEditing ? _buildEditBody(l10n) : _buildViewBody(l10n),
+      body: Column(
+        children: [
+          _buildStepIndicator(),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: VeeTokens.durationNormal,
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.04, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(_currentStep),
+                child: switch (_currentStep) {
+                  0 => _buildStep0(l10n),
+                  1 => _buildStep1(l10n),
+                  2 => _buildStep2(l10n),
+                  _ => _buildStep0(l10n),
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行编辑组件
+// 明细行编辑组件（保持不变）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemEditRow extends StatefulWidget {
@@ -916,13 +1267,13 @@ class _ItemEditRowState extends State<_ItemEditRow> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.item.name);
     _amtCtrl = TextEditingController(
-        text: widget.item.amount > 0
-            ? widget.item.amount.toStringAsFixed(0)
-            : '');
+      text: widget.item.amount > 0 ? widget.item.amount.toStringAsFixed(0) : '',
+    );
     _qtyCtrl = TextEditingController(
-        text: widget.item.quantity == 1.0
-            ? '1'
-            : widget.item.quantity.toStringAsFixed(1));
+      text: widget.item.quantity == 1.0
+          ? '1'
+          : widget.item.quantity.toStringAsFixed(1),
+    );
   }
 
   @override
@@ -936,126 +1287,142 @@ class _ItemEditRowState extends State<_ItemEditRow> {
   @override
   Widget build(BuildContext context) {
     final isDiscount = widget.item.itemType == 'discount';
-    final accentColor =
-        isDiscount ? VeeTokens.error : Theme.of(context).colorScheme.primary;
+    final accentColor = isDiscount
+        ? VeeTokens.error
+        : Theme.of(context).colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
-          horizontal: VeeTokens.s12, vertical: VeeTokens.s10),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              widget.item.itemType =
-                  widget.item.itemType == 'discount' ? 'item' : 'discount';
-            });
-            widget.onChanged();
-          },
-          child: Container(
-            width: VeeTokens.s32,
-            height: VeeTokens.s32,
-            decoration: BoxDecoration(
-              color: VeeTokens.selectedTint(accentColor),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(isDiscount ? '➖' : '•',
-                style: const TextStyle(fontSize: 14)),
-          ),
-        ),
-        const SizedBox(width: VeeTokens.spacingXs),
-        Expanded(
-          flex: 3,
-          child: TextField(
-            controller: _nameCtrl,
-            decoration: InputDecoration(
-              hintText: isDiscount ? '折扣/优惠' : '商品名称',
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            style: context.veeText.caption.copyWith(fontSize: 14),
-            onChanged: (v) {
-              widget.item.name = v;
+        horizontal: VeeTokens.s12,
+        vertical: VeeTokens.s10,
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                widget.item.itemType = widget.item.itemType == 'discount'
+                    ? 'item'
+                    : 'discount';
+              });
               widget.onChanged();
             },
+            child: Container(
+              width: VeeTokens.s32,
+              height: VeeTokens.s32,
+              decoration: BoxDecoration(
+                color: VeeTokens.selectedTint(accentColor),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                isDiscount ? '➖' : '•',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: VeeTokens.spacingXxs),
-        if (!isDiscount) ...[
-          SizedBox(
-            width: 36,
+          const SizedBox(width: VeeTokens.spacingXs),
+          Expanded(
+            flex: 3,
             child: TextField(
-              controller: _qtyCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              controller: _nameCtrl,
               decoration: InputDecoration(
-                hintText: '×1',
-                hintStyle: TextStyle(
-                    fontSize: 11, color: Colors.grey[400]),
-                prefix: Text('×',
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey[500])),
+                hintText: isDiscount ? '折扣/优惠' : '商品名称',
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
-              style: const TextStyle(fontSize: 13),
-              textAlign: TextAlign.center,
+              style: context.veeText.caption.copyWith(fontSize: 14),
               onChanged: (v) {
-                widget.item.quantity = double.tryParse(v) ?? 1.0;
+                widget.item.name = v;
                 widget.onChanged();
               },
             ),
           ),
           const SizedBox(width: VeeTokens.spacingXxs),
-        ],
-        SizedBox(
-          width: 72,
-          child: TextField(
-            controller: _amtCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              hintText: '0',
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
+          if (!isDiscount) ...[
+            SizedBox(
+              width: 36,
+              child: TextField(
+                controller: _qtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  hintText: '×1',
+                  hintStyle: TextStyle(
+                    fontSize: 11,
+                    color: VeeTokens.textPlaceholderVal,
+                  ),
+                  prefix: Text(
+                    '×',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: VeeTokens.textSecondaryVal,
+                    ),
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 13),
+                textAlign: TextAlign.center,
+                onChanged: (v) {
+                  widget.item.quantity = double.tryParse(v) ?? 1.0;
+                  widget.onChanged();
+                },
+              ),
             ),
-            style: TextStyle(
+            const SizedBox(width: VeeTokens.spacingXxs),
+          ],
+          SizedBox(
+            width: 72,
+            child: TextField(
+              controller: _amtCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                hintText: '0',
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isDiscount ? VeeTokens.error : null),
-            textAlign: TextAlign.right,
-            onChanged: (v) {
-              widget.item.amount = double.tryParse(v) ?? 0;
-              widget.onChanged();
-            },
+                color: isDiscount ? VeeTokens.error : null,
+              ),
+              textAlign: TextAlign.right,
+              onChanged: (v) {
+                widget.item.amount = double.tryParse(v) ?? 0;
+                widget.onChanged();
+              },
+            ),
           ),
-        ),
-        const SizedBox(width: VeeTokens.spacingXxs),
-        GestureDetector(
-          onTap: widget.onDelete,
-          child: Icon(Icons.close,
-              size: VeeTokens.iconSm, color: Colors.grey[400]),
-        ),
-      ]),
+          const SizedBox(width: VeeTokens.spacingXxs),
+          GestureDetector(
+            onTap: widget.onDelete,
+            child: Icon(
+              Icons.close,
+              size: VeeTokens.iconSm,
+              color: VeeTokens.textPlaceholderVal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// ── 明细合计栏 ────────────────────────────────────────────────────────────────
-
 class _ItemsSumBar extends StatelessWidget {
   final List<_ItemDraft> items;
   final String currency;
-
   const _ItemsSumBar({required this.items, required this.currency});
 
   @override
   Widget build(BuildContext context) {
-    double subtotal = 0;
-    double discount = 0;
+    double subtotal = 0, discount = 0;
     for (final item in items) {
       if (item.itemType == 'discount') {
         discount += item.amount;
@@ -1067,28 +1434,36 @@ class _ItemsSumBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: VeeTokens.s12, vertical: VeeTokens.spacingXs),
+        horizontal: VeeTokens.s12,
+        vertical: VeeTokens.spacingXs,
+      ),
       decoration: BoxDecoration(
-        color: VeeTokens.selectedTint(
-            Theme.of(context).colorScheme.primary),
+        color: VeeTokens.selectedTint(Theme.of(context).colorScheme.primary),
         borderRadius: BorderRadius.circular(VeeTokens.rSm),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (discount > 0) ...[
-            Text('小计 ${formatAmount(subtotal, currency)}',
-                style: context.veeText.micro
-                    .copyWith(color: Colors.grey[600])),
+            Text(
+              '小计 ${formatAmount(subtotal, currency)}',
+              style: context.veeText.micro.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
+            ),
             const SizedBox(width: VeeTokens.spacingXs),
-            Text('折扣 -${formatAmount(discount, currency)}',
-                style: context.veeText.micro
-                    .copyWith(color: VeeTokens.error)),
+            Text(
+              '折扣 -${formatAmount(discount, currency)}',
+              style: context.veeText.micro.copyWith(color: VeeTokens.error),
+            ),
             const SizedBox(width: VeeTokens.spacingXs),
           ],
-          Text('合计 ',
-              style: context.veeText.caption
-                  .copyWith(color: Colors.grey[700])),
+          Text(
+            '合计 ',
+            style: context.veeText.caption.copyWith(
+              color: VeeTokens.textSecondaryVal,
+            ),
+          ),
           VeeAmountDisplay(
             amount: total,
             currency: currency,
@@ -1099,323 +1474,4 @@ class _ItemsSumBar extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 查看模式辅助组件
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ViewRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _ViewRow(
-      {required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext ctx) => Padding(
-        padding: VeeTokens.tilePadding,
-        child: Row(children: [
-          Icon(icon, size: VeeTokens.iconMd, color: Colors.grey[500]),
-          const SizedBox(width: VeeTokens.s12),
-          SizedBox(
-            width: 70,
-            child: Text(label,
-                style: ctx.veeText.caption
-                    .copyWith(color: Colors.grey[600])),
-          ),
-          Expanded(
-            child: Text(value,
-                style: ctx.veeText.bodyDefault
-                    .copyWith(fontWeight: FontWeight.w500),
-                textAlign: TextAlign.right),
-          ),
-        ]),
-      );
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: VeeTokens.spacingXxs),
-        child: Text(text, style: context.veeText.sectionTitle),
-      );
-}
-
-class _ReceiptImage extends StatelessWidget {
-  final String url;
-  const _ReceiptImage({required this.url});
-
-  @override
-  Widget build(BuildContext ctx) => ClipRRect(
-        borderRadius: BorderRadius.circular(VeeTokens.rLg),
-        child: Image.network(url,
-            width: double.infinity,
-            height: 160,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-                  height: 100,
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                      child: Icon(Icons.broken_image,
-                          color: Colors.grey)),
-                )),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 编辑模式辅助组件
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _FormRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Widget child;
-
-  const _FormRow(
-      {required this.icon, required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: VeeTokens.tilePadding,
-        child: Row(children: [
-          Icon(icon, size: VeeTokens.iconMd, color: Colors.grey[500]),
-          const SizedBox(width: VeeTokens.s12),
-          SizedBox(
-            width: 64,
-            child: Text(label,
-                style: context.veeText.caption
-                    .copyWith(color: Colors.grey[600])),
-          ),
-          Expanded(child: child),
-        ]),
-      );
-}
-
-class _CategorySheet extends StatelessWidget {
-  final List<Category> categories;
-  final int? selectedId;
-  final ValueChanged<int> onSelected;
-
-  const _CategorySheet(
-      {required this.categories,
-      required this.selectedId,
-      required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: VeeTokens.spacingXs),
-        Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius:
-                    BorderRadius.circular(VeeTokens.s2))),
-        const SizedBox(height: VeeTokens.spacingMd),
-        Text(l10n.category, style: context.veeText.sectionTitle),
-        const SizedBox(height: VeeTokens.spacingXs),
-        Flexible(
-          child: GridView.builder(
-            shrinkWrap: true,
-            padding: VeeTokens.cardPadding,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: VeeTokens.s12,
-              crossAxisSpacing: VeeTokens.s12,
-              childAspectRatio: 0.9,
-            ),
-            itemCount: categories.length,
-            itemBuilder: (_, i) {
-              final cat = categories[i];
-              final selected = cat.id == selectedId;
-              final color = _parseColor(cat.color);
-              return GestureDetector(
-                onTap: () => onSelected(cat.id),
-                child: Column(children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? VeeTokens.pressedTint(color)
-                          : VeeTokens.hoverTint(color),
-                      shape: BoxShape.circle,
-                      border: selected
-                          ? Border.all(color: color, width: 2)
-                          : null,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(cat.icon,
-                        style: const TextStyle(fontSize: 24)),
-                  ),
-                  const SizedBox(height: VeeTokens.spacingXxs),
-                  Text(cat.name,
-                      style: context.veeText.micro.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: selected ? color : Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ]),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: VeeTokens.spacingMd),
-      ],
-    );
-  }
-
-  Color _parseColor(String? hex) {
-    if (hex == null) return Colors.grey;
-    try {
-      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return Colors.grey;
-    }
-  }
-}
-
-class _ReceiptSection extends StatelessWidget {
-  final File? pendingFile;
-  final String receiptUrl;
-  final bool uploading;
-  final VoidCallback onPickCamera;
-  final VoidCallback onPickGallery;
-  final VoidCallback onRemove;
-
-  const _ReceiptSection({
-    required this.pendingFile,
-    required this.receiptUrl,
-    required this.uploading,
-    required this.onPickCamera,
-    required this.onPickGallery,
-    required this.onRemove,
-  });
-
-  bool get _hasImage => pendingFile != null || receiptUrl.isNotEmpty;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Icon(Icons.image_outlined,
-              size: VeeTokens.iconSm, color: Colors.grey),
-          const SizedBox(width: VeeTokens.spacingXxs),
-          Text(l10n.scanReceipt, style: context.veeText.sectionTitle),
-        ]),
-        const SizedBox(height: VeeTokens.spacingXs),
-        if (_hasImage)
-          Stack(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(VeeTokens.rLg),
-              child: pendingFile != null
-                  ? Image.file(pendingFile!,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover)
-                  : Image.network(receiptUrl,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover),
-            ),
-            if (uploading)
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius:
-                          BorderRadius.circular(VeeTokens.rLg)),
-                  child: const Center(
-                      child: CircularProgressIndicator(
-                          color: Colors.white)),
-                ),
-              ),
-            Positioned(
-              top: VeeTokens.spacingXs,
-              right: VeeTokens.spacingXs,
-              child: IconButton.filled(
-                style: IconButton.styleFrom(
-                    backgroundColor: Colors.black54,
-                    iconSize: VeeTokens.iconMd),
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: onRemove,
-              ),
-            ),
-          ])
-        else
-          Container(
-            height: 100,
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: Colors.grey.withOpacity(0.3)),
-              borderRadius:
-                  BorderRadius.circular(VeeTokens.rLg),
-              color: Theme.of(context).colorScheme.surface,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _PickBtn(
-                    icon: Icons.camera_alt_outlined,
-                    label: l10n.camera,
-                    onTap: onPickCamera),
-                const SizedBox(width: VeeTokens.s48),
-                _PickBtn(
-                    icon: Icons.photo_library_outlined,
-                    label: l10n.gallery,
-                    onTap: onPickGallery),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _PickBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _PickBtn(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(VeeTokens.rMd),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: VeeTokens.s16, vertical: VeeTokens.s12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon,
-                  size: VeeTokens.iconXl,
-                  color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: VeeTokens.spacingXs),
-              Text(label,
-                  style: context.veeText.caption
-                      .copyWith(color: Colors.grey[700])),
-            ],
-          ),
-        ),
-      );
 }

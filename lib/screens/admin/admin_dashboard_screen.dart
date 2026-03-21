@@ -1,6 +1,7 @@
 // lib/screens/admin/admin_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
 import '../../api/admin_api.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
@@ -9,6 +10,7 @@ import '../../widgets/ui_core/vee_card.dart';
 import '../../widgets/ui_core/vee_empty_state.dart';
 import '../../widgets/ui_core/vee_chip.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import 'package:vee_app/widgets/ui_core/vee_badge.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -39,8 +41,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.adminConsole,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          l10n.adminConsole,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabs,
@@ -56,11 +60,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       ),
       body: TabBarView(
         controller: _tabs,
-        children: const [
-          _StatsTab(),
-          _ConfigTab(),
-          _UsersTab(),
-        ],
+        children: const [_StatsTab(), _ConfigTab(), _UsersTab()],
       ),
     );
   }
@@ -125,54 +125,67 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
         children: [
           _SectionTitle(l10n.userOverview),
           const SizedBox(height: VeeTokens.spacingMd),
-          _StatsGrid(items: [
-            _StatCard(
+          _StatsGrid(
+            items: [
+              _StatCard(
                 label: l10n.totalUsers,
                 value: '${s['total_users']}',
                 icon: Icons.people,
-                color: Colors.blue),
-            _StatCard(
+                color: Colors.blue,
+              ),
+              _StatCard(
                 label: l10n.activeUsers,
                 value: '${s['active_users']}',
                 icon: Icons.check_circle,
-                color: Colors.green),
-            _StatCard(
+                color: Colors.green,
+              ),
+              _StatCard(
                 label: l10n.adminCount,
                 value: '${s['admin_count']}',
                 icon: Icons.admin_panel_settings,
-                color: Colors.orange),
-            _StatCard(
+                color: Colors.orange,
+              ),
+              _StatCard(
                 label: l10n.wsOnline,
                 value: '${s['online_ws_users']}',
                 icon: Icons.wifi,
-                color: Colors.teal),
-          ]),
+                color: Colors.teal,
+              ),
+            ],
+          ),
           const SizedBox(height: VeeTokens.spacingLg),
           _SectionTitle(l10n.billOverview),
           const SizedBox(height: VeeTokens.spacingMd),
-          _StatsGrid(items: [
-            _StatCard(
+          _StatsGrid(
+            items: [
+              _StatCard(
                 label: l10n.totalBills,
                 value: '${s['total_bills']}',
                 icon: Icons.receipt_long,
-                color: Colors.purple),
-            _StatCard(
+                color: Colors.purple,
+              ),
+              _StatCard(
                 label: l10n.billsThisMonth,
                 value: '${s['bills_this_month']}',
                 icon: Icons.calendar_month,
-                color: Colors.pink),
-            _StatCard(
+                color: Colors.pink,
+              ),
+              _StatCard(
                 label: l10n.aiUsageThisMonth,
                 value: l10n.aiUsageCountTimes(
-                    s['ai_quota_used_this_month'] as int),
+                  s['ai_quota_used_this_month'] as int,
+                ),
                 icon: Icons.auto_awesome,
-                color: Colors.amber),
-            _StatCard(
+                color: Colors.amber,
+              ),
+              _StatCard(
                 label: l10n.wsConnections,
                 value: '${s['total_ws_connections']}',
                 icon: Icons.cable,
-                color: Colors.cyan),
-          ]),
+                color: Colors.cyan,
+              ),
+            ],
+          ),
           const SizedBox(height: VeeTokens.spacingXxl),
         ],
       ),
@@ -225,14 +238,18 @@ class _StatCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: color)),
-              Text(label,
-                  style: context.veeText.micro
-                      .copyWith(color: Colors.grey[600])),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: context.veeText.micro.copyWith(color: Colors.grey[600]),
+              ),
             ],
           ),
         ],
@@ -281,25 +298,28 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
 
   Future<void> _editConfig(Map<String, dynamic> config) async {
     final l10n = AppLocalizations.of(context)!;
-    final ctrl =
-        TextEditingController(text: config['config_value'] as String? ?? '');
+    final ctrl = TextEditingController(
+      text: config['config_value'] as String? ?? '',
+    );
     final key = config['config_key'] as String;
     final desc = config['description'] as String? ?? '';
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(key,
-            style: const TextStyle(
-                fontSize: 15, fontFamily: 'monospace')),
+        title: Text(
+          key,
+          style: const TextStyle(fontSize: 15, fontFamily: 'monospace'),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (desc.isNotEmpty) ...[
-              Text(desc,
-                  style: context.veeText.micro
-                      .copyWith(color: Colors.grey[600])),
+              Text(
+                desc,
+                style: context.veeText.micro.copyWith(color: Colors.grey[600]),
+              ),
               const SizedBox(height: VeeTokens.s12),
             ],
             TextField(
@@ -311,11 +331,13 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel)),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.save)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.save),
+          ),
         ],
       ),
     );
@@ -329,16 +351,18 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(l10n.layoutUpdated),
-              behavior: SnackBarBehavior.floating),
+            content: Text(l10n.layoutUpdated),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(l10n.updateFailed(e.toString())),
-              backgroundColor: VeeTokens.error),
+            content: Text(l10n.updateFailed(e.toString())),
+            backgroundColor: VeeTokens.error,
+          ),
         );
       }
     }
@@ -375,12 +399,17 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
             padding: EdgeInsets.zero,
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: VeeTokens.s16, vertical: VeeTokens.spacingXs),
-              title: Text(key,
-                  style: context.veeText.micro.copyWith(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
+                horizontal: VeeTokens.s16,
+                vertical: VeeTokens.spacingXs,
+              ),
+              title: Text(
+                key,
+                style: context.veeText.micro.copyWith(
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -388,20 +417,22 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                   Text(
                     val.isEmpty ? l10n.empty : val,
                     style: context.veeText.bodyDefault.copyWith(
-                        color:
-                            val.isEmpty ? Colors.grey[400] : Colors.black87),
+                      color: val.isEmpty ? Colors.grey[400] : Colors.black87,
+                    ),
                   ),
                   if (desc.isNotEmpty) ...[
                     const SizedBox(height: VeeTokens.spacingXxs),
-                    Text(desc,
-                        style: context.veeText.micro
-                            .copyWith(color: Colors.grey[500])),
+                    Text(
+                      desc,
+                      style: context.veeText.micro.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                    ),
                   ],
                 ],
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.edit_outlined,
-                    size: VeeTokens.iconMd),
+                icon: const Icon(Icons.edit_outlined, size: VeeTokens.iconMd),
                 onPressed: () => _editConfig(cfg),
               ),
             ),
@@ -452,14 +483,15 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
       _error = null;
     });
     try {
-      final data = await ref.read(adminApiProvider).listUsers(
+      final data = await ref
+          .read(adminApiProvider)
+          .listUsers(
             page: _page,
             keyword: _searchCtrl.text.trim(),
             role: _roleFilter.isEmpty ? null : _roleFilter,
             isActive: _activeFilter,
           );
-      final list =
-          (data['users'] as List? ?? []).cast<Map<String, dynamic>>();
+      final list = (data['users'] as List? ?? []).cast<Map<String, dynamic>>();
       setState(() {
         _users = refresh ? list : [..._users, ...list];
         _hasNext = data['has_next'] as bool? ?? false;
@@ -495,7 +527,11 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
               onRefresh: () => _load(refresh: true),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(
-                    VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s16),
+                  VeeTokens.s16,
+                  0,
+                  VeeTokens.s16,
+                  VeeTokens.s16,
+                ),
                 itemCount: _users.length + (_hasNext ? 1 : 0),
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: VeeTokens.spacingXs),
@@ -524,22 +560,26 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
   Widget _buildToolbar(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          VeeTokens.s16, VeeTokens.s12, VeeTokens.s16, VeeTokens.spacingXs),
+        VeeTokens.s16,
+        VeeTokens.s12,
+        VeeTokens.s16,
+        VeeTokens.spacingXs,
+      ),
       child: Column(
         children: [
           TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
               hintText: l10n.searchEmailUsername,
-              prefixIcon:
-                  const Icon(Icons.search, size: VeeTokens.iconMd),
+              prefixIcon: const Icon(Icons.search, size: VeeTokens.iconMd),
               suffixIcon: _searchCtrl.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.close, size: VeeTokens.iconSm),
                       onPressed: () {
                         _searchCtrl.clear();
                         _load(refresh: true);
-                      })
+                      },
+                    )
                   : null,
             ),
             onSubmitted: (_) => _load(refresh: true),
@@ -552,8 +592,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
               children: [
                 VeeChip(
                   label: l10n.all,
-                  selected:
-                      _roleFilter.isEmpty && _activeFilter == null,
+                  selected: _roleFilter.isEmpty && _activeFilter == null,
                   onTap: () {
                     setState(() {
                       _roleFilter = '';
@@ -567,8 +606,9 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                   label: l10n.admin,
                   selected: _roleFilter == 'admin',
                   onTap: () {
-                    setState(() => _roleFilter =
-                        _roleFilter == 'admin' ? '' : 'admin');
+                    setState(
+                      () => _roleFilter = _roleFilter == 'admin' ? '' : 'admin',
+                    );
                     _load(refresh: true);
                   },
                 ),
@@ -578,8 +618,9 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                   selected: _activeFilter == 0,
                   accentColor: VeeTokens.error,
                   onTap: () {
-                    setState(() =>
-                        _activeFilter = _activeFilter == 0 ? null : 0);
+                    setState(
+                      () => _activeFilter = _activeFilter == 0 ? null : 0,
+                    );
                     _load(refresh: true);
                   },
                 ),
@@ -611,10 +652,9 @@ class _UserCardState extends ConsumerState<_UserCard> {
   int get userId => u['id'] as int;
   bool get isActive => (u['is_active'] as bool?) ?? true;
   String get role => u['role'] as String? ?? 'user';
-  String get name =>
-      (u['display_name'] as String?)?.isNotEmpty == true
-          ? u['display_name'] as String
-          : (u['app_username'] as String? ?? 'ID:$userId');
+  String get name => (u['display_name'] as String?)?.isNotEmpty == true
+      ? u['display_name'] as String
+      : (u['app_username'] as String? ?? 'ID:$userId');
 
   List<String> get perms {
     final raw = u['permissions'];
@@ -634,8 +674,9 @@ class _UserCardState extends ConsumerState<_UserCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(l10n.operationFailed(e.toString())),
-              backgroundColor: VeeTokens.error),
+            content: Text(l10n.operationFailed(e.toString())),
+            backgroundColor: VeeTokens.error,
+          ),
         );
       }
     } finally {
@@ -648,8 +689,10 @@ class _UserCardState extends ConsumerState<_UserCard> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(VeeTokens.rXl))),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(VeeTokens.rXl),
+        ),
+      ),
       builder: (_) => _PermissionsSheet(
         userId: userId,
         userName: name,
@@ -665,8 +708,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
     final roleColor = role == 'admin' ? Colors.orange : Colors.grey;
 
     return VeeCard(
-      borderColor:
-          isActive ? null : VeeTokens.error.withOpacity(0.3),
+      borderColor: isActive ? null : VeeTokens.error.withOpacity(0.3),
       padding: VeeTokens.cardPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,23 +720,26 @@ class _UserCardState extends ConsumerState<_UserCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      Text(name, style: context.veeText.cardTitle),
-                      const SizedBox(width: VeeTokens.spacingXs),
-                      _Badge(
-                        label: role == 'admin' ? l10n.admin : l10n.username,
-                        color: roleColor,
-                      ),
-                      if (!isActive) ...[
-                        const SizedBox(width: VeeTokens.spacingXxs),
-                        _Badge(label: l10n.banned, color: VeeTokens.error),
+                    Row(
+                      children: [
+                        Text(name, style: context.veeText.cardTitle),
+                        const SizedBox(width: VeeTokens.spacingXs),
+                        VeeBadge(
+                          label: role == 'admin' ? l10n.admin : l10n.username,
+                          color: roleColor,
+                        ),
+                        if (!isActive) ...[
+                          const SizedBox(width: VeeTokens.spacingXxs),
+                          VeeBadge(label: l10n.banned, color: VeeTokens.error),
+                        ],
                       ],
-                    ]),
+                    ),
                     const SizedBox(height: VeeTokens.s2),
                     Text(
                       u['email'] as String? ?? '',
-                      style: context.veeText.micro
-                          .copyWith(color: Colors.grey[500]),
+                      style: context.veeText.micro.copyWith(
+                        color: Colors.grey[500],
+                      ),
                     ),
                   ],
                 ),
@@ -703,8 +748,8 @@ class _UserCardState extends ConsumerState<_UserCard> {
                   ? const SizedBox(
                       width: 32,
                       height: 20,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Switch(
                       value: isActive,
                       onChanged: (_) => _toggleActive(),
@@ -715,26 +760,32 @@ class _UserCardState extends ConsumerState<_UserCard> {
           ),
           const SizedBox(height: VeeTokens.s10),
           // IP 信息
-          _InfoRow(Icons.location_on_outlined,
-              AppLocalizations.of(context)!
-                  .registrationIp(u['registration_ip'] ?? '—')),
+          VeeDetailRow(
+            icon: Icons.location_on_outlined,
+            label: 'Reg IP',
+            value: u['registration_ip'] ?? '—',
+          ),
           const SizedBox(height: VeeTokens.s2),
-          _InfoRow(Icons.history,
-              AppLocalizations.of(context)!
-                  .lastIp(u['last_login_ip'] ?? '—')),
+          VeeDetailRow(
+            icon: Icons.history,
+            label: 'Last IP',
+            value: u['last_login_ip'] ?? '—',
+          ),
           const SizedBox(height: VeeTokens.s10),
           // 权限标签行
           Wrap(
             spacing: VeeTokens.spacingXxs,
             runSpacing: VeeTokens.spacingXxs,
             children: perms.isEmpty
-                ? [_Badge(label: l10n.noPermission, color: Colors.grey)]
+                ? [VeeBadge(label: l10n.noPermission, color: Colors.grey)]
                 : perms
-                    .map((p) => _Badge(
+                      .map(
+                        (p) => VeeBadge(
                           label: _permLabel(p),
                           color: Theme.of(context).colorScheme.primary,
-                        ))
-                    .toList(),
+                        ),
+                      )
+                      .toList(),
           ),
           const SizedBox(height: VeeTokens.s12),
           // 权限操作按钮
@@ -742,15 +793,20 @@ class _UserCardState extends ConsumerState<_UserCard> {
             width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: VeeTokens.spacingXs),
+                padding: const EdgeInsets.symmetric(
+                  vertical: VeeTokens.spacingXs,
+                ),
                 side: BorderSide(color: Colors.grey.withOpacity(0.3)),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(VeeTokens.rSm)),
+                  borderRadius: BorderRadius.circular(VeeTokens.rSm),
+                ),
               ),
               onPressed: _showPermissionsSheet,
               icon: const Icon(Icons.tune, size: VeeTokens.iconSm),
-              label: Text(l10n.configPermission,
-                  style: context.veeText.chipLabel),
+              label: Text(
+                l10n.configPermission,
+                style: context.veeText.chipLabel,
+              ),
             ),
           ),
         ],
@@ -772,45 +828,6 @@ class _UserCardState extends ConsumerState<_UserCard> {
     };
   }
 }
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _InfoRow(this.icon, this.text);
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: VeeTokens.iconXs, color: Colors.grey[400]),
-          const SizedBox(width: VeeTokens.spacingXxs),
-          Expanded(
-            child: Text(text,
-                style: context.veeText.micro
-                    .copyWith(color: Colors.grey[500]),
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      );
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: VeeTokens.badgePadding,
-        decoration: BoxDecoration(
-          color: VeeTokens.selectedTint(color),
-          borderRadius: VeeTokens.badgeBorderRadius,
-        ),
-        child: Text(label,
-            style: context.veeText.micro.copyWith(
-                color: color, fontWeight: FontWeight.w600)),
-      );
-}
-
 // ============================================================
 // 权限配置抽屉
 // ============================================================
@@ -829,8 +846,7 @@ class _PermissionsSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_PermissionsSheet> createState() =>
-      _PermissionsSheetState();
+  ConsumerState<_PermissionsSheet> createState() => _PermissionsSheetState();
 }
 
 class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
@@ -838,17 +854,15 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   bool _saving = false;
   String? _error;
 
-  static List<(String, String, IconData)> _getPerms(
-          AppLocalizations l10n) =>
-      [
-        ('bot_text', l10n.botText, Icons.text_fields),
-        ('bot_receipt', l10n.botReceipt, Icons.camera_alt_outlined),
-        ('bot_voice', l10n.botVoice, Icons.mic_outlined),
-        ('bot_download', l10n.botDownload, Icons.download_outlined),
-        ('app_ocr', l10n.appOcr, Icons.document_scanner_outlined),
-        ('app_export', l10n.appExport, Icons.file_download_outlined),
-        ('app_upload', l10n.appUpload, Icons.upload_outlined),
-      ];
+  static List<(String, String, IconData)> _getPerms(AppLocalizations l10n) => [
+    ('bot_text', l10n.botText, Icons.text_fields),
+    ('bot_receipt', l10n.botReceipt, Icons.camera_alt_outlined),
+    ('bot_voice', l10n.botVoice, Icons.mic_outlined),
+    ('bot_download', l10n.botDownload, Icons.download_outlined),
+    ('app_ocr', l10n.appOcr, Icons.document_scanner_outlined),
+    ('app_export', l10n.appExport, Icons.file_download_outlined),
+    ('app_upload', l10n.appUpload, Icons.upload_outlined),
+  ];
 
   @override
   void initState() {
@@ -898,42 +912,50 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius:
-                    BorderRadius.circular(VeeTokens.s2)),
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(VeeTokens.s2),
+            ),
           ),
           const SizedBox(height: VeeTokens.spacingMd),
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: VeeTokens.spacingLg),
+              horizontal: VeeTokens.spacingLg,
+            ),
             child: Row(
               children: [
-                Icon(Icons.tune,
-                    color: Theme.of(context).colorScheme.primary),
+                Icon(Icons.tune, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: VeeTokens.s10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.configPermission,
-                          style: context.veeText.sectionTitle),
-                      Text(widget.userName,
-                          style: context.veeText.caption
-                              .copyWith(color: Colors.grey[600])),
+                      Text(
+                        l10n.configPermission,
+                        style: context.veeText.sectionTitle,
+                      ),
+                      Text(
+                        widget.userName,
+                        style: context.veeText.caption.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 TextButton(
                   onPressed: () {
                     final perms = _getPerms(l10n);
-                    setState(() => _selected = _selected.length ==
-                            perms.length
-                        ? {}
-                        : perms.map((e) => e.$1).toSet());
+                    setState(
+                      () => _selected = _selected.length == perms.length
+                          ? {}
+                          : perms.map((e) => e.$1).toSet(),
+                    );
                   },
-                  child: Text(_selected.length == _getPerms(l10n).length
-                      ? l10n.clearAll
-                      : l10n.selectAll),
+                  child: Text(
+                    _selected.length == _getPerms(l10n).length
+                        ? l10n.clearAll
+                        : l10n.selectAll,
+                  ),
                 ),
               ],
             ),
@@ -942,15 +964,15 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: VeeTokens.spacingLg,
-                  vertical: VeeTokens.spacingXxs),
+                horizontal: VeeTokens.spacingLg,
+                vertical: VeeTokens.spacingXxs,
+              ),
               child: VeeErrorBanner(message: _error!),
             ),
           Expanded(
             child: ListView(
               controller: ctrl,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: VeeTokens.s16),
+              padding: const EdgeInsets.symmetric(horizontal: VeeTokens.s16),
               children: _getPerms(l10n).map((entry) {
                 final (perm, label, icon) = entry;
                 final checked = _selected.contains(perm);
@@ -958,51 +980,62 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                   elevation: 0,
                   color: checked
                       ? VeeTokens.surfaceTint(
-                          Theme.of(context).colorScheme.primary)
+                          Theme.of(context).colorScheme.primary,
+                        )
                       : Theme.of(context).colorScheme.surface,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(VeeTokens.rMd),
+                    borderRadius: BorderRadius.circular(VeeTokens.rMd),
                     side: BorderSide(
                       color: checked
                           ? VeeTokens.pressedTint(
-                              Theme.of(context).colorScheme.primary)
+                              Theme.of(context).colorScheme.primary,
+                            )
                           : VeeTokens.borderColor.withOpacity(0.5),
                       width: 1.5,
                     ),
                   ),
                   child: CheckboxListTile(
                     value: checked,
-                    onChanged: (v) => setState(() =>
-                        v! ? _selected.add(perm) : _selected.remove(perm)),
+                    onChanged: (v) => setState(
+                      () => v! ? _selected.add(perm) : _selected.remove(perm),
+                    ),
                     secondary: Container(
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
                         color: checked
                             ? VeeTokens.selectedTint(
-                                Theme.of(context).colorScheme.primary)
+                                Theme.of(context).colorScheme.primary,
+                              )
                             : Colors.grey.shade100,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(icon,
-                          size: VeeTokens.iconSm,
-                          color: checked
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey[500]),
+                      child: Icon(
+                        icon,
+                        size: VeeTokens.iconSm,
+                        color: checked
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey[500],
+                      ),
                     ),
-                    title: Text(label,
-                        style: context.veeText.cardTitle.copyWith(
-                            fontWeight: checked
-                                ? FontWeight.w600
-                                : FontWeight.normal)),
-                    subtitle: Text('`$perm`',
-                        style: context.veeText.micro
-                            .copyWith(fontFamily: 'monospace')),
+                    title: Text(
+                      label,
+                      style: context.veeText.cardTitle.copyWith(
+                        fontWeight: checked
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '`$perm`',
+                      style: context.veeText.micro.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
                     activeColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(VeeTokens.rMd)),
+                      borderRadius: BorderRadius.circular(VeeTokens.rMd),
+                    ),
                   ),
                 );
               }).toList(),
@@ -1011,10 +1044,11 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
-                  VeeTokens.spacingLg,
-                  VeeTokens.spacingXs,
-                  VeeTokens.spacingLg,
-                  VeeTokens.spacingMd),
+                VeeTokens.spacingLg,
+                VeeTokens.spacingXs,
+                VeeTokens.spacingLg,
+                VeeTokens.spacingMd,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 height: VeeTokens.buttonHeight,
@@ -1025,7 +1059,10 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                           width: VeeTokens.iconMd,
                           height: VeeTokens.iconMd,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : Text(l10n.savePermission(_selected.length)),
                 ),
               ),
@@ -1044,6 +1081,6 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
 
   @override
-  Widget build(BuildContext context) => Text(text,
-      style: context.veeText.sectionTitle);
+  Widget build(BuildContext context) =>
+      Text(text, style: context.veeText.sectionTitle);
 }

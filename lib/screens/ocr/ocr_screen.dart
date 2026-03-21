@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
 import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/accounts_provider.dart';
@@ -549,7 +550,7 @@ class _ConfirmView extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _InfoRow(
+                    VeeDetailRow(
                       icon: Icons.store_outlined,
                       label: l10n.account,
                       value: result.merchant?.isNotEmpty == true
@@ -560,7 +561,7 @@ class _ConfirmView extends StatelessWidget {
                       height: 1,
                       indent: VeeTokens.dividerIndentStd,
                     ),
-                    _InfoRow(
+                    VeeDetailRow(
                       icon: Icons.category_outlined,
                       label: l10n.category,
                       value: '$emoji ${result.category ?? l10n.category}',
@@ -569,7 +570,7 @@ class _ConfirmView extends StatelessWidget {
                       height: 1,
                       indent: VeeTokens.dividerIndentStd,
                     ),
-                    _InfoRow(
+                    VeeDetailRow(
                       icon: Icons.calendar_today_outlined,
                       label: l10n.date,
                       value: result.date ?? '',
@@ -579,7 +580,7 @@ class _ConfirmView extends StatelessWidget {
                         height: 1,
                         indent: VeeTokens.dividerIndentStd,
                       ),
-                      _InfoRow(
+                      VeeDetailRow(
                         icon: Icons.notes_outlined,
                         label: l10n.note,
                         value: result.description!,
@@ -715,47 +716,4 @@ class _ConfirmView extends StatelessWidget {
       ],
     );
   }
-}
-
-// ── 信息行 ────────────────────────────────────────────────────────────────────
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: VeeTokens.tilePadding,
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: VeeTokens.iconMd, color: Colors.grey[500]),
-        const SizedBox(width: VeeTokens.s12),
-        SizedBox(
-          width: 70,
-          child: Text(
-            label,
-            style: context.veeText.caption.copyWith(color: Colors.grey[600]),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: context.veeText.bodyDefault.copyWith(
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-      ],
-    ),
-  );
 }

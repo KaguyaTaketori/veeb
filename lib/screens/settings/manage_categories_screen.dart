@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/utils/vee_colors.dart';
+import 'package:vee_app/widgets/ui_core/vee_category_grid.dart';
 import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
@@ -24,10 +26,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
     final catsAsync = ref.watch(currentCategoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('管理分类'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('管理分类'), centerTitle: true),
       body: catsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => VeeEmptyState(
@@ -43,7 +42,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
             children: [
               _SectionHeader('系统分类', system.length),
               const SizedBox(height: VeeTokens.spacingXs),
-              _CategoriesGrid(categories: system, canDelete: false),
+              VeeCategoryGrid(categories: system, canDelete: false),
               const SizedBox(height: VeeTokens.spacingLg),
               _SectionHeader('自定义分类', custom.length),
               const SizedBox(height: VeeTokens.spacingXs),
@@ -58,14 +57,15 @@ class ManageCategoriesScreen extends ConsumerWidget {
                   ),
                 )
               else
-                _CategoriesGrid(categories: custom, canDelete: true),
+                VeeCategoryGrid(categories: custom, canDelete: true),
             ],
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(VeeTokens.rLg)),
+          borderRadius: BorderRadius.circular(VeeTokens.rLg),
+        ),
         onPressed: () => _showAddSheet(context, ref, groupId),
         child: const Icon(Icons.add),
       ),
@@ -78,8 +78,10 @@ class ManageCategoriesScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(VeeTokens.rXl))),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(VeeTokens.rXl),
+        ),
+      ),
       builder: (_) => _AddCategorySheet(groupId: groupId),
     );
   }
@@ -93,126 +95,26 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader(this.title, this.count);
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Text(title,
-            style: context.veeText.sectionTitle),
-        const SizedBox(width: VeeTokens.spacingXs),
-        Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: VeeTokens.s8, vertical: VeeTokens.s2),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(VeeTokens.rFull),
-          ),
-          child: Text(
-            '$count',
-            style: context.veeText.micro.copyWith(color: Colors.grey[600]),
-          ),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Text(title, style: context.veeText.sectionTitle),
+      const SizedBox(width: VeeTokens.spacingXs),
+      Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: VeeTokens.s8,
+          vertical: VeeTokens.s2,
         ),
-      ]);
-}
-
-// ── 分类网格 ──────────────────────────────────────────────────────────────────
-
-class _CategoriesGrid extends ConsumerWidget {
-  final List<Category> categories;
-  final bool canDelete;
-  const _CategoriesGrid(
-      {required this.categories, required this.canDelete});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: VeeTokens.s12,
-        crossAxisSpacing: VeeTokens.s12,
-        childAspectRatio: 0.85,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(VeeTokens.rFull),
+        ),
+        child: Text(
+          '$count',
+          style: context.veeText.micro.copyWith(color: Colors.grey[600]),
+        ),
       ),
-      itemCount: categories.length,
-      itemBuilder: (_, i) {
-        final c = categories[i];
-        final color = _parseColor(c.color);
-        return Stack(
-          children: [
-            Column(children: [
-              Container(
-                width: VeeTokens.s56,
-                height: VeeTokens.s56,
-                decoration: BoxDecoration(
-                  color: VeeTokens.selectedTint(color),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(c.icon,
-                    style: TextStyle(fontSize: VeeTokens.iconXl - 2)),
-              ),
-              const SizedBox(height: VeeTokens.spacingXxs),
-              Text(c.name,
-                  style: context.veeText.micro,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-            ]),
-            if (canDelete)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: () => _confirmDelete(context, ref, c),
-                  child: Container(
-                    width: VeeTokens.s20,
-                    height: VeeTokens.s20,
-                    decoration: const BoxDecoration(
-                      color: VeeTokens.error,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close,
-                        size: VeeTokens.iconXs, color: Colors.white),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Color _parseColor(String colorStr) {
-    final hex = colorStr.replaceFirst('#', '0xFF');
-    return Color(int.parse(hex));
-  }
-
-  Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Category c) async {
-    final ok = await VeeConfirmDialog.showDelete(
-      context: context,
-      content: '删除分类"${c.name}"？',
-    );
-    if (ok != true) return;
-
-    final isLoggedIn =
-        ref.read(authProvider).status == AuthStatus.authenticated;
-    final db = ref.read(appDatabaseProvider);
-
-    if (isLoggedIn && c.id != 0) {
-      try {
-        final dio = ref.read(apiClientProvider);
-        await dio.delete('/categories/${c.id}');
-      } catch (e) {
-        // 服务端失败时仍删本地，下次同步处理
-      }
-    }
-
-    await (db.delete(db.categories)
-          ..where((t) => t.id.equals(c.id)))
-        .go();
-
-    final groupId = ref.read(currentGroupIdProvider);
-    ref.invalidate(categoriesProvider(groupId));
-  }
+    ],
+  );
 }
 
 // ── 添加分类表单 ──────────────────────────────────────────────────────────────
@@ -234,15 +136,45 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
   String? _error;
 
   static const _emojis = [
-    '🍜', '🍕', '☕', '🚇', '🚗', '✈️', '🛍️', '👗',
-    '🎮', '🎬', '🎵', '💊', '🏠', '💡', '⛽', '🛒',
-    '💰', '📚', '🎓', '🐾', '🌿', '🏋️', '💅', '🎁',
+    '🍜',
+    '🍕',
+    '☕',
+    '🚇',
+    '🚗',
+    '✈️',
+    '🛍️',
+    '👗',
+    '🎮',
+    '🎬',
+    '🎵',
+    '💊',
+    '🏠',
+    '💡',
+    '⛽',
+    '🛒',
+    '💰',
+    '📚',
+    '🎓',
+    '🐾',
+    '🌿',
+    '🏋️',
+    '💅',
+    '🎁',
   ];
 
   static const _colors = [
-    '#E85D30', '#3B8BD4', '#1D9E75', '#EF9F27',
-    '#9B59B6', '#E74C3C', '#2ECC71', '#1ABC9C',
-    '#95A5A6', '#F39C12', '#16A085', '#8E44AD',
+    '#E85D30',
+    '#3B8BD4',
+    '#1D9E75',
+    '#EF9F27',
+    '#9B59B6',
+    '#E74C3C',
+    '#2ECC71',
+    '#1ABC9C',
+    '#95A5A6',
+    '#F39C12',
+    '#16A085',
+    '#8E44AD',
   ];
 
   @override
@@ -275,33 +207,37 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
           'sort_order': 100,
         });
         final db = ref.read(appDatabaseProvider);
-        await db.into(db.categories).insert(
-          CategoriesCompanion.insert(
-            remoteId: Value(remote.id),
-            name: _nameCtrl.text.trim(),
-            icon: Value(_icon),
-            color: Value(_color),
-            type: Value(_type),
-            isSystem: const Value(false),
-            groupId: Value(widget.groupId),
-            sortOrder: const Value(100),
-            syncStatus: const Value('synced'),
-          ),
-        );
+        await db
+            .into(db.categories)
+            .insert(
+              CategoriesCompanion.insert(
+                remoteId: Value(remote.id),
+                name: _nameCtrl.text.trim(),
+                icon: Value(_icon),
+                color: Value(_color),
+                type: Value(_type),
+                isSystem: const Value(false),
+                groupId: Value(widget.groupId),
+                sortOrder: const Value(100),
+                syncStatus: const Value('synced'),
+              ),
+            );
       } else {
         final db = ref.read(appDatabaseProvider);
-        await db.into(db.categories).insert(
-          CategoriesCompanion.insert(
-            name: _nameCtrl.text.trim(),
-            icon: Value(_icon),
-            color: Value(_color),
-            type: Value(_type),
-            isSystem: const Value(false),
-            groupId: Value(widget.groupId),
-            sortOrder: const Value(100),
-            syncStatus: const Value('pending_create'),
-          ),
-        );
+        await db
+            .into(db.categories)
+            .insert(
+              CategoriesCompanion.insert(
+                name: _nameCtrl.text.trim(),
+                icon: Value(_icon),
+                color: Value(_color),
+                type: Value(_type),
+                isSystem: const Value(false),
+                groupId: Value(widget.groupId),
+                sortOrder: const Value(100),
+                syncStatus: const Value('pending_create'),
+              ),
+            );
       }
 
       ref.invalidate(categoriesProvider(widget.groupId));
@@ -325,9 +261,7 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             Text('添加分类', style: context.veeText.sectionTitle),
             const SizedBox(height: VeeTokens.spacingLg),
 
-            if (_error != null) ...[
-              VeeErrorBanner(message: _error!),
-            ],
+            if (_error != null) ...[VeeErrorBanner(message: _error!)],
 
             // 名称
             TextField(
@@ -337,7 +271,10 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             const SizedBox(height: VeeTokens.spacingMd),
 
             // 收支类型
-            Text('类型', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            Text(
+              '类型',
+              style: context.veeText.caption.copyWith(color: Colors.grey),
+            ),
             const SizedBox(height: VeeTokens.spacingXs),
             SegmentedButton<String>(
               segments: const [
@@ -351,7 +288,10 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             const SizedBox(height: VeeTokens.spacingMd),
 
             // emoji
-            Text('图标', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            Text(
+              '图标',
+              style: context.veeText.caption.copyWith(color: Colors.grey),
+            ),
             const SizedBox(height: VeeTokens.spacingXs),
             Wrap(
               spacing: VeeTokens.spacingXs,
@@ -366,7 +306,8 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
                     decoration: BoxDecoration(
                       color: selected
                           ? VeeTokens.selectedTint(
-                              Theme.of(context).colorScheme.primary)
+                              Theme.of(context).colorScheme.primary,
+                            )
                           : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(VeeTokens.rSm),
                       border: Border.all(
@@ -385,13 +326,16 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             const SizedBox(height: VeeTokens.spacingMd),
 
             // 颜色
-            Text('颜色', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            Text(
+              '颜色',
+              style: context.veeText.caption.copyWith(color: Colors.grey),
+            ),
             const SizedBox(height: VeeTokens.spacingXs),
             Wrap(
               spacing: VeeTokens.spacingXs,
               runSpacing: VeeTokens.spacingXs,
               children: _colors.map((c) {
-                final color = Color(int.parse(c.replaceFirst('#', '0xFF')));
+                final color = VeeColors.fromHex(c);
                 final selected = _color == c;
                 return GestureDetector(
                   onTap: () => setState(() => _color = c),
@@ -405,14 +349,20 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
                           ? Border.all(color: Colors.white, width: 2)
                           : null,
                       boxShadow: selected
-                          ? [BoxShadow(
-                              color: VeeTokens.overlayTint(color),
-                              blurRadius: 6)]
+                          ? [
+                              BoxShadow(
+                                color: VeeTokens.overlayTint(color),
+                                blurRadius: 6,
+                              ),
+                            ]
                           : null,
                     ),
                     child: selected
-                        ? const Icon(Icons.check,
-                            color: Colors.white, size: VeeTokens.iconSm)
+                        ? const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: VeeTokens.iconSm,
+                          )
                         : null,
                   ),
                 );
@@ -429,7 +379,10 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
                         width: VeeTokens.iconMd,
                         height: VeeTokens.iconMd,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('添加'),
               ),
             ),

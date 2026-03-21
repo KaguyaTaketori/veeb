@@ -1,4 +1,3 @@
-// lib/app/vee_app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/locale_provider.dart';
@@ -40,11 +39,9 @@ class VeeApp extends ConsumerWidget {
       textTheme: textTheme,
 
       // ── Scaffold ──────────────────────────────────────────────────────────
-      // 全局背景色，各页面无需重复设置 backgroundColor: Colors.grey.shade50
       scaffoldBackgroundColor: VeeTokens.surfaceDefault,
 
       // ── AppBar ────────────────────────────────────────────────────────────
-      // 透明背景 + 无分割线 + 居中标题，与 Vee 设计规范一致
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: VeeTokens.textPrimaryVal,
@@ -65,8 +62,6 @@ class VeeApp extends ConsumerWidget {
       ),
 
       // ── Card ──────────────────────────────────────────────────────────────
-      // 扁平卡片 + 细边框，作用于所有未显式设置 shape 的 Card widget
-      // 注意：显式设置了 shape 的 Card（如 VeeCard）不受此影响
       cardTheme: CardThemeData(
         elevation: VeeTokens.elevationNone,
         margin: EdgeInsets.zero,
@@ -75,11 +70,19 @@ class VeeApp extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
       ),
 
+      // ── [Fix 9] InkWell / Splash 전역 색상 ──────────────────────────────
+      //
+      // Material 기본 회색 물결(#1F000000)을 브랜드 오렌지 기반으로 교체.
+      // 이 설정이 적용되는 위젯:
+      //   InkWell, InkResponse, ListTile, Card, FilledButton.tonal,
+      //   OutlinedButton, TextButton, NavigationBar 항목 탭 피드백 등
+      //
+      // splashFactory: InkSparkle는 Android 12+ ripple 효과.
+      // iOS / Web에서는 자동으로 InkRipple로 폴백됨.
+      splashFactory: InkSparkle.splashFactory,
+      splashColor: VeeTokens.selectedTint(colorScheme.primary), // 12%
+      highlightColor: VeeTokens.hoverTint(colorScheme.primary), // 8%
       // ── Input Decoration ──────────────────────────────────────────────────
-      // 全局统一所有 TextField / TextFormField 的默认外观。
-      // 各页面显式设置的 InputDecoration 属性会覆盖此处的默认值。
-      // 效果：原先散落在各页面的 border / fillColor / contentPadding 定义
-      //       现在只需在此处维护一份。
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: VeeTokens.surfaceCard,
@@ -98,9 +101,10 @@ class VeeApp extends ConsumerWidget {
           if (states.contains(WidgetState.focused)) {
             return textTheme.labelMedium!.copyWith(color: colorScheme.primary);
           }
-          return textTheme.labelMedium!.copyWith(color: VeeTokens.textSecondaryVal);
+          return textTheme.labelMedium!.copyWith(
+            color: VeeTokens.textSecondaryVal,
+          );
         }),
-        // ── Borders ─────────────────────────────────────────────────────
         border: OutlineInputBorder(
           borderRadius: VeeTokens.inputBorderRadius,
           borderSide: VeeTokens.defaultBorder,
@@ -123,9 +127,7 @@ class VeeApp extends ConsumerWidget {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: VeeTokens.inputBorderRadius,
-          borderSide: BorderSide(
-            color: VeeTokens.borderColor.withOpacity(0.5),
-          ),
+          borderSide: BorderSide(color: VeeTokens.borderColor.withOpacity(0.5)),
         ),
       ),
 
@@ -190,7 +192,15 @@ class VeeApp extends ConsumerWidget {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: VeeTokens.surfaceCard,
         surfaceTintColor: Colors.transparent,
+
+        // [Fix 8] 선택 인디케이터: 타원 → 둥근 사각형 (rMd=12px)
+        // 이전: 기본 StadiumBorder (pill 형태)
+        // 이후: RoundedRectangleBorder → 카드/버튼 원각과 통일
         indicatorColor: VeeTokens.selectedTint(colorScheme.primary),
+        indicatorShape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(VeeTokens.rMd)),
+        ),
+
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return textTheme.labelSmall?.copyWith(
@@ -204,20 +214,32 @@ class VeeApp extends ConsumerWidget {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: colorScheme.primary, size: VeeTokens.iconLg);
+            return IconThemeData(
+              color: colorScheme.primary,
+              size: VeeTokens.iconLg,
+            );
           }
-          return const IconThemeData(color: VeeTokens.textSecondaryVal, size: VeeTokens.iconLg);
+          return const IconThemeData(
+            color: VeeTokens.textSecondaryVal,
+            size: VeeTokens.iconLg,
+          );
         }),
         elevation: VeeTokens.elevationNone,
         height: 64,
       ),
 
       // ── NavigationRail ────────────────────────────────────────────────────
+      // [Fix 8 연동] Rail도 동일한 둥근 사각형 인디케이터 적용
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: VeeTokens.surfaceCard,
         selectedIconTheme: IconThemeData(color: colorScheme.primary),
-        unselectedIconTheme: const IconThemeData(color: VeeTokens.textSecondaryVal),
+        unselectedIconTheme: const IconThemeData(
+          color: VeeTokens.textSecondaryVal,
+        ),
         indicatorColor: VeeTokens.selectedTint(colorScheme.primary),
+        indicatorShape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(VeeTokens.rMd)),
+        ),
         elevation: VeeTokens.elevationNone,
       ),
 
@@ -293,7 +315,9 @@ class VeeApp extends ConsumerWidget {
       // ── Switch ────────────────────────────────────────────────────────────
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          if (states.contains(WidgetState.selected)) {
+            return colorScheme.primary;
+          }
           return Colors.white;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {

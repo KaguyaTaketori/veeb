@@ -20,6 +20,7 @@ import '../../widgets/ui_core/vee_setting_group.dart';
 import '../../widgets/ui_core/vee_amount_display.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
+import 'package:vee_app/widgets/ui_core/vee_badge.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -363,8 +364,11 @@ class _LoggedInProfileView extends ConsumerWidget {
                       icon: Icons.telegram,
                       label: l10n.telegramConnection,
                       trailing: user.tgUserId != null
-                          ? _Badge(l10n.bound, color: VeeTokens.success)
-                          : _Badge(l10n.unbound, color: Colors.orange),
+                          ? VeeBadge(
+                              label: l10n.bound,
+                              color: VeeTokens.success,
+                            )
+                          : VeeBadge(label: l10n.unbound, color: Colors.orange),
                       onTap: () => _showTgBindInfo(context, user, ref),
                     ),
                     _SettingItem(
@@ -752,28 +756,6 @@ class _SettingItem extends StatelessWidget {
         ),
     onTap: onTap,
     contentPadding: VeeTokens.tilePadding,
-  );
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge(this.label, {required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: VeeTokens.badgePadding,
-    decoration: BoxDecoration(
-      color: VeeTokens.selectedTint(color),
-      borderRadius: VeeTokens.badgeBorderRadius,
-    ),
-    child: Text(
-      label,
-      style: context.veeText.micro.copyWith(
-        color: color,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
   );
 }
 
