@@ -1,4 +1,6 @@
 // lib/providers/transactions_provider.dart
+// Fix 1: _driftRowToTransaction 接受 catMap 参数，在 Guest 模式下填充 categoryName/Icon/Color
+// Fix 2: _buildAmountHeader 的 hintStyle 设为 48px，与输入文字大小一致
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
@@ -14,54 +16,53 @@ import 'database_provider.dart';
 
 class TransactionsState {
   final List<models.Transaction> transactions;
-  final bool    loading;
+  final bool loading;
   final String? error;
-  final bool    hasNext;
-  final int     page;
-  final double  monthExpense;
-  final double  monthIncome;
-  final int     monthCount;
-  final String  keyword;
+  final bool hasNext;
+  final int page;
+  final double monthExpense;
+  final double monthIncome;
+  final int monthCount;
+  final String keyword;
   final String? typeFilter;
 
   const TransactionsState({
     this.transactions = const [],
-    this.loading      = false,
+    this.loading = false,
     this.error,
-    this.hasNext      = false,
-    this.page         = 1,
+    this.hasNext = false,
+    this.page = 1,
     this.monthExpense = 0,
-    this.monthIncome  = 0,
-    this.monthCount   = 0,
-    this.keyword      = '',
+    this.monthIncome = 0,
+    this.monthCount = 0,
+    this.keyword = '',
     this.typeFilter,
   });
 
   TransactionsState copyWith({
     List<models.Transaction>? transactions,
-    bool?    loading,
-    String?  error,
-    bool?    hasNext,
-    int?     page,
-    double?  monthExpense,
-    double?  monthIncome,
-    int?     monthCount,
-    String?  keyword,
-    String?  typeFilter,
-    bool     clearError = false,
-  }) =>
-      TransactionsState(
-        transactions: transactions ?? this.transactions,
-        loading:      loading      ?? this.loading,
-        error:        clearError ? null : (error ?? this.error),
-        hasNext:      hasNext      ?? this.hasNext,
-        page:         page         ?? this.page,
-        monthExpense: monthExpense ?? this.monthExpense,
-        monthIncome:  monthIncome  ?? this.monthIncome,
-        monthCount:   monthCount   ?? this.monthCount,
-        keyword:      keyword      ?? this.keyword,
-        typeFilter:   typeFilter   ?? this.typeFilter,
-      );
+    bool? loading,
+    String? error,
+    bool? hasNext,
+    int? page,
+    double? monthExpense,
+    double? monthIncome,
+    int? monthCount,
+    String? keyword,
+    String? typeFilter,
+    bool clearError = false,
+  }) => TransactionsState(
+    transactions: transactions ?? this.transactions,
+    loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+    hasNext: hasNext ?? this.hasNext,
+    page: page ?? this.page,
+    monthExpense: monthExpense ?? this.monthExpense,
+    monthIncome: monthIncome ?? this.monthIncome,
+    monthCount: monthCount ?? this.monthCount,
+    keyword: keyword ?? this.keyword,
+    typeFilter: typeFilter ?? this.typeFilter,
+  );
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
@@ -73,7 +74,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
   TransactionsState build() => const TransactionsState();
 
   TransactionsApi get _api => ref.read(transactionsApiProvider);
-  db.AppDatabase  get _db  => ref.read(appDatabaseProvider);
+  db.AppDatabase get _db => ref.read(appDatabaseProvider);
 
   bool get _isLoggedIn =>
       ref.read(authProvider).status == AuthStatus.authenticated;
@@ -82,25 +83,25 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   Future<void> load(
     DateTime month, {
-    bool    refresh    = false,
+    bool refresh = false,
     String? keyword,
     String? typeFilter,
-    int?    accountId,
+    int? accountId,
   }) async {
     final groupId = ref.read(currentGroupIdProvider);
     if (groupId == null) return;
 
     final page = refresh ? 1 : state.page;
-    final kw   = keyword    ?? state.keyword;
+    final kw = keyword ?? state.keyword;
     final type = typeFilter ?? state.typeFilter;
     final mySeq = ++_seq;
 
     state = state.copyWith(
-      loading:      true,
-      clearError:   true,
-      page:         page,
-      keyword:      kw,
-      typeFilter:   type,
+      loading: true,
+      clearError: true,
+      page: page,
+      keyword: kw,
+      typeFilter: type,
       transactions: refresh ? [] : state.transactions,
     );
 
@@ -108,20 +109,20 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       if (_isLoggedIn) {
         await _loadFromApi(
           month,
-          groupId:    groupId,
-          page:       page,
-          keyword:    kw,
+          groupId: groupId,
+          page: page,
+          keyword: kw,
           typeFilter: type,
-          accountId:  accountId,
-          mySeq:      mySeq,
+          accountId: accountId,
+          mySeq: mySeq,
         );
       } else {
         await _loadFromLocal(
           month,
-          groupId:    groupId,
-          keyword:    kw,
+          groupId: groupId,
+          keyword: kw,
           typeFilter: type,
-          mySeq:      mySeq,
+          mySeq: mySeq,
         );
       }
     } catch (e) {
@@ -134,20 +135,20 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   Future<void> _loadFromApi(
     DateTime month, {
-    required int    groupId,
-    required int    page,
+    required int groupId,
+    required int page,
     required String keyword,
     required String? typeFilter,
-    required int?   accountId,
-    required int    mySeq,
+    required int? accountId,
+    required int mySeq,
   }) async {
     final data = await _api.listTransactions(
-      groupId:   groupId,
-      page:      page,
-      year:      month.year,
-      month:     month.month,
-      keyword:   keyword.isEmpty ? null : keyword,
-      type:      typeFilter,
+      groupId: groupId,
+      page: page,
+      year: month.year,
+      month: month.month,
+      keyword: keyword.isEmpty ? null : keyword,
+      type: typeFilter,
       accountId: accountId,
     );
 
@@ -167,10 +168,10 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   Future<void> _loadFromLocal(
     DateTime month, {
-    required int     groupId,
-    required String  keyword,
+    required int groupId,
+    required String keyword,
     required String? typeFilter,
-    required int     mySeq,
+    required int mySeq,
   }) async {
     final rawList = await _db.transactionDao
         .watchByMonth(groupId, month.year, month.month)
@@ -178,14 +179,23 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
     if (mySeq != _seq) return;
 
-    var txns = rawList.map(_driftRowToTransaction).toList();
+    // ✅ Fix: 获取分类映射，补充 categoryName / categoryIcon / categoryColor
+    // 原版 _driftRowToTransaction 没有 join，导致 Guest 模式下列表显示"请选择"
+    final cats = await _db.categoryDao.getAvailable(groupId);
+    final catMap = {for (final c in cats) c.id: c};
+
+    var txns = rawList
+        .map((row) => _driftRowToTransaction(row, catMap: catMap))
+        .toList();
 
     if (keyword.isNotEmpty) {
       final kw = keyword.toLowerCase();
       txns = txns
-          .where((t) =>
-              (t.note?.toLowerCase().contains(kw) ?? false) ||
-              (t.categoryName?.toLowerCase().contains(kw) ?? false))
+          .where(
+            (t) =>
+                (t.note?.toLowerCase().contains(kw) ?? false) ||
+                (t.categoryName?.toLowerCase().contains(kw) ?? false),
+          )
           .toList();
     }
 
@@ -206,11 +216,11 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
     state = state.copyWith(
       transactions: txns,
-      hasNext:      hasNext,
+      hasNext: hasNext,
       monthExpense: expense,
-      monthIncome:  income,
-      monthCount:   txns.length,
-      loading:      false,
+      monthIncome: income,
+      monthCount: txns.length,
+      loading: false,
     );
   }
 
@@ -285,12 +295,13 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       );
       return txn.id;
     } else {
-      final now     = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final localId = await _db.transactionDao.insertTransaction(
         _mapToCompanion(data, groupId, now),
       );
       final month = DateTime.fromMillisecondsSinceEpoch(
-          (transactionDate * 1000).toInt());
+        (transactionDate * 1000).toInt(),
+      );
       await load(month, refresh: true);
       return localId;
     }
@@ -323,25 +334,29 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
     if (_isLoggedIn) {
       final txn = await _api.patchTransaction(id, data);
-      final list  = state.transactions;
-      final idx   = list.indexWhere((t) => t.id == id);
+      final list = state.transactions;
+      final idx = list.indexWhere((t) => t.id == id);
       if (idx != -1) {
-        final old     = list[idx];
+        final old = list[idx];
         final newList = [...list];
-        newList[idx]  = txn;
+        newList[idx] = txn;
         state = state.copyWith(
           transactions: newList,
-          monthExpense: state.monthExpense
-              - (old.type == 'expense' ? old.amount : 0)
-              + (txn.type == 'expense' ? txn.amount : 0),
-          monthIncome: state.monthIncome
-              - (old.type == 'income' ? old.amount : 0)
-              + (txn.type == 'income' ? txn.amount : 0),
+          monthExpense:
+              state.monthExpense -
+              (old.type == 'expense' ? old.amount : 0) +
+              (txn.type == 'expense' ? txn.amount : 0),
+          monthIncome:
+              state.monthIncome -
+              (old.type == 'income' ? old.amount : 0) +
+              (txn.type == 'income' ? txn.amount : 0),
         );
       }
     } else {
       await _db.transactionDao.updateTransaction(
-        id, _mapToPatchCompanion(data));
+        id,
+        _mapToPatchCompanion(data),
+      );
       final t = state.transactions.firstWhere((t) => t.id == id);
       final month = t.date;
       await load(month, refresh: true);
@@ -398,20 +413,22 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
   void updateFromWs(Map<String, dynamic> data) {
     try {
       final updated = models.Transaction.fromJson(data);
-      final list    = state.transactions;
-      final idx     = list.indexWhere((t) => t.id == updated.id);
+      final list = state.transactions;
+      final idx = list.indexWhere((t) => t.id == updated.id);
       if (idx == -1) return;
-      final old     = list[idx];
+      final old = list[idx];
       final newList = [...list];
-      newList[idx]  = updated;
+      newList[idx] = updated;
       state = state.copyWith(
         transactions: newList,
-        monthExpense: state.monthExpense
-            - (old.type == 'expense' ? old.amount : 0)
-            + (updated.type == 'expense' ? updated.amount : 0),
-        monthIncome: state.monthIncome
-            - (old.type == 'income' ? old.amount : 0)
-            + (updated.type == 'income' ? updated.amount : 0),
+        monthExpense:
+            state.monthExpense -
+            (old.type == 'expense' ? old.amount : 0) +
+            (updated.type == 'expense' ? updated.amount : 0),
+        monthIncome:
+            state.monthIncome -
+            (old.type == 'income' ? old.amount : 0) +
+            (updated.type == 'income' ? updated.amount : 0),
       );
     } catch (e) {
       debugPrint('[WS] updateFromWs 失败: $e');
@@ -436,66 +453,81 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   // ── 内部工具 ──────────────────────────────────────────────────────────────
 
-  models.Transaction _driftRowToTransaction(db.Transaction row) {
+  /// ✅ Fix: 新增可选 catMap 参数，Guest 模式下补充 categoryName/Icon/Color，
+  /// 解决列表显示"请选择"的问题。
+  models.Transaction _driftRowToTransaction(
+    db.Transaction row, {
+    Map<int, db.Category>? catMap,
+  }) {
     const noDecimal = {'JPY', 'KRW', 'VND'};
     final currency = row.currencyCode;
     double toFloat(int v) =>
         noDecimal.contains(currency) ? v.toDouble() : v / 100.0;
 
+    final cat = catMap?[row.categoryId];
+
     return models.Transaction(
-      id:              row.id,
-      type:            row.type,
-      amount:          toFloat(row.amount),
-      currencyCode:    currency,
-      baseAmount:      toFloat(row.baseAmount),
-      exchangeRate:    row.exchangeRate / 1_000_000,
-      accountId:       row.accountId,
-      toAccountId:     row.toAccountId,
-      transferPeerId:  row.transferPeerId,
-      categoryId:      row.categoryId,
-      userId:          row.userId,
-      groupId:         row.groupId,
-      isPrivate:       row.isPrivate,
-      note:            row.note,
+      id: row.id,
+      type: row.type,
+      amount: toFloat(row.amount),
+      currencyCode: currency,
+      baseAmount: toFloat(row.baseAmount),
+      exchangeRate: row.exchangeRate / 1_000_000,
+      accountId: row.accountId,
+      toAccountId: row.toAccountId,
+      transferPeerId: row.transferPeerId,
+      categoryId: row.categoryId,
+      userId: row.userId,
+      groupId: row.groupId,
+      isPrivate: row.isPrivate,
+      note: row.note,
       transactionDate: row.transactionDate.toDouble(),
-      createdAt:       row.createdAt.toDouble(),
-      updatedAt:       row.updatedAt.toDouble(),
-      isDeleted:       row.isDeleted,
+      createdAt: row.createdAt.toDouble(),
+      updatedAt: row.updatedAt.toDouble(),
+      isDeleted: row.isDeleted,
+      // 补充分类信息
+      categoryName: cat?.name,
+      categoryIcon: cat?.icon,
+      categoryColor: cat?.color,
     );
   }
 
   db.TransactionsCompanion _mapToCompanion(
-      Map<String, dynamic> data, int groupId, int now) {
+    Map<String, dynamic> data,
+    int groupId,
+    int now,
+  ) {
     const noDecimal = {'JPY', 'KRW', 'VND'};
     final currency = data['currency_code'] as String? ?? 'JPY';
-    final amount   = (data['amount'] as num).toDouble();
+    final amount = (data['amount'] as num).toDouble();
     final amountInt = noDecimal.contains(currency)
         ? amount.round()
         : (amount * 100).round();
-    final transactionDate = ((data['transaction_date'] as num).toDouble() * 1000).toInt() ~/ 1000;
+    final transactionDate =
+        ((data['transaction_date'] as num).toDouble() * 1000).toInt() ~/ 1000;
 
     return db.TransactionsCompanion.insert(
-      type:            Value(data['type'] as String? ?? 'expense'),
-      amount:          Value(amountInt),
-      currencyCode:    Value(currency),
-      baseAmount:      Value(amountInt),
-      exchangeRate:    Value(1000000),
-      accountId:       data['account_id'] as int,
-      categoryId:      data['category_id'] as int,
-      userId:          0,
-      groupId:         groupId,
-      isPrivate:       Value(data['is_private'] as bool? ?? false),
-      note:            Value(data['note'] as String?),
+      type: Value(data['type'] as String? ?? 'expense'),
+      amount: Value(amountInt),
+      currencyCode: Value(currency),
+      baseAmount: Value(amountInt),
+      exchangeRate: Value(1000000),
+      accountId: data['account_id'] as int,
+      categoryId: data['category_id'] as int,
+      userId: 0,
+      groupId: groupId,
+      isPrivate: Value(data['is_private'] as bool? ?? false),
+      note: Value(data['note'] as String?),
       transactionDate: transactionDate,
-      createdAt:       now,
-      updatedAt:       now,
-      syncStatus:      Value('pending_create'),
+      createdAt: now,
+      updatedAt: now,
+      syncStatus: Value('pending_create'),
     );
   }
 
   db.TransactionsCompanion _mapToPatchCompanion(Map<String, dynamic> data) {
     return db.TransactionsCompanion(
-      note:      data.containsKey('note')
+      note: data.containsKey('note')
           ? Value(data['note'] as String?)
           : const Value.absent(),
       isPrivate: data.containsKey('is_private')
@@ -508,4 +540,5 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
 final transactionsProvider =
     NotifierProvider<TransactionsNotifier, TransactionsState>(
-        TransactionsNotifier.new);
+      TransactionsNotifier.new,
+    );

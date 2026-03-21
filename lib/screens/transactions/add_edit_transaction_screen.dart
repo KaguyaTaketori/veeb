@@ -994,8 +994,6 @@ class _AddEditTransactionScreenState
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
             decoration: const InputDecoration(
-              // 显式覆盖所有边框状态，防止全局 InputDecorationTheme 在 focus
-              // 时显示白色圆角矩形边框（在粘性头部背景上尤为明显）
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -1005,6 +1003,13 @@ class _AddEditTransactionScreenState
               contentPadding: EdgeInsets.zero,
               isDense: true,
               hintText: '0',
+              // ✅ Fix: hintStyle 与输入文字保持同样大小，避免 placeholder "0"
+              // 比输入文字小得多的割裂感
+              hintStyle: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFCCCCCC),
+              ),
             ),
             onChanged: (_) => setState(() {}),
           ),
