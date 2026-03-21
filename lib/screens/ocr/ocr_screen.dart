@@ -116,8 +116,9 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
       return _LoadingView();
     } else if (_result != null) {
       return _ConfirmView(
-        bill: _result!,
+        result: _result!,
         onConfirm: () => Navigator.pop(context, _result),
+        onRetake: () => setState(() => _result = null),
       );
     } else {
       return _PickerView(

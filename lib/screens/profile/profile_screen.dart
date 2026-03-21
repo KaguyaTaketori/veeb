@@ -12,6 +12,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../screens/auth/login_screen.dart';
+import '../../screens/settings/manage_accounts_screen.dart';
+import '../../screens/settings/manage_categories_screen.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';

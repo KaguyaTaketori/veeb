@@ -44,7 +44,7 @@ Future<void> _loadOrCreateLocal() async {
   if (group == null) {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final groupId = await database.groupDao.insertGroup(
-      GroupsCompanion.insert(
+      db.GroupsCompanion.insert(
         name: const Value('我的账本'),
         ownerId: 0,
         inviteCode: const Value('local'),
@@ -57,7 +57,7 @@ Future<void> _loadOrCreateLocal() async {
     group = await database.groupDao.getById(groupId);
 
     await database.accountDao.insertAccount(
-      AccountsCompanion.insert(
+      db.AccountsCompanion.insert(
         name: '现金',
         type: const Value('cash'),
         currencyCode: const Value('JPY'),
