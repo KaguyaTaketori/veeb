@@ -187,14 +187,23 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> markAllLocalAsPending() async {
     await batch((b) {
-      b.update(groups, GroupsCompanion(syncStatus: const Value('pending_create')),
-          where: (g) => g.remoteId.isNull());
-      b.update(accounts, AccountsCompanion(syncStatus: const Value('pending_create')),
-          where: (a) => a.remoteId.isNull());
-      b.update(transactions, TransactionsCompanion(syncStatus: const Value('pending_create')),
-          where: (t) => t.remoteId.isNull());
-      b.update(categories, CategoriesCompanion(syncStatus: const Value('pending_create')),
-          where: (c) => c.remoteId.isNull() & c.isSystem.equals(false));
+      b.update(
+        transactions,
+        const TransactionsCompanion(syncStatus: Value('pending_create')),
+        where: (t) => t.remoteId.isNull() & t.isDeleted.equals(false),
+      );
+      b.update(
+        accounts,
+        const AccountsCompanion(syncStatus: Value('pending_create')),
+        where: (a) => a.remoteId.isNull() & a.isActive.equals(true),
+      );
+      b.update(
+        categories,
+        const CategoriesCompanion(syncStatus: Value('pending_create')),
+        where: (c) =>
+            c.remoteId.isNull() &
+            c.isSystem.equals(false),
+      );
     });
   }
 }

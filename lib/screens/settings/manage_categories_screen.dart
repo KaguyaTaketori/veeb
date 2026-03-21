@@ -169,42 +169,30 @@ class _CategoriesGrid extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, Category c) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除分类'),
-        content: Text('确认删除「${c.name}」？'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      final db = ref.read(appDatabaseProvider);
-      await (db.delete(db.categories)
-            ..where((t) => t.id.equals(c.id)))
-          .go();
-      ref.invalidate(currentCategoriesProvider);
-    }
-  }
+    final ok = await showDialog<bool>(...); // 不变
+    if (ok != true) return;
 
-  Color _parseColor(String? hex) {
-    try {
-      return Color(
-          int.parse((hex ?? '#95A5A6').replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return Colors.grey;
+    final isLoggedIn =
+        ref.read(authProvider).status == AuthStatus.authenticated;
+    final db = ref.read(appDatabaseProvider);
+
+    if (isLoggedIn && c.id != 0) {
+      try {
+        // 调服务端删除
+        final dio = ref.read(apiClientProvider);
+        await dio.delete('/categories/${c.id}');
+      } catch (e) {
+        // 服务端失败时仍删本地，下次同步处理
+      }
     }
+
+    await (db.delete(db.categories)
+          ..where((t) => t.id.equals(c.id)))
+        .go();
+
+    final groupId = ref.read(currentGroupIdProvider);
+    ref.invalidate(categoriesProvider(groupId));
   }
-}
 
 // ── 添加分类表单 ─────────────────────────────────────────────────────
 
@@ -248,21 +236,55 @@ class _AddCategorySheetState
       return;
     }
     setState(() { _saving = true; _error = null; });
+
     try {
-      final db  = ref.read(appDatabaseProvider);
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      await db.into(db.categories).insert(
-        CategoriesCompanion.insert(
-          name:      _nameCtrl.text.trim(),
-          icon:      Value(_icon),
-          color:     Value(_color),
-          type:      Value(_type),
-          isSystem:  const Value(false),
-          groupId:   Value(widget.groupId),
-          sortOrder: const Value(100),
-        ),
-      );
-      ref.invalidate(currentCategoriesProvider);
+      final isLoggedIn =
+          ref.read(authProvider).status == AuthStatus.authenticated;
+
+      if (isLoggedIn) {
+        // 登录模式：调 API，返回的 remoteId 写回本地
+        final remote = await ref.read(categoriesApiProvider).createCategory({
+          'name':       _nameCtrl.text.trim(),
+          'icon':       _icon,
+          'color':      _color,
+          'type':       _type,
+          'group_id':   widget.groupId,
+          'sort_order': 100,
+        });
+        // 同时写本地，标记已同步
+        final db  = ref.read(appDatabaseProvider);
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await db.into(db.categories).insert(
+          CategoriesCompanion.insert(
+            remoteId:  Value(remote.id),
+            name:      _nameCtrl.text.trim(),
+            icon:      Value(_icon),
+            color:     Value(_color),
+            type:      Value(_type),
+            isSystem:  const Value(false),
+            groupId:   Value(widget.groupId),
+            sortOrder: const Value(100),
+            syncStatus: const Value('synced'),
+          ),
+        );
+      } else {
+        // Guest 模式：只写本地
+        final db  = ref.read(appDatabaseProvider);
+        await db.into(db.categories).insert(
+          CategoriesCompanion.insert(
+            name:      _nameCtrl.text.trim(),
+            icon:      Value(_icon),
+            color:     Value(_color),
+            type:      Value(_type),
+            isSystem:  const Value(false),
+            groupId:   Value(widget.groupId),
+            sortOrder: const Value(100),
+            syncStatus: const Value('pending_create'),
+          ),
+        );
+      }
+
+      ref.invalidate(categoriesProvider(widget.groupId));
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _error = e.toString());

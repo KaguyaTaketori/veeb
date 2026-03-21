@@ -66,10 +66,11 @@ class BillsApi {
       _guard(() => _dio.delete('/bills/$billId'));
 
   Future<Map<String, dynamic>> ocrBill(
-          String imageBase64, String mimeType) =>
+      String imageBase64, String mimeType, {String lang = 'zh'}) =>
       _guard(() => _dio.post('/transactions/ocr', data: {
             'image_base64': imageBase64,
-            'mime_type': mimeType,
+            'mime_type':    mimeType,
+            'lang':         lang,
           }).then((r) => r.data));
 
   /// 上传图片凭证，返回 { "receipt_url": "..." }

@@ -123,9 +123,13 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
   Future<void> _runCloudOcr(File file) async {
     final bytes     = await file.readAsBytes();
     final base64Str = base64Encode(bytes);
+
+    final locale = ref.read(localeProvider);
+    final lang   = locale.languageCode;
+
     final bill = await ref
         .read(billsProvider.notifier)
-        .ocrBill(base64Str, 'image/jpeg');
+        .ocrBill(base64Str, 'image/jpeg', lang: lang);
     setState(() => _result = bill);
   }
 
