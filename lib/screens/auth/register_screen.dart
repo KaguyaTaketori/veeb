@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
+import '../../l10n/app_localizations.dart';
 import 'verify_email_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -44,7 +45,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       if (!mounted) return;
 
-      // debug_code 存在时直接传给验证页预填
       final debugCode = data['debug_code'] as String?;
 
       Navigator.pushReplacement(
@@ -52,14 +52,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         MaterialPageRoute(
           builder: (_) => VerifyEmailScreen(
             email: _emailCtrl.text.trim(),
-            debugCode: debugCode,   // ← 传过去
+            debugCode: debugCode,
           ),
         ),
       );
     } on AppException catch (e) {
       setState(() { _error = e.message; });
     } catch (_) {
-      setState(() { _error = '注册失败，请稍后重试'; });
+      final l10n = AppLocalizations.of(context)!;
+      setState(() { _error = l10n.registerFailed; });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -67,13 +68,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('创建账号'),
+        title: Text(l10n.createAccountTitle),
         centerTitle: true,
       ),
       body: Center(
@@ -93,14 +94,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                   _Field(
                     controller: _usernameCtrl,
-                    label: '用户名',
+                    label: l10n.username,
                     icon: Icons.badge_outlined,
-                    hint: '3-30位字母、数字或下划线',
+                    hint: l10n.usernameFormat,
                     action: TextInputAction.next,
                     validator: (v) {
-                      if (v == null || v.trim().length < 3) return '用户名至少 3 位';
-                      if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim()))
-                        return '只能包含字母、数字、下划线';
+                      if (v == null || v.trim().length < 3) return l10n.usernameMinLength;
+                      if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim())) {
+                        return l10n.usernameInvalid;
+                      }
                       return null;
                     },
                   ),
@@ -108,12 +110,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                   _Field(
                     controller: _emailCtrl,
-                    label: '邮箱',
+                    label: l10n.email,
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                     action: TextInputAction.next,
                     validator: (v) {
-                      if (v == null || !v.contains('@')) return '请输入有效邮箱';
+                      if (v == null || !v.contains('@')) return l10n.enterValidEmail;
                       return null;
                     },
                   ),
@@ -121,7 +123,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                   _Field(
                     controller: _passwordCtrl,
-                    label: '密码',
+                    label: l10n.password,
                     icon: Icons.lock_outline,
                     obscure: _obscure,
                     action: TextInputAction.next,
@@ -133,9 +135,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                     validator: (v) {
-                      if (v == null || v.length < 8) return '密码至少 8 位';
-                      if (!v.contains(RegExp(r'[0-9]'))) return '需包含至少一个数字';
-                      if (!v.contains(RegExp(r'[a-zA-Z]'))) return '需包含至少一个字母';
+                      if (v == null || v.length < 8) return l10n.passwordMinLength;
+                      if (!v.contains(RegExp(r'[0-9]'))) return l10n.passwordNeedsNumber;
+                      if (!v.contains(RegExp(r'[a-zA-Z]'))) return l10n.passwordNeedsLetter;
                       return null;
                     },
                   ),
@@ -143,13 +145,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                   _Field(
                     controller: _confirmCtrl,
-                    label: '确认密码',
+                    label: l10n.confirmPassword,
                     icon: Icons.lock_outline,
                     obscure: _obscure,
                     action: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                     validator: (v) =>
-                        v != _passwordCtrl.text ? '两次密码不一致' : null,
+                        v != _passwordCtrl.text ? l10n.passwordsDoNotMatch : null,
                   ),
                   const SizedBox(height: 28),
 
@@ -166,15 +168,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               width: 20, height: 20,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white))
-                          : const Text('注册',
-                              style: TextStyle(
+                          : Text(l10n.register,
+                              style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
 
                   const SizedBox(height: 12),
                   Text(
-                    '注册即表示您同意我们的服务条款和隐私政策',
+                    l10n.registerAgree,
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),

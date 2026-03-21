@@ -1,6 +1,7 @@
 // lib/widgets/permission_gate.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/permission_provider.dart';
 
 /// 权限门卫组件 — 根据权限显示/隐藏子组件
@@ -44,14 +45,15 @@ class PermissionGate extends ConsumerWidget {
 
 /// 无权限时的统一提示组件（可选展示）
 class NoPermissionHint extends StatelessWidget {
-  final String message;
+  final String? message;
   const NoPermissionHint({
     super.key,
-    this.message = '暂无使用权限，请联系管理员',
+    this.message,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -63,7 +65,7 @@ class NoPermissionHint extends StatelessWidget {
         children: [
           Icon(Icons.lock_outline, size: 16, color: Colors.grey[500]),
           const SizedBox(width: 8),
-          Text(message,
+          Text(message ?? l10n.noPermission,
               style: TextStyle(fontSize: 13, color: Colors.grey[500])),
         ],
       ),
@@ -90,6 +92,7 @@ class NoOcrPermissionPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -99,7 +102,7 @@ class NoOcrPermissionPlaceholder extends StatelessWidget {
             Icon(Icons.lock_outlined, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 20),
             Text(
-              '暂无 AI 识别权限',
+              l10n.noAiPermission,
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -107,7 +110,7 @@ class NoOcrPermissionPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '请联系管理员开通「App OCR 识别」功能',
+              l10n.contactAdminForOcr,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),

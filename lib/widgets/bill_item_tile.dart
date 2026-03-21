@@ -1,5 +1,6 @@
 // lib/widgets/bill_item_tile.dart
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/bill.dart';
 import '../constants/categories.dart';
 import '../utils/currency.dart';
@@ -44,7 +45,7 @@ class BillItemTile extends StatelessWidget {
                       child: Text(
                         merchant.isNotEmpty
                             ? merchant
-                            : (bill.category ?? '未分類'),
+                            : (bill.category ?? AppLocalizations.of(context)!.uncategorized),
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 15),
                         overflow: TextOverflow.ellipsis,
@@ -142,8 +143,8 @@ class BillItemTile extends StatelessWidget {
                                 BillDetailScreen(bill: bill),
                           ),
                         ),
-                        child: const Text('詳細を見る',
-                            style: TextStyle(fontSize: 13)),
+                        child: Text(AppLocalizations.of(context)!.seeMore,
+                            style: const TextStyle(fontSize: 13)),
                       ),
                     ),
                   ],

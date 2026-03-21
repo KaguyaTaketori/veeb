@@ -1,5 +1,6 @@
 // lib/providers/bills_provider.dart
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/bills_api.dart';
@@ -178,6 +179,93 @@ class BillsNotifier extends Notifier<BillsState> {
       monthTotal: state.monthTotal - old.amount,
       monthCount: state.monthCount - 1,
     );
+  }
+
+  // ── 图片上传 ─────────────────────────────────────────────────────────────
+
+  Future<String?> uploadReceipt({
+    required Uint8List fileBytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    return await _api.uploadReceipt(
+      fileBytes: fileBytes,
+      filename: filename,
+      mimeType: mimeType,
+    );
+  }
+
+  // ── OCR ───────────────────────────────────────────────────────────────────
+
+  Future<Bill> ocrBill(String imageBase64, String mimeType) async {
+    final data = await _api.ocrBill(imageBase64, mimeType);
+    return Bill.fromJson(data);
+  }
+
+  // ── 写操作 ─────────────────────────────────────────────────────────────
+
+  Future<int> createBill({
+    required double amount,
+    required String currency,
+    String? category,
+    String? merchant,
+    String? description,
+    required String billDate,
+    String? receiptUrl,
+    List<Map<String, dynamic>> items = const [],
+  }) async {
+    final data = {
+      'amount': amount,
+      'currency': currency,
+      'category': category,
+      'merchant': merchant,
+      'description': description,
+      'bill_date': billDate,
+      'receipt_url': receiptUrl ?? '',
+      'items': items,
+    };
+
+    final response = await _api.createBill(data);
+    final bill = Bill.fromJson(response);
+    state = state.copyWith(
+      bills: [bill, ...state.bills],
+      monthTotal: state.monthTotal + bill.amount,
+      monthCount: state.monthCount + 1,
+    );
+    return bill.id;
+  }
+
+  Future<void> updateBill({
+    required int id,
+    double? amount,
+    String? currency,
+    String? category,
+    String? merchant,
+    String? description,
+    String? billDate,
+    String? receiptUrl,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (amount != null) updates['amount'] = amount;
+    if (currency != null) updates['currency'] = currency;
+    if (category != null) updates['category'] = category;
+    if (merchant != null) updates['merchant'] = merchant;
+    if (description != null) updates['description'] = description;
+    if (billDate != null) updates['bill_date'] = billDate;
+    if (receiptUrl != null) updates['receipt_url'] = receiptUrl;
+
+    final response = await _api.patchBill(id, updates);
+    final updated = Bill.fromJson(response);
+    final idx = state.bills.indexWhere((b) => b.id == id);
+    if (idx != -1) {
+      final old = state.bills[idx];
+      final newList = [...state.bills];
+      newList[idx] = updated;
+      state = state.copyWith(
+        bills: newList,
+        monthTotal: state.monthTotal - old.amount + updated.amount,
+      );
+    }
   }
 }
 

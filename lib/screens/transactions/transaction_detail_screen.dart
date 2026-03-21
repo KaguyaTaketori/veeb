@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../utils/currency.dart';
@@ -15,6 +16,7 @@ class TransactionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n  = AppLocalizations.of(context)!;
     final t     = transaction;
     final color = _parseColor(t.categoryColor);
 
@@ -23,7 +25,7 @@ class TransactionDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: const Text('詳細',
+        title: Text(l10n.detail,
             style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
@@ -43,7 +45,7 @@ class TransactionDetailScreen extends ConsumerWidget {
               }
             },
             icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('編集', style: TextStyle(fontSize: 15)),
+            label: Text(l10n.edit, style: TextStyle(fontSize: 15)),
           ),
         ],
       ),
@@ -55,16 +57,16 @@ class TransactionDetailScreen extends ConsumerWidget {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             children: [
               // 类型 + 金额
-              _buildAmountHeader(context, t, color),
+              _buildAmountHeader(context, l10n, t, color),
               const SizedBox(height: 32),
 
               // 基本信息
-              _buildInfoCard(context, t),
+              _buildInfoCard(context, l10n, t),
               const SizedBox(height: 24),
 
               // 凭证
               if (t.hasReceipt) ...[
-                _buildSectionTitle('レシート'),
+                _buildSectionTitle(l10n.receiptImages),
                 const SizedBox(height: 12),
                 _ReceiptImage(url: t.receiptUrl),
                 const SizedBox(height: 24),
@@ -72,7 +74,7 @@ class TransactionDetailScreen extends ConsumerWidget {
 
               // 明细
               if (t.items.isNotEmpty) ...[
-                _buildSectionTitle('明細 (${t.items.length}件)'),
+                _buildSectionTitle(l10n.itemsCount(t.items.length)),
                 const SizedBox(height: 12),
                 _buildItemsCard(context, t),
                 const SizedBox(height: 24),
@@ -90,8 +92,8 @@ class TransactionDetailScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () => _confirmDelete(context, ref, t.id),
-                  child: const Text('この記録を削除',
-                      style: TextStyle(
+                  child: Text(l10n.deleteThisRecord,
+                      style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -103,12 +105,12 @@ class TransactionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAmountHeader(BuildContext ctx, Transaction t, Color color) {
+  Widget _buildAmountHeader(BuildContext ctx, AppLocalizations l10n, Transaction t, Color color) {
     final typeLabel = t.type == 'income'
-        ? '収入'
+        ? l10n.income
         : t.type == 'transfer'
-            ? '振替'
-            : '支出';
+            ? l10n.transfer
+            : l10n.expense;
     final typeColor = t.type == 'income'
         ? Colors.green
         : t.type == 'transfer'
@@ -139,7 +141,7 @@ class TransactionDetailScreen extends ConsumerWidget {
               style: const TextStyle(fontSize: 30)),
         ),
         const SizedBox(height: 12),
-        Text(t.categoryName ?? '未分類',
+        Text(t.categoryName ?? l10n.uncategorized,
             style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -167,7 +169,7 @@ class TransactionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoCard(BuildContext ctx, Transaction t) {
+  Widget _buildInfoCard(BuildContext ctx, AppLocalizations l10n, Transaction t) {
     return Card(
       elevation: 0,
       color: Theme.of(ctx).colorScheme.surface,
@@ -179,22 +181,22 @@ class TransactionDetailScreen extends ConsumerWidget {
         children: [
           _InfoRow(
               icon: Icons.calendar_today_outlined,
-              label: '日付',
+              label: l10n.date,
               value:
                   '${t.date.year}/${t.date.month.toString().padLeft(2, '0')}/${t.date.day.toString().padLeft(2, '0')}'),
           if (t.note?.isNotEmpty == true) ...[
             const Divider(height: 1, indent: 48),
             _InfoRow(
                 icon: Icons.notes_outlined,
-                label: '備考',
+                label: l10n.note,
                 value: t.note!),
           ],
           if (t.isPrivate) ...[
             const Divider(height: 1, indent: 48),
             _InfoRow(
                 icon: Icons.lock_outline,
-                label: 'プライベート',
-                value: 'はい'),
+                label: l10n.private,
+                value: l10n.yes),
           ],
         ],
       ),
@@ -251,19 +253,20 @@ class TransactionDetailScreen extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext ctx, WidgetRef ref, int id) async {
+    final l10n = AppLocalizations.of(ctx)!;
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (c) => AlertDialog(
-        title: const Text('削除確認'),
-        content: const Text('この記録を削除しますか？'),
+        title: Text(l10n.deleteConfirm),
+        content: Text(l10n.deleteThisRecord),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(c, false),
-              child: const Text('キャンセル')),
+              child: Text(l10n.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('削除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),

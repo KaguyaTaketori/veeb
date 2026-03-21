@@ -3,9 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../api/bills_api.dart';
 import '../../constants/categories.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/bill.dart';
+import '../../providers/bills_provider.dart';
 
 class AddEditBillScreen extends ConsumerStatefulWidget {
   final Bill? bill;
@@ -25,7 +26,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   late final TextEditingController _dateCtrl;
 
   String _currency = 'JPY';
-  String _category = '其他';
+  String _category = '';
 
   File? _pendingImageFile;
   String _receiptUrl = '';
@@ -52,7 +53,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
             DateTime.now().toIso8601String().substring(0, 10));
     if (b != null) {
       _currency = b.currency;
-      _category = b.category ?? '其他';
+      _category = b.category ?? '';
       _receiptUrl = b.receiptUrl;
     }
     // 初始化明细
@@ -85,7 +86,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
     });
   }
 
-  Future<String?> _uploadPendingImage() async {
+  Future<String?> _uploadPendingImage([AppLocalizations? l10n]) async {
     if (_pendingImageFile == null) return _receiptUrl;
     setState(() => _uploadingImage = true);
     try {
@@ -93,14 +94,14 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
       final filename = _pendingImageFile!.path.split('/').last;
       final mimeType =
           filename.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-      final url = await ref.read(billsApiProvider).uploadReceipt(
+      final url = await ref.read(billsProvider.notifier).uploadReceipt(
             fileBytes: bytes,
             filename: filename,
             mimeType: mimeType,
           );
       return url;
     } catch (e) {
-      setState(() => _error = '画像アップロード失敗：$e');
+      setState(() => _error = l10n?.imageUploadFailed(e.toString()) ?? 'Image upload failed: $e');
       return null;
     } finally {
       setState(() => _uploadingImage = false);
@@ -137,6 +138,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
 
   /// 弹出单条明细编辑对话框
   Future<void> _editItem(int index) async {
+    final l10n = AppLocalizations.of(context)!;
     final item = _items[index];
     final nameCtrl = TextEditingController(text: item.nameCtrl.text);
     final amountCtrl = TextEditingController(text: item.amountCtrl.text);
@@ -147,7 +149,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setInner) => AlertDialog(
-          title: Text(index < _items.length ? '明細を編集' : '明細を追加'),
+          title: Text(index < _items.length ? l10n.edit : l10n.addDetail),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -155,10 +157,10 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
               children:[
                 // 种别切换：使用 SegmentedButton 替代下拉菜单，减少点击次数
                 SegmentedButton<String>(
-                  segments: const[
-                    ButtonSegment(value: 'item', label: Text('商品')),
-                    ButtonSegment(value: 'discount', label: Text('割引')),
-                    ButtonSegment(value: 'tax', label: Text('税金')),
+                  segments: [
+                    ButtonSegment(value: 'item', label: Text(l10n.product)),
+                    ButtonSegment(value: 'discount', label: Text(l10n.discount)),
+                    ButtonSegment(value: 'tax', label: Text(l10n.tax)),
                   ],
                   selected: {itemType},
                   onSelectionChanged: (Set<String> newSelection) {
@@ -169,7 +171,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                 TextField(
                   controller: nameCtrl,
                   decoration: InputDecoration(
-                    labelText: '商品名 / 項目名 *',
+                    labelText: '${l10n.productName} *',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -185,7 +187,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
                         decoration: InputDecoration(
-                          labelText: '金額 *',
+                          labelText: '${l10n.amount} *',
                           prefixText: '¥ ',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -200,7 +202,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         decoration: InputDecoration(
-                          labelText: '数量',
+                          labelText: l10n.quantity,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -215,7 +217,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           actions:[
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('キャンセル'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -223,7 +225,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                 if (double.tryParse(amountCtrl.text.trim()) == null) return;
                 Navigator.pop(ctx, true);
               },
-              child: const Text('確認'),
+              child: Text(l10n.confirm),
             ),
           ],
         ),
@@ -252,14 +254,15 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context)!;
     for (int i = 0; i < _items.length; i++) {
       final item = _items[i];
       if (item.nameCtrl.text.trim().isEmpty) {
-        setState(() => _error = '明細 ${i + 1} の商品名を入力してください');
+        setState(() => _error = l10n.enterProductName);
         return;
       }
       if (double.tryParse(item.amountCtrl.text.trim()) == null) {
-        setState(() => _error = '明細 ${i + 1} の金額が無効です');
+        setState(() => _error = l10n.invalidAmountForItem(i + 1));
         return;
       }
     }
@@ -270,7 +273,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
     });
 
     try {
-      final finalReceiptUrl = await _uploadPendingImage();
+      final finalReceiptUrl = await _uploadPendingImage(l10n);
       if (_pendingImageFile != null && finalReceiptUrl == null) return;
 
       final amount = double.parse(_amountCtrl.text.trim());
@@ -289,49 +292,60 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
               })
           .toList();
 
-      final api = ref.read(billsApiProvider);
+      final notifier = ref.read(billsProvider.notifier);
 
       if (_isEdit) {
-        final updates = <String, dynamic>{};
-        if (amount != widget.bill!.amount) updates['amount'] = amount;
-        if (_currency != widget.bill!.currency) updates['currency'] = _currency;
-        if (_category != widget.bill!.category) updates['category'] = _category;
-        if (_merchantCtrl.text.trim() != widget.bill!.merchant)
-          updates['merchant'] = _merchantCtrl.text.trim();
-        if (_descCtrl.text.trim() != widget.bill!.description)
-          updates['description'] = _descCtrl.text.trim();
-        if (_dateCtrl.text.trim() != widget.bill!.billDate)
-          updates['bill_date'] = _dateCtrl.text.trim();
-        if (finalReceiptUrl != null &&
-            finalReceiptUrl != widget.bill!.receiptUrl)
-          updates['receipt_url'] = finalReceiptUrl;
-
         if (_itemsChanged()) {
-          await api.deleteBill(widget.bill!.id);
-          await api.createBill({
-            'amount': amount,
-            'currency': _currency,
-            'category': _category,
-            'merchant': _merchantCtrl.text.trim(),
-            'description': _descCtrl.text.trim(),
-            'bill_date': _dateCtrl.text.trim(),
-            'receipt_url': finalReceiptUrl ?? widget.bill!.receiptUrl,
-            'items': itemsJson,
-          });
-        } else if (updates.isNotEmpty) {
-          await api.patchBill(widget.bill!.id, updates);
+          await notifier.deleteBill(widget.bill!.id);
+          await notifier.createBill(
+            amount: amount,
+            currency: _currency,
+            category: _category,
+            merchant: _merchantCtrl.text.trim(),
+            description: _descCtrl.text.trim(),
+            billDate: _dateCtrl.text.trim(),
+            receiptUrl: finalReceiptUrl ?? widget.bill!.receiptUrl,
+            items: itemsJson,
+          );
+        } else {
+          final updates = <String, dynamic>{};
+          if (amount != widget.bill!.amount) updates['amount'] = amount;
+          if (_currency != widget.bill!.currency) updates['currency'] = _currency;
+          if (_category != widget.bill!.category) updates['category'] = _category;
+          if (_merchantCtrl.text.trim() != widget.bill!.merchant)
+            updates['merchant'] = _merchantCtrl.text.trim();
+          if (_descCtrl.text.trim() != widget.bill!.description)
+            updates['description'] = _descCtrl.text.trim();
+          if (_dateCtrl.text.trim() != widget.bill!.billDate)
+            updates['bill_date'] = _dateCtrl.text.trim();
+          if (finalReceiptUrl != null &&
+              finalReceiptUrl != widget.bill!.receiptUrl)
+            updates['receipt_url'] = finalReceiptUrl;
+
+          if (updates.isNotEmpty) {
+            await notifier.updateBill(
+              id: widget.bill!.id,
+              amount: updates['amount'] as double?,
+              currency: updates['currency'] as String?,
+              category: updates['category'] as String?,
+              merchant: updates['merchant'] as String?,
+              description: updates['description'] as String?,
+              billDate: updates['bill_date'] as String?,
+              receiptUrl: updates['receipt_url'] as String?,
+            );
+          }
         }
       } else {
-        await api.createBill({
-          'amount': amount,
-          'currency': _currency,
-          'category': _category,
-          'merchant': _merchantCtrl.text.trim(),
-          'description': _descCtrl.text.trim(),
-          'bill_date': _dateCtrl.text.trim(),
-          'receipt_url': finalReceiptUrl ?? '',
-          'items': itemsJson,
-        });
+        await notifier.createBill(
+          amount: amount,
+          currency: _currency,
+          category: _category,
+          merchant: _merchantCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          billDate: _dateCtrl.text.trim(),
+          receiptUrl: finalReceiptUrl,
+          items: itemsJson,
+        );
       }
 
       if (mounted) Navigator.pop(context, true);
@@ -376,11 +390,12 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Text(_isEdit ? '編集' : '手動記帳'),
+        title: Text(_isEdit ? l10n.edit : l10n.addBill),
         centerTitle: true,
         actions:[
           if (_saving || _uploadingImage)
@@ -398,7 +413,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
               padding: const EdgeInsets.only(right: 8.0),
               child: FilledButton.tonal(
                 onPressed: _save,
-                child: const Text('保存'),
+                child: Text(l10n.save),
               ),
             ),
         ],
@@ -425,15 +440,16 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                   ),
 
                 // 优化点 2：突出核心要素（大字号金额输入）
-                _buildAmountHeader(),
+                _buildAmountHeader(l10n),
                 const SizedBox(height: 24),
 
                 // 优化点 3：基本信息卡片化，摒弃 OutlineInputBorder
-                _buildBasicDetailsCard(),
+                _buildBasicDetailsCard(l10n),
                 const SizedBox(height: 16),
 
                 // 凭证图片区块
                 _ReceiptPicker(
+                  l10n: l10n,
                   pendingFile: _pendingImageFile,
                   receiptUrl: _receiptUrl,
                   uploading: _uploadingImage,
@@ -445,6 +461,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
 
                 // 明细区块
                 _ItemsSection(
+                  l10n: l10n,
                   items: _items,
                   onAdd: _addItem,
                   onEdit: _editItem,
@@ -459,7 +476,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   }
 
   // 构建顶部巨大金额区域
-  Widget _buildAmountHeader() {
+  Widget _buildAmountHeader(AppLocalizations l10n) {
     final hasItems = _items.isNotEmpty;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
@@ -505,16 +522,16 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                   hintText: '0',
                 ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return '金額を入力';
-                  if (double.tryParse(v.trim()) == null) return '無効な金額';
-                  if (double.parse(v.trim()) <= 0) return '0より大きい金額を入力';
+                  if (v == null || v.trim().isEmpty) return l10n.enterAmount;
+                  if (double.tryParse(v.trim()) == null) return l10n.invalidAmount;
+                  if (double.parse(v.trim()) <= 0) return l10n.amountGreaterThanZero;
                   return null;
                 },
               ),
             ),
           ],
         ),
-        if (hasItems)
+          if (hasItems)
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Row(
@@ -523,7 +540,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                 Icon(Icons.auto_awesome, size: 14, color: primaryColor),
                 const SizedBox(width: 4),
                 Text(
-                  '明細合計から自動計算',
+                  l10n.calculatedFromTotal,
                   style: TextStyle(fontSize: 12, color: primaryColor),
                 ),
               ],
@@ -536,7 +553,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   }
 
   // 构建类 iOS / 设置项风格的信息表单卡片
-  Widget _buildBasicDetailsCard() {
+  Widget _buildBasicDetailsCard(AppLocalizations l10n) {
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surface,
@@ -549,14 +566,15 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           // 类别
           _buildFormRow(
             icon: Icons.category_outlined,
-            label: 'カテゴリ',
+            label: l10n.category,
             child: DropdownButtonFormField<String>(
-              value: _category,
+              value: _category.isEmpty ? null : _category,
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
               ),
+              hint: Text(l10n.defaultCategory),
               icon: const Icon(Icons.chevron_right, color: Colors.grey),
               items: kCategoryEmoji.keys
                   .map((c) => DropdownMenuItem(
@@ -571,7 +589,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           // 日期
           _buildFormRow(
             icon: Icons.calendar_today_outlined,
-            label: '日付',
+            label: l10n.date,
             child: InkWell(
               onTap: _pickDate,
               child: Padding(
@@ -595,11 +613,11 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           // 商家
           _buildFormRow(
             icon: Icons.store_outlined,
-            label: '商家',
+            label: l10n.merchant,
             child: TextFormField(
               controller: _merchantCtrl,
-              decoration: const InputDecoration(
-                hintText: '未入力',
+              decoration: InputDecoration(
+                hintText: l10n.notEntered,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
@@ -611,13 +629,13 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           // 备注
           _buildFormRow(
             icon: Icons.notes_outlined,
-            label: '備考',
+            label: l10n.note,
             child: TextFormField(
               controller: _descCtrl,
               maxLines: null, // 支持多行
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                hintText: '追加情報...',
+              decoration: InputDecoration(
+                hintText: l10n.additionalInfo,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
@@ -661,12 +679,14 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
 // ---------------------------------------------------------------------------
 
 class _ItemsSection extends StatelessWidget {
+  final AppLocalizations l10n;
   final List<_EditableBillItem> items;
   final VoidCallback onAdd;
   final ValueChanged<int> onEdit;
   final ValueChanged<int> onRemove;
 
   const _ItemsSection({
+    required this.l10n,
     required this.items,
     required this.onAdd,
     required this.onEdit,
@@ -682,7 +702,7 @@ class _ItemsSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children:[
             Text(
-              '明細 (${items.length}件)',
+              '${l10n.bills} (${items.length})',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -707,7 +727,7 @@ class _ItemsSection extends StatelessWidget {
                   Icon(Icons.receipt_long_outlined,
                       size: 32, color: Colors.grey[400]),
                   const SizedBox(height: 8),
-                  Text('タップして明細を追加',
+                  Text(l10n.addDetail,
                       style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14, fontWeight: FontWeight.w500)),
                 ],
               ),
@@ -729,7 +749,8 @@ class _ItemsSection extends StatelessWidget {
               separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
               itemBuilder: (ctx, index) {
                 final item = items[index];
-                final typeLabel = _typeLabel(item.itemType);
+                final l10n = AppLocalizations.of(ctx)!;
+                final typeLabel = _typeLabel(item.itemType, l10n);
                 final typeColor = _typeColor(item.itemType, ctx);
                 final amount = double.tryParse(item.amountCtrl.text) ?? 0;
                 final qty = double.tryParse(item.qtyCtrl.text) ?? 1;
@@ -765,7 +786,7 @@ class _ItemsSection extends StatelessWidget {
                               Text(
                                 item.nameCtrl.text.isNotEmpty
                                     ? item.nameCtrl.text
-                                    : '(未入力)',
+                                    : l10n.notEnteredYet,
                                 style: const TextStyle(
                                     fontSize: 15, fontWeight: FontWeight.w500),
                               ),
@@ -799,7 +820,7 @@ class _ItemsSection extends StatelessWidget {
                           icon: Icon(Icons.remove_circle_outline,
                               color: Colors.red[300]),
                           onPressed: () => onRemove(index),
-                          tooltip: '削除',
+                          tooltip: l10n.delete,
                         ),
                       ],
                     ),
@@ -820,7 +841,7 @@ class _ItemsSection extends StatelessWidget {
               ),
               onPressed: onAdd,
               icon: const Icon(Icons.add),
-              label: const Text('明細を追加'),
+              label: Text(l10n.addDetail),
             ),
           ),
           const SizedBox(height: 80), // 为底部 FAB / 滚动预留空间
@@ -829,11 +850,11 @@ class _ItemsSection extends StatelessWidget {
     );
   }
 
-  String _typeLabel(String type) {
+  String _typeLabel(String type, AppLocalizations l10n) {
     switch (type) {
-      case 'discount': return '割引';
-      case 'tax':      return '税';
-      default:         return '商品';
+      case 'discount': return l10n.discount;
+      case 'tax':      return l10n.tax;
+      default:         return l10n.product;
     }
   }
 
@@ -896,6 +917,7 @@ class _EditableBillItem {
 // ---------------------------------------------------------------------------
 
 class _ReceiptPicker extends StatelessWidget {
+  final AppLocalizations l10n;
   final File? pendingFile;
   final String receiptUrl;
   final bool uploading;
@@ -904,6 +926,7 @@ class _ReceiptPicker extends StatelessWidget {
   final VoidCallback onRemove;
 
   const _ReceiptPicker({
+    required this.l10n,
     required this.pendingFile,
     required this.receiptUrl,
     required this.uploading,
@@ -920,7 +943,7 @@ class _ReceiptPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children:[
         Text(
-          'レシート・領収書画像',
+          l10n.scanReceipt,
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -979,12 +1002,12 @@ class _ReceiptPicker extends StatelessWidget {
               children:[
                 _PickButton(
                     icon: Icons.camera_alt_outlined,
-                    label: 'カメラ',
+                    label: l10n.camera,
                     onTap: onPickCamera),
                 const SizedBox(width: 48),
                 _PickButton(
                     icon: Icons.photo_library_outlined,
-                    label: 'アルバム',
+                    label: l10n.gallery,
                     onTap: onPickGallery),
               ],
             ),
@@ -998,12 +1021,12 @@ class _ReceiptPicker extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onPickCamera,
                   icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                  label: const Text('再撮影'),
+                  label: Text(l10n.retake),
                 ),
                 TextButton.icon(
                   onPressed: onPickGallery,
                   icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: const Text('選び直す'),
+                  label: Text(l10n.chooseAgain),
                 ),
               ],
             ),

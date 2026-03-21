@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 
@@ -51,9 +52,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   Future<void> _verify() async {
+    final l10n = AppLocalizations.of(context)!;
     final code = _codeCtrl.text.trim();
     if (code.length != 6) {
-      setState(() => _error = '请输入 6 位验证码');
+      setState(() => _error = l10n.enter6DigitCode);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -68,26 +70,27 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     } on AppException catch (e) {
       setState(() { _error = e.message; });
     } catch (_) {
-      setState(() { _error = '验证失败，请检查验证码后重试'; });
+      setState(() { _error = l10n.verificationFailed; });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _resend() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_countdown > 0 || _resending) return;
     setState(() { _resending = true; _error = null; });
     try {
       await ref.read(authApiProvider).resendCode(widget.email);
       _startCountdown();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('验证码已重新发送'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.verificationSent),
           behavior: SnackBarBehavior.floating,
         ));
       }
     } catch (_) {
-      setState(() => _error = '发送失败，请稍后重试');
+      setState(() => _error = l10n.sendFailed);
     } finally {
       if (mounted) setState(() => _resending = false);
     }
@@ -96,10 +99,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(backgroundColor: Colors.transparent, centerTitle: true,
-          title: const Text('验证邮箱')),
+          title: Text(l10n.verifyEmailTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -112,11 +116,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 Icon(Icons.mark_email_unread_outlined,
                     size: 56, color: theme.colorScheme.primary),
                 const SizedBox(height: 20),
-                Text('请查收验证码', textAlign: TextAlign.center,
+                Text(l10n.checkVerificationCode, textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('验证码已发送至\n${widget.email}',
+                Text(l10n.verificationSentTo(widget.email),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey[600], height: 1.5)),
                 const SizedBox(height: 32),
@@ -134,7 +138,6 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // 6位验证码输入框
                 TextFormField(
                   controller: _codeCtrl,
                   keyboardType: TextInputType.number,
@@ -177,8 +180,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                         ? const SizedBox(width: 20, height: 20,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Text('验证并激活',
-                            style: TextStyle(
+                        : Text(l10n.verifyAndActivate,
+                            style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
@@ -187,8 +190,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 TextButton(
                   onPressed: _countdown > 0 ? null : _resend,
                   child: Text(_countdown > 0
-                      ? '重新发送（${_countdown}s）'
-                      : '没有收到？重新发送',
+                      ? l10n.resendCodeWithCountdown(_countdown)
+                      : l10n.didNotReceiveResend,
                       style: const TextStyle(fontSize: 14)),
                 ),
               ],

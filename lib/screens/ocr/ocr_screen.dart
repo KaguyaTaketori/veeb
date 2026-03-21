@@ -4,9 +4,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../api/bills_api.dart';
 import '../../constants/categories.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/bill.dart' show Bill;
+import '../../providers/accounts_provider.dart';
+import '../../providers/bills_provider.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/transactions_provider.dart';
 import '../../widgets/bill_item_row.dart';
 
 class OcrScreen extends ConsumerStatefulWidget {
@@ -21,8 +25,14 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
   bool _loading = false;
   String? _error;
   Bill? _result;
+  String? _uploadedReceiptUrl;
 
-  BillsApi get _billsApi => ref.read(billsApiProvider);
+  int _getCategoryId(String? category) {
+    if (category == null) return 0;
+    final names = kCategoryEmoji.keys.toList();
+    final idx = names.indexOf(category);
+    return idx >= 0 ? idx + 1 : 0;
+  }
 
   Future<void> _pickAndOcr(ImageSource source) async {
     final xfile = await _picker.pickImage(
@@ -41,9 +51,9 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
       final bytes = await File(xfile.path).readAsBytes();
       final base64Str = base64Encode(bytes);
       final mimeType = xfile.mimeType ?? 'image/jpeg';
-      final data = await _billsApi.ocrBill(base64Str, mimeType);
+      final bill = await ref.read(billsProvider.notifier).ocrBill(base64Str, mimeType);
       setState(() {
-        _result = Bill.fromJson(data);
+        _result = bill;
       });
     } catch (e) {
       setState(() {
@@ -69,26 +79,27 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
         // 提示用户先创建账本
         return;
       }
-      await ref.read(transactionsApiProvider).createTransaction({
-        'type':             'expense',
-        'amount':           _result!.amount,
-        'currency_code':    _result!.currency,
-        'exchange_rate':    1.0,
-        'account_id':       accounts.first.id,
-        'category_id':      _getCategoryId(_result!.category),
-        'group_id':         groupId,
-        'note':             _result!.description,
-        'transaction_date': DateTime.now().millisecondsSinceEpoch / 1000.0,
-        'receipt_url':      _uploadedReceiptUrl ?? '',
-        'items':            _result!.items.map((e) => e.toJson()).toList(),
-      });
+      await ref.read(transactionsProvider.notifier).createTransaction(
+        type: 'expense',
+        amount: _result!.amount,
+        currencyCode: _result!.currency,
+        accountId: accounts.first.id,
+        categoryId: _getCategoryId(_result!.category),
+        groupId: groupId,
+        isPrivate: false,
+        note: _result!.description,
+        transactionDate: DateTime.now().millisecondsSinceEpoch / 1000.0,
+        receiptUrl: _uploadedReceiptUrl,
+        items: _result!.items.map((e) => e.toJson()).toList(),
+      );
       setState(() {
         _result = null;
       });
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('記帳が完了しました！'),
+            content: Text(l10n.recordCompleted),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -105,10 +116,11 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50, // 统一的浅灰色背景
       appBar: AppBar(
-        title: const Text('AI 読取', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.scanReceipt, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
@@ -156,12 +168,12 @@ class _PickerView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children:[
-          // 巨大的引导卡片
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
@@ -182,13 +194,13 @@ class _PickerView extends StatelessWidget {
                       size: 64, color: Theme.of(context).colorScheme.primary),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'レシートを自動解析',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.scanReceipt,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'AIが画像を読み取り、金額や明細を\n自動で入力します',
+                  l10n.scanReceiptHint,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.5),
                 ),
@@ -197,7 +209,6 @@ class _PickerView extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           
-          // 操作按钮
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -207,7 +218,7 @@ class _PickerView extends StatelessWidget {
               ),
               onPressed: onCamera,
               icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('カメラで撮影する', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              label: Text(l10n.camera, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 16),
@@ -221,7 +232,7 @@ class _PickerView extends StatelessWidget {
               ),
               onPressed: onGallery,
               icon: const Icon(Icons.photo_library_outlined, color: Colors.black87),
-              label: const Text('アルバムから選ぶ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+              label: Text(l10n.gallery, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
             ),
           ),
           
@@ -249,6 +260,7 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -269,13 +281,13 @@ class _LoadingView extends StatelessWidget {
             child: const CircularProgressIndicator(strokeWidth: 3),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'AIがレシートを解析中...',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Text(
+            l10n.ocrProcessing,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            '数秒かかる場合があります',
+            l10n.loading,
             style: TextStyle(color: Colors.grey[500], fontSize: 13),
           ),
         ],
@@ -299,6 +311,7 @@ class _ConfirmView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final amount = kAmountFormat.format(result.amount);
     final emoji = kCategoryEmoji[result.category] ?? '📦';
 
@@ -308,10 +321,9 @@ class _ConfirmView extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             children:[
-              // 居中大视觉金额提示
               Column(
                 children:[
-                  Text('解析結果', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                  Text(l10n.ocrSuccess, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -341,7 +353,6 @@ class _ConfirmView extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // 基本信息卡片
               Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surface,
@@ -353,19 +364,19 @@ class _ConfirmView extends StatelessWidget {
                   children:[
                     _buildInfoRow(
                       icon: Icons.store_outlined,
-                      label: '商家',
-                      value: result.merchant ?? '不明',
+                      label: l10n.account,
+                      value: result.merchant ?? l10n.notSet,
                     ),
                     const Divider(height: 1, indent: 48),
                     _buildInfoRow(
                       icon: Icons.category_outlined,
-                      label: 'カテゴリ',
-                      value: '$emoji ${result.category ?? 'その他'}',
+                      label: l10n.category,
+                      value: '$emoji ${result.category ?? l10n.category}',
                     ),
                     const Divider(height: 1, indent: 48),
                     _buildInfoRow(
                       icon: Icons.calendar_today_outlined,
-                      label: '日付',
+                      label: l10n.date,
                       value: result.billDate ?? '',
                     ),
                   ],
@@ -373,12 +384,11 @@ class _ConfirmView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 明细卡片
               if (result.items.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.only(left: 4, bottom: 8),
                   child: Text(
-                    '読み取った明細 (${result.items.length}件)',
+                    '${l10n.description} (${result.items.length})',
                     style: const TextStyle(
                         fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
@@ -405,7 +415,6 @@ class _ConfirmView extends StatelessWidget {
           ),
         ),
 
-        // 底部固定的操作按钮区
         Container(
           padding: const EdgeInsets.all(16).copyWith(
               bottom: MediaQuery.of(context).padding.bottom + 16),
@@ -424,13 +433,13 @@ class _ConfirmView extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: onRetake,
-                    child: const Text('撮り直す', style: TextStyle(color: Colors.black87)),
+                    child: Text(l10n.retake, style: const TextStyle(color: Colors.black87)),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                flex: 2, // 让确认保存按钮占据更大比例
+                flex: 2,
                 child: SizedBox(
                   height: 52,
                   child: FilledButton(
@@ -438,7 +447,7 @@ class _ConfirmView extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: onConfirm,
-                    child: const Text('確認して保存', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(l10n.confirm, style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ),

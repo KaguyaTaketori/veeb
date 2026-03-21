@@ -225,9 +225,52 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
   Future<void> search(DateTime month, String keyword) =>
       load(month, refresh: true, keyword: keyword);
 
+  // ── 图片上传 ─────────────────────────────────────────────────────────────
+
+  Future<String?> uploadReceipt({
+    required Uint8List fileBytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    return await _api.uploadReceipt(
+      fileBytes: fileBytes,
+      filename: filename,
+      mimeType: mimeType,
+    );
+  }
+
   // ── 写操作 ────────────────────────────────────────────────────────────────
 
-  Future<int> createTransaction(Map<String, dynamic> data) async {
+  Future<int> createTransaction({
+    required String type,
+    required double amount,
+    required String currencyCode,
+    required int accountId,
+    int? toAccountId,
+    required int categoryId,
+    required int groupId,
+    required bool isPrivate,
+    String? note,
+    required double transactionDate,
+    String? receiptUrl,
+    List<Map<String, dynamic>> items = const [],
+  }) async {
+    final data = {
+      'type': type,
+      'amount': amount,
+      'currency_code': currencyCode,
+      'exchange_rate': 1.0,
+      'account_id': accountId,
+      if (toAccountId != null) 'to_account_id': toAccountId,
+      'category_id': categoryId,
+      'group_id': groupId,
+      'is_private': isPrivate,
+      'note': note,
+      'transaction_date': transactionDate,
+      'receipt_url': receiptUrl ?? '',
+      'items': items,
+    };
+
     if (_isLoggedIn) {
       final txn = await _api.createTransaction(data);
       state = state.copyWith(
@@ -242,19 +285,42 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       );
       return txn.id;
     } else {
-      final groupId = ref.read(currentGroupIdProvider)!;
       final now     = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final localId = await _db.transactionDao.insertTransaction(
         _mapToCompanion(data, groupId, now),
       );
       final month = DateTime.fromMillisecondsSinceEpoch(
-          ((data['transaction_date'] as double) * 1000).toInt());
+          (transactionDate * 1000).toInt());
       await load(month, refresh: true);
       return localId;
     }
   }
 
-  Future<void> updateTransaction(int id, Map<String, dynamic> data) async {
+  Future<void> updateTransaction({
+    required int id,
+    String? type,
+    double? amount,
+    String? currencyCode,
+    int? accountId,
+    int? toAccountId,
+    int? categoryId,
+    bool? isPrivate,
+    String? note,
+    double? transactionDate,
+    String? receiptUrl,
+  }) async {
+    final data = <String, dynamic>{};
+    if (type != null) data['type'] = type;
+    if (amount != null) data['amount'] = amount;
+    if (currencyCode != null) data['currency_code'] = currencyCode;
+    if (accountId != null) data['account_id'] = accountId;
+    if (toAccountId != null) data['to_account_id'] = toAccountId;
+    if (categoryId != null) data['category_id'] = categoryId;
+    if (isPrivate != null) data['is_private'] = isPrivate;
+    if (note != null) data['note'] = note;
+    if (transactionDate != null) data['transaction_date'] = transactionDate;
+    if (receiptUrl != null) data['receipt_url'] = receiptUrl;
+
     if (_isLoggedIn) {
       final txn = await _api.patchTransaction(id, data);
       final list  = state.transactions;

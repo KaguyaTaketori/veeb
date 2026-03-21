@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../api/transactions_api.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/transaction.dart';
 import '../../providers/accounts_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/group_provider.dart';
+import '../../providers/transactions_provider.dart';
 import '../../utils/currency.dart';
 
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
@@ -80,10 +81,11 @@ class _AddEditTransactionScreenState
   // ── 类型 Tab ───────────────────────────────────────────────────────────────
 
   Widget _buildTypeSelector() {
-    const types = [
-      ('expense',  '支出', Colors.red),
-      ('income',   '收入', Colors.green),
-      ('transfer', '转账', Colors.blue),
+    final l10n = AppLocalizations.of(context)!;
+    final types = [
+      ('expense',  l10n.expense, Colors.red),
+      ('income',   l10n.income, Colors.green),
+      ('transfer', l10n.transfer, Colors.blue),
     ];
     return Row(
       children: types.map((t) {
@@ -92,7 +94,7 @@ class _AddEditTransactionScreenState
           child: GestureDetector(
             onTap: () => setState(() {
               _type = t.$1;
-              _categoryId = null; // 切换类型清空分类
+              _categoryId = null;
             }),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -123,13 +125,14 @@ class _AddEditTransactionScreenState
   // ── 分类选择 ──────────────────────────────────────────────────────────────
 
   Widget _buildCategoryPicker(List<Category> categories) {
+    final l10n = AppLocalizations.of(context)!;
     final filtered = categories
         .where((c) => c.type == _type || c.type == 'both')
         .toList();
     final selected = filtered.firstWhere(
       (c) => c.id == _categoryId,
       orElse: () => filtered.isEmpty
-          ? Category(id: -1, name: '未選択', icon: '❓',
+          ? Category(id: -1, name: l10n.pleaseSelect, icon: '❓',
                      color: '#95A5A6', type: 'both',
                      isSystem: false, sortOrder: 0)
           : filtered.first,
@@ -139,7 +142,7 @@ class _AddEditTransactionScreenState
       onTap: () => _showCategorySheet(filtered),
       child: _FormRow(
         icon: Icons.category_outlined,
-        label: 'カテゴリ',
+        label: l10n.category,
         child: Row(
           children: [
             Text(selected.icon, style: const TextStyle(fontSize: 18)),
@@ -176,6 +179,7 @@ class _AddEditTransactionScreenState
   Widget _buildAccountDropdown(
       List<dynamic> accounts, int? value, String label,
       ValueChanged<int?> onChanged) {
+    final l10n = AppLocalizations.of(context)!;
     return _FormRow(
       icon: Icons.account_balance_wallet_outlined,
       label: label,
@@ -192,7 +196,7 @@ class _AddEditTransactionScreenState
                 ))
             .toList(),
         onChanged: onChanged,
-        validator: (_) => value == null ? '口座を選択してください' : null,
+        validator: (_) => value == null ? l10n.required : null,
       ),
     );
   }
@@ -218,10 +222,10 @@ class _AddEditTransactionScreenState
       final mime = filename.toLowerCase().endsWith('.png')
           ? 'image/png'
           : 'image/jpeg';
-      return await ref.read(transactionsApiProvider).uploadReceipt(
+      return await ref.read(transactionsProvider.notifier).uploadReceipt(
             fileBytes: bytes, filename: filename, mimeType: mime);
     } catch (e) {
-      setState(() => _error = '画像アップロード失敗: $e');
+      setState(() => _error = AppLocalizations.of(context)!.operationFailed(e.toString()));
       return null;
     } finally {
       setState(() => _uploadingImg = false);
@@ -231,13 +235,14 @@ class _AddEditTransactionScreenState
   // ── 保存 ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
     if (_categoryId == null) {
-      setState(() => _error = 'カテゴリを選択してください');
+      setState(() => _error = l10n.required);
       return;
     }
     if (_type == 'transfer' && _toAccountId == null) {
-      setState(() => _error = '振替先口座を選択してください');
+      setState(() => _error = l10n.required);
       return;
     }
 
@@ -250,43 +255,38 @@ class _AddEditTransactionScreenState
       final groupId = ref.read(currentGroupIdProvider)!;
       final amount  = double.parse(_amountCtrl.text.trim());
       final txnDate = _txnDate.millisecondsSinceEpoch / 1000.0;
+      final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
 
-      final api = ref.read(transactionsApiProvider);
+      final notifier = ref.read(transactionsProvider.notifier);
 
       if (_isEdit) {
-        await api.patchTransaction(widget.transaction!.id, {
-          'type':             _type,
-          'amount':           amount,
-          'currency_code':    _currencyCode,
-          'account_id':       _accountId,
-          if (_toAccountId != null) 'to_account_id': _toAccountId,
-          'category_id':      _categoryId,
-          'is_private':       _isPrivate,
-          'note':             _noteCtrl.text.trim().isEmpty
-              ? null
-              : _noteCtrl.text.trim(),
-          'transaction_date': txnDate,
-          if (receiptUrl != null && receiptUrl.isNotEmpty)
-            'receipt_url': receiptUrl,
-        });
+        await notifier.updateTransaction(
+          id: widget.transaction!.id,
+          type: _type,
+          amount: amount,
+          currencyCode: _currencyCode,
+          accountId: _accountId,
+          toAccountId: _toAccountId,
+          categoryId: _categoryId,
+          isPrivate: _isPrivate,
+          note: note,
+          transactionDate: txnDate,
+          receiptUrl: receiptUrl,
+        );
       } else {
-        await api.createTransaction({
-          'type':             _type,
-          'amount':           amount,
-          'currency_code':    _currencyCode,
-          'exchange_rate':    1.0,
-          'account_id':       _accountId,
-          if (_toAccountId != null) 'to_account_id': _toAccountId,
-          'category_id':      _categoryId,
-          'group_id':         groupId,
-          'is_private':       _isPrivate,
-          'note':             _noteCtrl.text.trim().isEmpty
-              ? null
-              : _noteCtrl.text.trim(),
-          'transaction_date': txnDate,
-          'receipt_url':      receiptUrl ?? '',
-          'items':            [],
-        });
+        await notifier.createTransaction(
+          type: _type,
+          amount: amount,
+          currencyCode: _currencyCode,
+          accountId: _accountId!,
+          toAccountId: _toAccountId,
+          categoryId: _categoryId!,
+          groupId: groupId,
+          isPrivate: _isPrivate,
+          note: note,
+          transactionDate: txnDate,
+          receiptUrl: receiptUrl,
+        );
       }
 
       if (mounted) Navigator.pop(context, true);
@@ -322,11 +322,13 @@ class _AddEditTransactionScreenState
           () => setState(() => _accountId = accounts.first.id));
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Text(_isEdit ? '編集' : '新規記録'),
+        title: Text(_isEdit ? l10n.edit : l10n.addTransaction),
         centerTitle: true,
         actions: [
           if (_saving || _uploadingImg)
@@ -342,7 +344,7 @@ class _AddEditTransactionScreenState
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilledButton.tonal(
-                  onPressed: _save, child: const Text('保存')),
+                  onPressed: _save, child: Text(l10n.save)),
             ),
         ],
       ),
@@ -387,22 +389,22 @@ class _AddEditTransactionScreenState
                       // 分类
                       categoriesAsync.when(
                         data: (cats) => _buildCategoryPicker(cats),
-                        loading: () => const ListTile(
-                            title: Text('カテゴリ読み込み中...')),
+                        loading: () => ListTile(
+                            title: Text(l10n.categoryLoading)),
                         error: (e, _) =>
-                            ListTile(title: Text('エラー: $e')),
+                            ListTile(title: Text(l10n.categoryLoadError(e.toString()))),
                       ),
                       const Divider(height: 1, indent: 48),
 
                       // 账户
-                      _buildAccountDropdown(accounts, _accountId, '口座',
+                      _buildAccountDropdown(accounts, _accountId, l10n.account,
                           (v) => setState(() => _accountId = v)),
 
                       // 转账目标账户
                       if (_type == 'transfer') ...[
                         const Divider(height: 1, indent: 48),
                         _buildAccountDropdown(accounts, _toAccountId,
-                            '振替先',
+                            l10n.to,
                             (v) => setState(() => _toAccountId = v)),
                       ],
 
@@ -413,7 +415,7 @@ class _AddEditTransactionScreenState
                         onTap: _pickDate,
                         child: _FormRow(
                           icon: Icons.calendar_today_outlined,
-                          label: '日付',
+                          label: l10n.date,
                           child: Row(
                             children: [
                               Expanded(
@@ -433,12 +435,12 @@ class _AddEditTransactionScreenState
                       // 备注
                       _FormRow(
                         icon: Icons.notes_outlined,
-                        label: '備考',
+                        label: l10n.note,
                         child: TextFormField(
                           controller: _noteCtrl,
                           maxLines: null,
-                          decoration: const InputDecoration(
-                            hintText: 'メモ...',
+                          decoration: InputDecoration(
+                            hintText: l10n.note,
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.zero,
                             isDense: true,
@@ -451,9 +453,9 @@ class _AddEditTransactionScreenState
                       SwitchListTile(
                         secondary: Icon(Icons.lock_outline,
                             color: Colors.grey[500]),
-                        title: const Text('プライベート'),
+                        title: Text(l10n.private),
                         subtitle: Text(
-                          'グループメンバーに非表示',
+                          l10n.shareTransactions,
                           style: TextStyle(
                               fontSize: 12, color: Colors.grey[500]),
                         ),
@@ -523,9 +525,10 @@ class _AddEditTransactionScreenState
               hintText: '0',
             ),
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return '金額を入力';
-              if (double.tryParse(v.trim()) == null) return '無効';
-              if (double.parse(v.trim()) <= 0) return '0より大きく';
+              final l10n = AppLocalizations.of(context)!;
+              if (v == null || v.trim().isEmpty) return l10n.required;
+              if (double.tryParse(v.trim()) == null) return l10n.error;
+              if (double.parse(v.trim()) <= 0) return l10n.error;
               return null;
             },
           ),
@@ -582,7 +585,9 @@ class _CategorySheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 8),
@@ -593,9 +598,9 @@ class _CategorySheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 16),
-          const Text('カテゴリを選択',
+          Text(l10n.category,
               style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Flexible(
             child: GridView.builder(
@@ -655,6 +660,7 @@ class _CategorySheet extends StatelessWidget {
           const SizedBox(height: 16),
         ],
       );
+  }
 
   Color _parseColor(String? hex) {
     if (hex == null) return Colors.grey;
@@ -687,10 +693,12 @@ class _ReceiptSection extends StatelessWidget {
   bool get _hasImage => pendingFile != null || receiptUrl.isNotEmpty;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('レシート',
+          Text(l10n.scanReceipt,
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -750,18 +758,19 @@ class _ReceiptSection extends StatelessWidget {
                 children: [
                   _PickBtn(
                       icon: Icons.camera_alt_outlined,
-                      label: 'カメラ',
+                      label: l10n.camera,
                       onTap: onPickCamera),
                   const SizedBox(width: 48),
                   _PickBtn(
                       icon: Icons.photo_library_outlined,
-                      label: 'アルバム',
+                      label: l10n.gallery,
                       onTap: onPickGallery),
                 ],
               ),
             ),
         ],
       );
+  }
 }
 
 class _PickBtn extends StatelessWidget {

@@ -1,0 +1,529 @@
+{
+  "@@locale": "zh",
+  "appName": "Vee",
+  "transactions": "流水",
+  "record": "记录",
+  "stats": "统计",
+  "profile": "我的",
+  "admin": "管理",
+  "loading": "加载中...",
+  "error": "错误",
+  "retry": "重试",
+  "cancel": "取消",
+  "confirm": "确认",
+  "save": "保存",
+  "delete": "删除",
+  "edit": "编辑",
+  "add": "添加",
+  "search": "搜索",
+  "noData": "暂无数据",
+  "login": "登录",
+  "logout": "退出登录",
+  "register": "注册",
+  "email": "邮箱",
+  "password": "密码",
+  "confirmPassword": "确认密码",
+  "forgotPassword": "忘记密码？",
+  "dontHaveAccount": "还没有账号？",
+  "alreadyHaveAccount": "已有账号？",
+  "signUp": "注册",
+  "signIn": "登录",
+  "income": "收入",
+  "expense": "支出",
+  "transfer": "转账",
+  "amount": "金额",
+  "category": "分类",
+  "account": "账户",
+  "date": "日期",
+  "note": "备注",
+  "description": "描述",
+  "total": "合计",
+  "balance": "余额",
+  "submit": "提交",
+  "success": "成功",
+  "failed": "失败",
+  "pleaseSelect": "请选择",
+  "required": "必填",
+  "invalidEmail": "邮箱地址无效",
+  "passwordTooShort": "密码至少6位",
+  "passwordsDoNotMatch": "两次密码不一致",
+  "settings": "设置",
+  "language": "语言",
+  "languageSettings": "语言设置",
+  "currency": "货币",
+  "theme": "主题",
+  "lightTheme": "浅色",
+  "darkTheme": "深色",
+  "systemTheme": "跟随系统",
+  "camera": "相机",
+  "gallery": "相册",
+  "scanReceipt": "扫描票据",
+  "scanReceiptHint": "拍照或选择图片\n自动识别收据信息",
+  "ocrProcessing": "正在识别图片...",
+  "ocrSuccess": "文字识别成功",
+  "ocrFailed": "文字识别失败",
+  "thisMonth": "本月",
+  "lastMonth": "上月",
+  "thisYear": "今年",
+  "custom": "自定义",
+  "from": "从",
+  "to": "至",
+  "today": "今天",
+  "yesterday": "昨天",
+  "thisWeek": "本周",
+  "categories": "分类",
+  "accounts": "账户",
+  "createAccount": "创建账户",
+  "accountName": "账户名称",
+  "initialBalance": "初始余额",
+  "createCategory": "创建分类",
+  "categoryName": "分类名称",
+  "icon": "图标",
+  "color": "颜色",
+  "parentCategory": "父分类",
+  "subcategories": "子分类",
+  "bills": "账单",
+  "recurring": "定期",
+  "addBill": "添加账单",
+  "billName": "账单名称",
+  "billAmount": "金额",
+  "billDate": "日期",
+  "frequency": "频率",
+  "daily": "每天",
+  "weekly": "每周",
+  "monthly": "每月",
+  "yearly": "每年",
+  "nextBill": "下次账单",
+  "paid": "已付",
+  "unpaid": "未付",
+  "overdue": "逾期",
+  "dueSoon": "即将到期",
+  "group": "分组",
+  "groups": "分组",
+  "createGroup": "创建分组",
+  "groupName": "分组名称",
+  "members": "成员",
+  "inviteMember": "邀请成员",
+  "removeMember": "移除成员",
+  "leaveGroup": "离开分组",
+  "deleteGroup": "删除分组",
+  "shareTransactions": "共享账单",
+  "syncStatus": "同步状态",
+  "synced": "已同步",
+  "notSynced": "未同步",
+  "syncing": "同步中...",
+  "syncNow": "立即同步",
+  "lastSynced": "上次同步: {time}",
+  "@lastSynced": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDelete": "确定要删除吗？",
+  "deleteConfirm": "删除确认",
+  "deleteThisRecord": "确定要删除这条记录吗？",
+  "yes": "是",
+  "no": "否",
+  "ok": "好的",
+  "done": "完成",
+  "close": "关闭",
+  "back": "返回",
+  "next": "下一步",
+  "finish": "完成",
+  "skip": "跳过",
+  "continueText": "继续",
+  "welcome": "欢迎",
+  "welcomeBack": "欢迎回来",
+  "getStarted": "开始使用",
+  "username": "用户名",
+  "fullName": "姓名",
+  "phone": "手机",
+  "changePassword": "修改密码",
+  "currentPassword": "当前密码",
+  "newPassword": "新密码",
+  "confirmNewPassword": "确认新密码",
+  "oldPassword": "旧密码",
+  "passwordChanged": "密码修改成功",
+  "changePhoto": "更换头像",
+  "removePhoto": "移除头像",
+  "takePhoto": "拍照",
+  "chooseFromLibrary": "从相册选择",
+  "editProfile": "编辑资料",
+  "profileUpdated": "资料更新成功",
+  "emailVerified": "邮箱已验证",
+  "emailNotVerified": "邮箱未验证",
+  "verifyEmail": "验证邮箱",
+  "verificationEmailSent": "验证邮件已发送",
+  "verificationSent": "验证码已重新发送",
+  "resendVerification": "重新发送验证邮件",
+  "resetPassword": "重置密码",
+  "resetPasswordTitle": "重置密码",
+  "resetPasswordSuccess": "密码重置成功，请重新登录",
+  "resetPasswordSent": "重置密码邮件已发送",
+  "noTransactions": "暂无账单",
+  "addTransaction": "添加账单",
+  "editTransaction": "编辑账单",
+  "deleteTransaction": "删除账单",
+  "transactionAdded": "账单添加成功",
+  "transactionUpdated": "账单更新成功",
+  "transactionDeleted": "账单删除成功",
+  "incomeAmount": "+{amount}",
+  "@incomeAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseAmount": "-{amount}",
+  "@expenseAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "totalIncome": "总收入",
+  "totalExpense": "总支出",
+  "netBalance": "净余额",
+  "surplus": "盈余",
+  "deficit": "赤字",
+  "noBills": "暂无账单",
+  "billPaid": "已付账单",
+  "billUnpaid": "未付账单",
+  "markAsPaid": "标记为已付",
+  "markAsUnpaid": "标记为未付",
+  "remindMe": "提醒我",
+  "reminderSet": "提醒已设置",
+  "noGroups": "暂无分组",
+  "joinGroup": "加入分组",
+  "createNewGroup": "创建新分组",
+  "inviteCode": "邀请码",
+  "enterInviteCode": "输入邀请码",
+  "copyInviteCode": "复制邀请码",
+  "inviteCodeCopied": "邀请码已复制到剪贴板",
+  "share": "分享",
+  "shareVia": "分享至",
+  "permissions": "权限",
+  "cameraPermission": "相机权限",
+  "storagePermission": "存储权限",
+  "notificationPermission": "通知权限",
+  "grantPermission": "授予权限",
+  "permissionDenied": "权限被拒绝",
+  "permissionRequired": "需要权限",
+  "about": "关于",
+  "version": "版本",
+  "privacyPolicy": "隐私政策",
+  "termsOfService": "服务条款",
+  "contactUs": "联系我们",
+  "rateApp": "评价应用",
+  "logoutConfirm": "确定要退出登录吗？",
+  "unsavedChanges": "您有未保存的更改。确定放弃吗？",
+  "discard": "放弃",
+  "keepEditing": "继续编辑",
+  "errorOccurred": "发生错误",
+  "tryAgain": "重试",
+  "networkError": "网络错误，请检查您的网络连接。",
+  "serverError": "服务器错误，请稍后重试。",
+  "unknownError": "发生未知错误",
+  "unauthorized": "未授权，请重新登录。",
+  "forbidden": "访问被拒绝",
+  "notFound": "未找到",
+  "tooManyRequests": "请求过于频繁，请稍后再试。",
+  "maintenance": "系统维护中，请稍后再试。",
+  "guestMode": "访客模式",
+  "dataStoredLocally": "数据仅保存在此设备上",
+  "loginBenefits": "登录的好处",
+  "syncDataMultipleDevices": "多设备同步数据",
+  "cloudBackup": "云端备份更安心",
+  "shareWithFamily": "与家人或伴侣共享账务",
+  "aiUsageManagement": "AI用量管理",
+  "loginOrRegister": "登录 / 注册",
+  "localData": "本地数据",
+  "recordCount": "记录数",
+  "cloudSync": "云端同步",
+  "notSet": "未设置",
+  "myPage": "我的",
+  "statistics": "统计",
+  "accountSettings": "账户",
+  "systemSettings": "系统",
+  "aboutVee": "关于Vee",
+  "seeMore": "查看更多",
+  "loadMore": "加载更多",
+  "loadMoreData": "加载更多数据",
+  "cancelDelete": "取消",
+  "deleting": "删除",
+  "recordCompleted": "记账完成！",
+  "categoryLoading": "正在加载分类...",
+  "categoryLoadError": "错误: {error}",
+  "@categoryLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "private": "私密",
+  "product": "商品",
+  "discount": "折扣",
+  "tax": "税费",
+  "retake": "重拍",
+  "chooseAgain": "重新选择",
+  "addDetail": "添加明细",
+  "cancelConfirm": "取消",
+  "confirmConfirm": "确认",
+  "layoutUpdated": "布局已更新",
+  "updateFailed": "更新失败: {error}",
+  "@updateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "permissionUpdated": "权限已更新，已实时推送至用户设备",
+  "operationFailed": "操作失败: {error}",
+  "@operationFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "changePasswordTitle": "修改密码",
+  "editProfileTitle": "编辑资料",
+  "createAccountTitle": "创建账号",
+  "verifyEmailTitle": "验证邮箱",
+  "removeThis": "删除此项",
+  "cannotUndo": "此操作无法撤销。",
+  "selectMonthYear": "选择月份",
+  "month": "月",
+  "year": "年",
+  "monthReset": "{date}重置",
+  "@monthReset": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "used": "已使用{count}次",
+  "@used": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "totalQuota": "共{count}次/月",
+  "@totalQuota": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiUsageQuota": "AI使用配额",
+  "unlimited": "无限制",
+  "telegramBind": "Telegram绑定",
+  "bound": "已绑定",
+  "unbound": "未绑定",
+  "boundWithTelegram": "已绑定Telegram #{id}",
+  "@boundWithTelegram": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "quotaSharedAfterBind": "绑定后Bot和App共享同一个AI配额，统一管理更方便",
+  "bindTelegram": "绑定Telegram",
+  "bindTelegramDesc": "绑定后Bot下载/识别与App共享同一个AI配额",
+  "verificationCode": "验证码",
+  "validFor10Minutes": "10分钟内有效",
+  "sendBindCommand": "前往Telegram Bot，发送：\n/bind {code}",
+  "@sendBindCommand": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshCode": "刷新验证码",
+  "applyBindCode": "申请绑定码",
+  "unbind": "解除绑定",
+  "telegramConnection": "Telegram联动",
+  "detail": "详情",
+  "receiptImages": "收据图片",
+  "itemsCount": "明细 ({count}件)",
+  "uncategorized": "未分类",
+  "fromSource": "来自 {source}",
+  "merchant": "商户",
+  "notEntered": "未输入",
+  "unknown": "不明",
+  "itemsTotal": "明细合计",
+  "totalRecords": "{count} 条记录",
+  "noRecords": "暂无记录",
+  "tryDifferentKeyword": "试试其他关键词",
+  "adminConsole": "管理控制台",
+  "dataDashboard": "数据看板",
+  "systemConfig": "系统配置",
+  "userManagement": "用户管理",
+  "userOverview": "用户概览",
+  "totalUsers": "总用户数",
+  "activeUsers": "活跃用户",
+  "adminCount": "管理员数",
+  "wsOnline": "WS在线",
+  "billOverview": "账单概览",
+  "totalBills": "账单总数",
+  "billsThisMonth": "本月账单",
+  "aiUsageThisMonth": "AI本月使用量",
+  "aiUsageCountTimes": "{count}次",
+  "wsConnections": "WS连接数",
+  "configValue": "配置值",
+  "empty": "（空）",
+  "searchEmailUsername": "搜索邮箱 / 用户名 / 昵称",
+  "all": "全部",
+  "banned": "已封禁",
+  "configPermission": "权限配置",
+  "botText": "Bot文字",
+  "botReceipt": "Bot图片",
+  "botVoice": "Bot语音",
+  "botDownload": "Bot下载",
+  "appOcr": "App OCR",
+  "appExport": "App导出",
+  "appUpload": "App上传",
+  "botTextLabel": "Bot文字记账",
+  "botReceiptLabel": "Bot图片识别",
+  "botVoiceLabel": "Bot语音记账",
+  "botDownloadLabel": "Bot下载功能",
+  "appOcrLabel": "App OCR识别",
+  "appExportLabel": "App数据导出",
+  "appUploadLabel": "App图片上传",
+  "selectAll": "全部勾选",
+  "clearAll": "清空全部",
+  "savePermission": "保存权限（{count}项）",
+  "registrationIp": "注册IP: {ip}",
+  "lastIp": "最后IP: {ip}",
+  "noPermission": "无权限",
+  "itemsLabel": "项目",
+  "category": "分类",
+  "date": "日期",
+  "productName": "商品名",
+  "quantity": "数量",
+  "enterAmount": "输入金额",
+  "invalidAmount": "无效金额",
+  "amountGreaterThanZero": "请输入大于0的金额",
+  "calculatedFromTotal": "从明细合计自动计算",
+  "enterProductName": "请输入商品名",
+  "invalidAmountForItem": "第{num}项金额无效",
+  "additionalInfo": "附加信息...",
+  "records": "{count} 件",
+  "expenseTotal": "支出合计",
+  "smartBillAssistant": "智能账单助手",
+  "usernameOrEmail": "用户名或邮箱",
+  "enterUsernameOrEmail": "请输入用户名或邮箱",
+  "enterPassword": "请输入密码",
+  "defaultCategory": "其他",
+  "imageUploadFailed": "图片上传失败：{error}",
+  "@imageUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "notEnteredYet": "（未输入）",
+  "monthDayFormat": "{month}/{day}",
+  "@monthDayFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "quotaResetsOn": "{date}重置",
+  "@quotaResetsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "yearMonthFormat": "{year}年{month}月",
+  "@yearMonthFormat": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "monthDayJapaneseFormat": "{month}月{day}日",
+  "@monthDayJapaneseFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "enterEmail": "输入邮箱",
+  "sendFailed": "发送失败",
+  "enter6DigitCode": "输入6位验证码",
+  "passwordMinLength": "密码至少6位",
+  "verificationFailed": "验证失败",
+  "enterRegisteredEmail": "输入注册邮箱",
+  "willSendResetCode": "将发送重置验证码",
+  "sendVerificationCode": "发送验证码",
+  "setNewPassword": "设置新密码",
+  "verificationSentTo": "验证码已发送到 {email}",
+  "@verificationSentTo": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "sixDigitCode": "6位验证码",
+  "confirmReset": "确认重置",
+  "resendCodeWithCountdown": "{seconds}秒后重新发送",
+  "@resendCodeWithCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "重新发送",
+  "registerFailed": "注册失败",
+  "usernameFormat": "用户名格式",
+  "usernameMinLength": "用户名至少3位",
+  "usernameInvalid": "无效的用户名",
+  "enterValidEmail": "请输入有效邮箱",
+  "passwordNeedsNumber": "密码必须包含数字",
+  "passwordNeedsLetter": "密码必须包含字母",
+  "registerAgree": "我同意服务条款",
+  "checkVerificationCode": "验证验证码",
+  "verifyAndActivate": "验证并激活",
+  "didNotReceiveResend": "没收到？重新发送",
+  "changePasswordFailed": "修改密码失败",
+  "nicknameRequired": "昵称为必填项",
+  "saveFailed": "保存失败",
+  "usernameEmailCannotChange": "用户名和邮箱无法修改",
+  "noPermission": "暂无权限",
+  "contactAdmin": "请联系管理员",
+  "noAiPermission": "暂无AI识别权限",
+  "contactAdminForOcr": "请联系管理员开通「App OCR识别」功能",
+  "noUploadPermission": "暂无上传凭证图片的权限",
+  "myLedger": "我的账本"
+}

@@ -25,10 +25,10 @@ class GroupDao extends DatabaseAccessor<AppDatabase> with _$GroupDaoMixin {
         ),
       );
 
-  Future<GroupData?> getById(int id) =>
+  Future<Group?> getById(int id) =>
       (select(groups)..where((g) => g.id.equals(id))).getSingleOrNull();
 
-  Future<GroupData?> getByRemoteId(int remoteId) =>
+  Future<Group?> getByRemoteId(int remoteId) =>
       (select(groups)..where((g) => g.remoteId.equals(remoteId))).getSingleOrNull();
 
   Future<void> updateGroup(int id, GroupsCompanion entry) =>

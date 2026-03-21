@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../constants/categories.dart';
+import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../models/transaction.dart';
 import '../../providers/transactions_provider.dart';
@@ -22,7 +22,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     with MonthSelectorMixin {
   final _searchCtrl = TextEditingController();
   bool   _showSearch  = false;
-  String? _typeFilter; // null=全部 / income / expense
+  String? _typeFilter;
 
   @override
   void initState() {
@@ -64,7 +64,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     final state   = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
-    // 尚未加入账本时引导创建
     if (groupId == null && !ref.watch(groupProvider).loading) {
       return _NoGroupPlaceholder(
         onCreateGroup: () =>
@@ -116,9 +115,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── AppBar ───────────────────────────────────────────────────────────────
-
   AppBar _buildAppBar(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppBar(
       backgroundColor: Colors.transparent,
       scrolledUnderElevation: 0,
@@ -128,7 +126,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               controller: _searchCtrl,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '备注・分类で検索',
+                hintText: '${l10n.note}・${l10n.category}${l10n.search}',
                 filled: true,
                 fillColor: Theme.of(context).colorScheme.surface,
                 contentPadding:
@@ -147,7 +145,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   .read(transactionsProvider.notifier)
                   .search(selectedMonth, v.trim()),
             )
-          : const Text('流水', style: TextStyle(fontWeight: FontWeight.bold)),
+          : Text(l10n.transactions, style: const TextStyle(fontWeight: FontWeight.bold)),
       actions: _showSearch
           ? []
           : [
@@ -160,9 +158,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── 月度汇总卡片 ──────────────────────────────────────────────────────────
-
   Widget _buildSummaryCard(BuildContext context, TransactionsState state) {
+    final l10n = AppLocalizations.of(context)!;
     final expenseStr = formatAmount(state.monthExpense, 'JPY');
     final incomeStr  = formatAmount(state.monthIncome,  'JPY');
     final netStr     = formatAmount(
@@ -176,13 +173,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // 月份选择器
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -193,7 +189,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                         backgroundColor: Colors.grey.shade100),
                   ),
                   Text(
-                    '${selectedMonth.year}年 ${selectedMonth.month}月',
+                    l10n.yearMonthFormat(selectedMonth.year, selectedMonth.month),
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
@@ -206,22 +202,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 ],
               ),
               const SizedBox(height: 12),
-              // 支出 / 收入
               Row(
                 children: [
-                  Expanded(child: _SummaryCell(label: '支出', value: '¥$expenseStr',
+                  Expanded(child: _SummaryCell(label: l10n.expense, value: '¥$expenseStr',
                       color: Colors.red.shade400)),
                   Container(width: 1, height: 40, color: Colors.grey.shade200),
-                  Expanded(child: _SummaryCell(label: '收入', value: '¥$incomeStr',
+                  Expanded(child: _SummaryCell(label: l10n.income, value: '¥$incomeStr',
                       color: Colors.green.shade600)),
                 ],
               ),
               const Divider(height: 20),
-              // 结余
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('结余 ', style: TextStyle(
+                  Text('${l10n.balance} ', style: TextStyle(
                       fontSize: 13, color: Colors.grey[600])),
                   Text(
                     '${isPositive ? "+" : "-"}¥$netStr',
@@ -241,11 +235,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                       color: Theme.of(context)
                           .colorScheme
                           .primaryContainer
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '${state.monthCount} 件',
+                      '${state.monthCount} ${l10n.recordCount}',
                       style: TextStyle(
                           fontSize: 11,
                           color:
@@ -262,14 +256,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── 类型筛选 Tab ──────────────────────────────────────────────────────────
-
   Widget _buildTypeFilter() {
+    final l10n = AppLocalizations.of(context)!;
     final filters = [
-      (null,       '全部'),
-      ('expense',  '支出'),
-      ('income',   '收入'),
-      ('transfer', '转账'),
+      (null,       l10n.total),
+      ('expense',  l10n.expense),
+      ('income',   l10n.income),
+      ('transfer', l10n.transfer),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -293,7 +286,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                         ? Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.12)
+                            .withValues(alpha: 0.12)
                         : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -322,9 +315,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── 列表 ──────────────────────────────────────────────────────────────────
-
   Widget _buildList(TransactionsState state) {
+    final l10n = AppLocalizations.of(context)!;
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 80, top: 4),
       itemCount:
@@ -338,7 +330,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               onPressed: () => ref
                   .read(transactionsProvider.notifier)
                   .loadMore(selectedMonth),
-              child: const Text('もっと見る'),
+              child: Text(l10n.loadMore),
             ),
           );
         }
@@ -360,18 +352,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           confirmDismiss: (_) => showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('削除確認'),
-              content: const Text('この記録を削除しますか？'),
+              title: Text(l10n.deleteConfirm),
+              content: Text(l10n.deleteThisRecord),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('キャンセル'),
+                  child: Text(l10n.cancel),
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
                       backgroundColor: Colors.red),
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('削除'),
+                  child: Text(l10n.delete),
                 ),
               ],
             ),
@@ -400,7 +392,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  Widget _buildEmpty() => SingleChildScrollView(
+  Widget _buildEmpty() {
+    final l10n = AppLocalizations.of(context)!;
+    return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Center(
           child: Padding(
@@ -411,15 +405,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 Icon(Icons.receipt_long_outlined,
                     size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
-                Text('記録がありません',
+                Text(l10n.noTransactions,
                     style: TextStyle(color: Colors.grey[500])),
               ],
             ),
           ),
         ),
       );
+  }
 
-  Widget _buildError(String error) => Center(
+  Widget _buildError(String error) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -429,15 +426,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
             const SizedBox(height: 16),
             FilledButton.tonal(
               onPressed: () => _load(refresh: true),
-              child: const Text('再試行'),
+              child: Text(l10n.retry),
             ),
           ],
         ),
       );
+  }
 }
-
-
-// ── 汇总单元格 ────────────────────────────────────────────────────────────────
 
 class _SummaryCell extends StatelessWidget {
   final String label;
@@ -465,9 +460,6 @@ class _SummaryCell extends StatelessWidget {
       );
 }
 
-
-// ── 流水列表 Tile ─────────────────────────────────────────────────────────────
-
 class _TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback onTap;
@@ -479,6 +471,7 @@ class _TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final t       = transaction;
     final icon    = t.categoryIcon ?? '📦';
     final color   = _parseColor(t.categoryColor);
@@ -496,7 +489,7 @@ class _TransactionTile extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       margin: EdgeInsets.zero,
       child: InkWell(
@@ -506,25 +499,23 @@ class _TransactionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // 分类图标
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(icon, style: const TextStyle(fontSize: 20)),
               ),
               const SizedBox(width: 12),
-              // 分类名 + 备注 + 日期
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t.categoryName ?? '未分類',
+                      t.categoryName ?? l10n.pleaseSelect,
                       style: const TextStyle(
                           fontWeight: FontWeight.w600, fontSize: 15),
                     ),
@@ -540,14 +531,13 @@ class _TransactionTile extends StatelessWidget {
                     ],
                     const SizedBox(height: 2),
                     Text(
-                      _formatDate(t.date),
+                      l10n.monthDayJapaneseFormat(t.date.month, t.date.day),
                       style:
                           TextStyle(fontSize: 11, color: Colors.grey[400]),
                     ),
                   ],
                 ),
               ),
-              // 金额
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -582,20 +572,16 @@ class _TransactionTile extends StatelessWidget {
       return Colors.grey;
     }
   }
-
-  String _formatDate(DateTime dt) =>
-      '${dt.month}月${dt.day}日';
 }
-
-
-// ── 未加入账本占位页 ──────────────────────────────────────────────────────────
 
 class _NoGroupPlaceholder extends StatelessWidget {
   final VoidCallback onCreateGroup;
   const _NoGroupPlaceholder({required this.onCreateGroup});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
         backgroundColor: Colors.grey.shade50,
         body: Center(
           child: Padding(
@@ -605,11 +591,11 @@ class _NoGroupPlaceholder extends StatelessWidget {
               children: [
                 Icon(Icons.book_outlined, size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 20),
-                const Text('まだ家計簿に参加していません',
-                    style: TextStyle(
+                Text(l10n.noGroups,
+                    style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('新しく作成するか、招待コードで参加してください',
+                Text(l10n.enterInviteCode,
                     style: TextStyle(color: Colors.grey[500]),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 32),
@@ -619,8 +605,8 @@ class _NoGroupPlaceholder extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onCreateGroup,
                     icon: const Icon(Icons.add),
-                    label: const Text('新しい家計簿を作成',
-                        style: TextStyle(fontSize: 15)),
+                    label: Text(l10n.createNewGroup,
+                        style: const TextStyle(fontSize: 15)),
                   ),
                 ),
               ],
@@ -628,4 +614,5 @@ class _NoGroupPlaceholder extends StatelessWidget {
           ),
         ),
       );
+  }
 }

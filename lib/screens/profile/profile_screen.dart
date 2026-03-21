@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../api/auth_api.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../screens/auth/login_screen.dart';
 import 'change_password_screen.dart';
@@ -46,14 +48,15 @@ class _GuestProfileView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final txnState = ref.watch(transactionsProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: const Text('マイページ',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.myPage,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Center(
@@ -76,15 +79,15 @@ class _GuestProfileView extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Center(
-                child: Text('ゲストモード',
-                    style: TextStyle(
+              Center(
+                child: Text(l10n.guestMode,
+                    style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 6),
               Center(
                 child: Text(
-                  'データはこのデバイスにのみ保存されています',
+                  l10n.dataStoredLocally,
                   style: TextStyle(color: Colors.grey[500], fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
@@ -104,7 +107,7 @@ class _GuestProfileView extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('ローカルデータ',
+                      Text(l10n.localData,
                           style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[500],
@@ -114,14 +117,14 @@ class _GuestProfileView extends ConsumerWidget {
                         children: [
                           _StatItem(
                             icon: Icons.receipt_long_outlined,
-                            label: '記録件数',
-                            value: '${txnState.monthCount} 件',
+                            label: l10n.recordCount,
+                            value: l10n.records(txnState.monthCount),
                           ),
                           const SizedBox(width: 24),
                           _StatItem(
                             icon: Icons.cloud_off_outlined,
-                            label: 'クラウド同期',
-                            value: '未設定',
+                            label: l10n.cloudSync,
+                            value: l10n.notSet,
                             valueColor: Colors.orange,
                           ),
                         ],
@@ -157,25 +160,24 @@ class _GuestProfileView extends ConsumerWidget {
                         Icon(Icons.cloud_sync_outlined,
                             color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text('ログインのメリット',
+                        Text(l10n.loginBenefits,
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color:
                                     Theme.of(context).colorScheme.primary)),
                       ]),
                       const SizedBox(height: 12),
-                      for (final item in [
-                        '📱 複数デバイスでデータを同期',
-                        '☁️  クラウドバックアップで安心',
-                        '👨‍👩‍👧 家族・パートナーと家計を共有',
-                        '🤖 AI 使用量の管理',
-                      ])
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 3),
-                          child: Text(item,
-                              style: const TextStyle(fontSize: 14)),
-                        ),
+                      Text(l10n.syncDataMultipleDevices,
+                          style: const TextStyle(fontSize: 14)),
+                      const SizedBox(height: 3),
+                      Text(l10n.cloudBackup,
+                          style: const TextStyle(fontSize: 14)),
+                      const SizedBox(height: 3),
+                      Text(l10n.shareWithFamily,
+                          style: const TextStyle(fontSize: 14)),
+                      const SizedBox(height: 3),
+                      Text(l10n.aiUsageManagement,
+                          style: const TextStyle(fontSize: 14)),
                     ],
                   ),
                 ),
@@ -196,14 +198,127 @@ class _GuestProfileView extends ConsumerWidget {
                     MaterialPageRoute(
                         builder: (_) => const LoginScreen()),
                   ),
-                  child: const Text('ログイン / 新規登録',
-                      style: TextStyle(
+                  child: Text(l10n.loginOrRegister,
+                      style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 系统设置
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.language,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary),
+                      ),
+                      title: Text(l10n.languageSettings,
+                          style: const TextStyle(fontSize: 15)),
+                      trailing: Icon(Icons.chevron_right,
+                          color: Colors.grey[400], size: 20),
+                      onTap: () => _showLanguageSelector(context, ref),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    ),
+                    const Divider(height: 1, indent: 52),
+                    ListTile(
+                      leading: Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.info_outline,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary),
+                      ),
+                      title: Text(l10n.aboutVee,
+                          style: const TextStyle(fontSize: 15)),
+                      trailing: Icon(Icons.chevron_right,
+                          color: Colors.grey[400], size: 20),
+                      onTap: () => showAboutDialog(
+                        context: context,
+                        applicationName: 'Vee',
+                        applicationVersion: '2.0.0',
+                        applicationLegalese: '© 2025 Vee',
+                      ),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 48),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.read(localeProvider);
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, bottom: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  AppLocalizations.of(context)!.language,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            ...LocaleNotifier.supportedLocales.map((locale) {
+              final isSelected = locale.languageCode == currentLocale.languageCode;
+              return ListTile(
+                leading: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected 
+                      ? Theme.of(context).colorScheme.primary 
+                      : Colors.grey,
+                ),
+                title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
+                onTap: () {
+                  ref.read(localeProvider.notifier).setLocale(locale);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
@@ -255,13 +370,15 @@ class _LoggedInProfileView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: const Text('マイページ',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.myPage,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Center(
@@ -279,11 +396,11 @@ class _LoggedInProfileView extends ConsumerWidget {
                 _QuotaCard(user: user),
                 const SizedBox(height: 20),
                 _SectionCard(
-                  title: 'アカウント',
+                  title: l10n.accountSettings,
                   items: [
                     _SettingItem(
                       icon: Icons.edit_outlined,
-                      label: 'プロフィール編集',
+                      label: l10n.editProfile,
                       onTap: () async {
                         final updated = await Navigator.push<bool>(
                           context,
@@ -300,7 +417,7 @@ class _LoggedInProfileView extends ConsumerWidget {
                     ),
                     _SettingItem(
                       icon: Icons.lock_outline,
-                      label: 'パスワード変更',
+                      label: l10n.changePassword,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -310,11 +427,11 @@ class _LoggedInProfileView extends ConsumerWidget {
                     ),
                     _SettingItem(
                       icon: Icons.telegram,
-                      label: 'Telegram 連携',
+                      label: l10n.telegramConnection,
                       trailing: user.tgUserId != null
-                          ? _Badge('連携済み #${user.tgUserId}',
+                          ? _Badge(l10n.bound,
                               color: Colors.green)
-                          : _Badge('未連携', color: Colors.orange),
+                          : _Badge(l10n.unbound, color: Colors.orange),
                       onTap: () =>
                           _showTgBindInfo(context, user, ref),
                     ),
@@ -322,11 +439,16 @@ class _LoggedInProfileView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 _SectionCard(
-                  title: 'システム',
+                  title: l10n.systemSettings,
                   items: [
                     _SettingItem(
+                      icon: Icons.language,
+                      label: l10n.languageSettings,
+                      onTap: () => _showLanguageSelector(context, ref),
+                    ),
+                    _SettingItem(
                       icon: Icons.info_outline,
-                      label: 'Vee について',
+                      label: l10n.aboutVee,
                       onTap: () => showAboutDialog(
                         context: context,
                         applicationName: 'Vee',
@@ -350,8 +472,8 @@ class _LoggedInProfileView extends ConsumerWidget {
                     onPressed: () =>
                         _confirmLogout(context, ref),
                     icon: const Icon(Icons.logout, size: 20),
-                    label: const Text('ログアウト',
-                        style: TextStyle(
+                    label: Text(l10n.logout,
+                        style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
                   ),
@@ -379,22 +501,22 @@ class _LoggedInProfileView extends ConsumerWidget {
 
   Future<void> _confirmLogout(
       BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('ログアウト'),
-        content: const Text(
-            'ログアウトしても、ローカルのデータは保持されます。\n次回ログイン時に自動で同期されます。'),
+        title: Text(l10n.logout),
+        content: Text(l10n.logoutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセル'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style:
                 FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ログアウト'),
+            child: Text(l10n.logout),
           ),
         ],
       ),
@@ -402,6 +524,54 @@ class _LoggedInProfileView extends ConsumerWidget {
     if (ok == true) {
       await ref.read(authProvider.notifier).logout();
     }
+  }
+
+  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.read(localeProvider);
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, bottom: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  AppLocalizations.of(context)!.language,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            ...LocaleNotifier.supportedLocales.map((locale) {
+              final isSelected = locale.languageCode == currentLocale.languageCode;
+              return ListTile(
+                leading: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected 
+                      ? Theme.of(context).colorScheme.primary 
+                      : Colors.grey,
+                ),
+                title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
+                onTap: () {
+                  ref.read(localeProvider.notifier).setLocale(locale);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -488,6 +658,7 @@ class _QuotaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme    = Theme.of(context);
     final isUnlim  = user.aiQuotaMonthly == -1;
     final percent  = user.aiQuotaPercent;
@@ -497,7 +668,7 @@ class _QuotaCard extends StatelessWidget {
             ? Colors.orange
             : theme.colorScheme.primary;
     final resetDate =
-        DateFormat('MM月dd日').format(user.quotaResetDate);
+        DateFormat('M/d').format(user.quotaResetDate);
 
     return Card(
       elevation: 0,
@@ -517,12 +688,12 @@ class _QuotaCard extends StatelessWidget {
                 Row(children: [
                   Icon(Icons.auto_awesome, size: 18, color: color),
                   const SizedBox(width: 8),
-                  const Text('AI 使用クォータ',
-                      style: TextStyle(
+                  Text(l10n.aiUsageQuota,
+                      style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.bold)),
                 ]),
                 if (!isUnlim)
-                  Text('$resetDate リセット',
+                  Text(l10n.quotaResetsOn(resetDate),
                       style: TextStyle(
                           fontSize: 12, color: Colors.grey[500])),
               ],
@@ -532,7 +703,7 @@ class _QuotaCard extends StatelessWidget {
               Row(children: [
                 Icon(Icons.all_inclusive, size: 20, color: color),
                 const SizedBox(width: 8),
-                Text('無制限',
+                Text(l10n.unlimited,
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -542,10 +713,10 @@ class _QuotaCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('使用済み ${user.aiQuotaUsed} 回',
+                  Text(l10n.used(user.aiQuotaUsed),
                       style: TextStyle(
                           fontSize: 13, color: Colors.grey[600])),
-                  Text('合計 ${user.aiQuotaMonthly} 回/月',
+                  Text(l10n.totalQuota(user.aiQuotaMonthly),
                       style: TextStyle(
                           fontSize: 13, color: Colors.grey[600])),
                 ],
@@ -680,7 +851,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
   Future<void> _requestCode() async {
     setState(() { _loading = true; _error = null; _code = null; });
     try {
-      final resp = await ref.read(meApiProvider).requestTgBindCode();
+      final resp = await ref.read(authProvider.notifier).requestTgBindCode();
       setState(() => _code = resp['code'] as String?);
     } catch (e) {
       setState(() => _error = e.toString());
@@ -692,8 +863,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
   Future<void> _unbind() async {
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(meApiProvider).deleteTgBind();
-      await ref.read(authProvider.notifier).refreshProfile();
+      await ref.read(authProvider.notifier).deleteTgBind();
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _error = e.toString());
@@ -704,6 +874,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme    = Theme.of(context);
     final isBound  = widget.user.tgUserId != null;
 
@@ -716,12 +887,11 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 标题行
           Row(children: [
             Icon(Icons.telegram, color: const Color(0xFF2AABEE), size: 24),
             const SizedBox(width: 8),
-            const Text('Telegram 绑定',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(l10n.telegramBind,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 16),
 
@@ -738,7 +908,6 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
           ],
 
           if (isBound) ...[
-            // 已绑定状态
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -748,14 +917,14 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
               child: Row(children: [
                 Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
                 const SizedBox(width: 8),
-                Text('已绑定 Telegram #${widget.user.tgUserId}',
+                Text(l10n.boundWithTelegram('${widget.user.tgUserId}'),
                     style: TextStyle(
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.w600)),
               ]),
             ),
             const SizedBox(height: 8),
-            Text('绑定后 Bot 和 App 共享 AI 使用配额',
+            Text(l10n.quotaSharedAfterBind,
                 style: TextStyle(fontSize: 13, color: Colors.grey[600])),
             const SizedBox(height: 20),
             OutlinedButton(
@@ -770,16 +939,14 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
               child: _loading
                   ? const SizedBox(width: 18, height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('解除绑定'),
+                  : Text(l10n.unbind),
             ),
           ] else ...[
-            // 未绑定状态
-            Text('绑定后 Bot 下载/识别与 App 共享同一个 AI 配额，统一管理更方便。',
+            Text(l10n.bindTelegramDesc,
                 style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5)),
             const SizedBox(height: 20),
 
             if (_code != null) ...[
-              // 显示验证码
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
@@ -789,7 +956,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                       color: theme.colorScheme.primary.withOpacity(0.2)),
                 ),
                 child: Column(children: [
-                  Text('验证码', style: TextStyle(
+                  Text(l10n.verificationCode, style: TextStyle(
                       fontSize: 13, color: Colors.grey[600])),
                   const SizedBox(height: 8),
                   Text(_code!,
@@ -800,7 +967,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                         color: theme.colorScheme.primary,
                       )),
                   const SizedBox(height: 8),
-                  Text('10 分钟内有效', style: TextStyle(
+                  Text(l10n.validFor10Minutes, style: TextStyle(
                       fontSize: 12, color: Colors.grey[500])),
                 ]),
               ),
@@ -811,7 +978,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10)),
                 child: Text(
-                  '前往 Telegram Bot，发送：\n/bind $_code',
+                  l10n.sendBindCommand(_code!),
                   style: const TextStyle(
                       fontSize: 14,
                       fontFamily: 'monospace',
@@ -822,7 +989,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
               const SizedBox(height: 14),
               TextButton(
                 onPressed: _loading ? null : _requestCode,
-                child: const Text('刷新验证码'),
+                child: Text(l10n.refreshCode),
               ),
             ] else ...[
               SizedBox(
@@ -838,8 +1005,8 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.link, size: 20),
-                  label: const Text('申请绑定码',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  label: Text(l10n.applyBindCode,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],

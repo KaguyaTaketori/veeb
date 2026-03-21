@@ -1,8 +1,8 @@
 // lib/screens/profile/change_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
@@ -25,26 +25,26 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_newCtrl.text.length < 8) {
-      setState(() => _error = '新密码至少 8 位');
+      setState(() => _error = l10n.passwordMinLength);
       return;
     }
     if (_newCtrl.text != _confCtrl.text) {
-      setState(() => _error = '两次密码不一致');
+      setState(() => _error = l10n.passwordsDoNotMatch);
       return;
     }
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(meApiProvider).changePassword(
+      await ref.read(authProvider.notifier).changePassword(
             oldPassword: _oldCtrl.text,
             newPassword: _newCtrl.text,
           );
-      // 修改密码后服务端吊销所有 token，强制重新登录
       await ref.read(authProvider.notifier).logout();
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = '修改失败，请稍后重试');
+      setState(() => _error = l10n.changePasswordFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -52,10 +52,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(backgroundColor: Colors.transparent,
-          title: const Text('修改密码'), centerTitle: true),
+          title: Text(l10n.changePasswordTitle), centerTitle: true),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -74,11 +75,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                _pwField(_oldCtrl, '当前密码'),
+                _pwField(_oldCtrl, l10n.currentPassword),
                 const SizedBox(height: 14),
-                _pwField(_newCtrl, '新密码', hint: '至少 8 位，含字母和数字'),
+                _pwField(_newCtrl, l10n.newPassword, hint: l10n.passwordMinLength),
                 const SizedBox(height: 14),
-                _pwField(_confCtrl, '确认新密码'),
+                _pwField(_confCtrl, l10n.confirmNewPassword),
                 const SizedBox(height: 28),
                 SizedBox(height: 52,
                   child: FilledButton(
@@ -89,8 +90,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         ? const SizedBox(width: 20, height: 20,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Text('确认修改',
-                            style: TextStyle(
+                        : Text(l10n.confirm,
+                            style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),

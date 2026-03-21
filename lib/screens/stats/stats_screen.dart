@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../constants/categories.dart';
+import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../providers/stats_provider.dart';
 import '../../models/transaction.dart' show MonthlyStat;
@@ -35,13 +37,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(statsProvider);
 
     return Scaffold(
       // 編集画面と統一したモダンな背景色
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('統計'),
+        title: Text(l10n.stats),
         centerTitle: true,
         backgroundColor: Colors.transparent,
       ),
@@ -69,6 +72,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
   }
 
   Widget _buildErrorState(String error) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -80,7 +84,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
           FilledButton.tonal(
             onPressed: () =>
                 ref.read(statsProvider.notifier).load(selectedMonth),
-            child: const Text('再試行'),
+            child: Text(l10n.retry),
           ),
         ],
       ),
@@ -88,13 +92,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children:[
           Icon(Icons.bar_chart, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text('データがありません', style: TextStyle(color: Colors.grey[500])),
+          Text(l10n.noData, style: TextStyle(color: Colors.grey[500])),
         ],
       ),
     );
@@ -143,7 +148,7 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              'この月の記録はありません',
+              AppLocalizations.of(context)!.noTransactions,
               style: TextStyle(color: Colors.grey[500], fontSize: 15),
             ),
           ),
@@ -184,7 +189,7 @@ class _Body extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${selectedMonth.year}年 ${selectedMonth.month}月',
+                  DateFormat.yMMMM().format(selectedMonth),
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold),
                 ),
@@ -199,7 +204,7 @@ class _Body extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // 合計金額
-            Text('支出合計',
+            Text(AppLocalizations.of(context)!.totalExpense,
                 style: TextStyle(color: Colors.grey[600], fontSize: 13)),
             const SizedBox(height: 4),
             Row(
@@ -234,7 +239,7 @@ class _Body extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '計 ${summary.count} 件',
+                AppLocalizations.of(context)!.records(summary.count),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                   fontSize: 12,
@@ -358,7 +363,7 @@ class _Body extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${cat.count}件',
+                          AppLocalizations.of(context)!.records(cat.count),
                           style: TextStyle(
                               color: Colors.grey[500], fontSize: 12),
                         ),

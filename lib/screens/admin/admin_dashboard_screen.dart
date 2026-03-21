@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/admin_api.dart';
+import '../../l10n/app_localizations.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -30,12 +31,13 @@ class _AdminDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: const Text('管理控制台',
+        title: Text(l10n.adminConsole,
             style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         bottom: TabBar(
@@ -43,10 +45,10 @@ class _AdminDashboardScreenState
           labelColor: Theme.of(context).colorScheme.primary,
           unselectedLabelColor: Colors.grey,
           indicatorColor: Theme.of(context).colorScheme.primary,
-          tabs: const [
-            Tab(icon: Icon(Icons.bar_chart), text: '数据看板'),
-            Tab(icon: Icon(Icons.tune), text: '系统配置'),
-            Tab(icon: Icon(Icons.people), text: '用户管理'),
+          tabs: [
+            Tab(icon: Icon(Icons.bar_chart), text: l10n.dataDashboard),
+            Tab(icon: Icon(Icons.tune), text: l10n.systemConfig),
+            Tab(icon: Icon(Icons.people), text: l10n.userManagement),
           ],
         ),
       ),
@@ -98,6 +100,7 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _ErrorView(error: _error!, onRetry: _load);
 
@@ -107,22 +110,22 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _SectionTitle('用户概览'),
+          _SectionTitle(l10n.userOverview),
           const SizedBox(height: 12),
           _StatsGrid(items: [
-            _StatCard(label: '总用户数',  value: '${s['total_users']}',  icon: Icons.people,        color: Colors.blue),
-            _StatCard(label: '活跃用户',  value: '${s['active_users']}', icon: Icons.check_circle,  color: Colors.green),
-            _StatCard(label: '管理员数',  value: '${s['admin_count']}',  icon: Icons.admin_panel_settings, color: Colors.orange),
-            _StatCard(label: 'WS 在线',   value: '${s['online_ws_users']}', icon: Icons.wifi,        color: Colors.teal),
+            _StatCard(label: l10n.totalUsers,  value: '${s['total_users']}',  icon: Icons.people,        color: Colors.blue),
+            _StatCard(label: l10n.activeUsers,  value: '${s['active_users']}', icon: Icons.check_circle,  color: Colors.green),
+            _StatCard(label: l10n.adminCount,  value: '${s['admin_count']}',  icon: Icons.admin_panel_settings, color: Colors.orange),
+            _StatCard(label: l10n.wsOnline,   value: '${s['online_ws_users']}', icon: Icons.wifi,        color: Colors.teal),
           ]),
           const SizedBox(height: 24),
-          _SectionTitle('账单概览'),
+          _SectionTitle(l10n.billOverview),
           const SizedBox(height: 12),
           _StatsGrid(items: [
-            _StatCard(label: '账单总数',    value: '${s['total_bills']}',         icon: Icons.receipt_long,    color: Colors.purple),
-            _StatCard(label: '本月账单',    value: '${s['bills_this_month']}',    icon: Icons.calendar_month,  color: Colors.pink),
-            _StatCard(label: 'AI 本月消耗', value: '${s['ai_quota_used_this_month']}次', icon: Icons.auto_awesome, color: Colors.amber),
-            _StatCard(label: 'WS 连接数',  value: '${s['total_ws_connections']}', icon: Icons.cable,           color: Colors.cyan),
+            _StatCard(label: l10n.totalBills,    value: '${s['total_bills']}',         icon: Icons.receipt_long,    color: Colors.purple),
+            _StatCard(label: l10n.billsThisMonth,    value: '${s['bills_this_month']}',    icon: Icons.calendar_month,  color: Colors.pink),
+            _StatCard(label: l10n.aiUsageThisMonth, value: l10n.aiUsageCountTimes(s['ai_quota_used_this_month'] as int), icon: Icons.auto_awesome, color: Colors.amber),
+            _StatCard(label: l10n.wsConnections,  value: '${s['total_ws_connections']}', icon: Icons.cable,           color: Colors.cyan),
           ]),
           const SizedBox(height: 32),
         ],
@@ -228,6 +231,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   }
 
   Future<void> _editConfig(Map<String, dynamic> config) async {
+    final l10n = AppLocalizations.of(context)!;
     final ctrl = TextEditingController(
         text: config['config_value'] as String? ?? '');
     final key  = config['config_key'] as String;
@@ -251,7 +255,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
               controller: ctrl,
               maxLines: null,
               decoration: InputDecoration(
-                labelText: '配置值',
+                labelText: l10n.configValue,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -261,10 +265,10 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
+              child: Text(l10n.cancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('保存')),
+              child: Text(l10n.save)),
         ],
       ),
     );
@@ -277,13 +281,13 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('配置已更新'), behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text(l10n.layoutUpdated), behavior: SnackBarBehavior.floating),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新失败: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(l10n.updateFailed(e.toString())), backgroundColor: Colors.red),
         );
       }
     }
@@ -291,6 +295,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return _ErrorView(error: _error!, onRetry: _load);
 
@@ -325,7 +330,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 4),
-                  Text(val.isEmpty ? '（空）' : val,
+                  Text(val.isEmpty ? l10n.empty : val,
                       style: TextStyle(
                           fontSize: 14,
                           color: val.isEmpty
@@ -409,6 +414,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         // 搜索栏 + 筛选器
@@ -432,7 +438,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                         _page++;
                         _load();
                       },
-                      child: const Text('加载更多'),
+                      child: Text(l10n.loadMore),
                     );
                   }
                   return _UserCard(
@@ -448,6 +454,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
   }
 
   Widget _buildToolbar() {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
@@ -456,7 +463,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
           TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
-              hintText: '搜索邮箱 / 用户名 / 昵称',
+              hintText: l10n.searchEmailUsername,
               prefixIcon: const Icon(Icons.search, size: 20),
               suffixIcon: _searchCtrl.text.isNotEmpty
                   ? IconButton(
@@ -483,7 +490,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
             child: Row(
               children: [
                 _FilterChip(
-                  label: '全部',
+                  label: l10n.all,
                   selected: _roleFilter.isEmpty && _activeFilter == null,
                   onTap: () {
                     _roleFilter   = '';
@@ -492,7 +499,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                   },
                 ),
                 _FilterChip(
-                  label: '管理员',
+                  label: l10n.admin,
                   selected: _roleFilter == 'admin',
                   onTap: () {
                     _roleFilter   = _roleFilter == 'admin' ? '' : 'admin';
@@ -500,7 +507,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                   },
                 ),
                 _FilterChip(
-                  label: '已封禁',
+                  label: l10n.banned,
                   selected: _activeFilter == 0,
                   color: Colors.red,
                   onTap: () {
@@ -584,6 +591,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
   }
 
   Future<void> _toggleActive() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _toggling = true);
     try {
       await ref.read(adminApiProvider).setUserActive(
@@ -592,7 +600,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e'),
+          SnackBar(content: Text(l10n.operationFailed(e.toString())),
               backgroundColor: Colors.red),
         );
       }
@@ -618,6 +626,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final statusColor = isActive ? Colors.green : Colors.red;
     final roleColor   = role == 'admin' ? Colors.orange : Colors.grey;
 
@@ -652,12 +661,12 @@ class _UserCardState extends ConsumerState<_UserCard> {
                           const SizedBox(width: 8),
                           // 角色角标
                           _Badge(
-                            label: role == 'admin' ? '管理员' : '用户',
+                            label: role == 'admin' ? l10n.admin : l10n.username,
                             color: roleColor,
                           ),
                           if (!isActive) ...[
                             const SizedBox(width: 6),
-                            _Badge(label: '已封禁', color: Colors.red),
+                            _Badge(label: l10n.banned, color: Colors.red),
                           ],
                         ],
                       ),
@@ -686,10 +695,10 @@ class _UserCardState extends ConsumerState<_UserCard> {
             const SizedBox(height: 10),
             // 中间：IP 信息
             _InfoRow(Icons.location_on_outlined,
-                '注册 IP: ${u['registration_ip'] ?? '—'}'),
+                AppLocalizations.of(context)!.registrationIp(u['registration_ip'] ?? '—')),
             const SizedBox(height: 2),
             _InfoRow(Icons.history,
-                '最后 IP: ${u['last_login_ip'] ?? '—'}'),
+                AppLocalizations.of(context)!.lastIp(u['last_login_ip'] ?? '—')),
             const SizedBox(height: 10),
             // 权限标签行
             Wrap(
@@ -697,7 +706,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
               runSpacing: 4,
               children: [
                 if (perms.isEmpty)
-                  _Badge(label: '无权限', color: Colors.grey)
+                  _Badge(label: l10n.noPermission, color: Colors.grey)
                 else
                   ...perms.map((p) => _Badge(
                         label: _permLabel(p),
@@ -720,7 +729,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
                     ),
                     onPressed: _showPermissionsSheet,
                     icon: const Icon(Icons.tune, size: 16),
-                    label: const Text('权限配置',
+                    label: Text(l10n.configPermission,
                         style: TextStyle(fontSize: 13)),
                   ),
                 ),
@@ -732,15 +741,19 @@ class _UserCardState extends ConsumerState<_UserCard> {
     );
   }
 
-  String _permLabel(String perm) => {
-        'bot_text':     'Bot文字',
-        'bot_receipt':  'Bot图片',
-        'bot_voice':    'Bot语音',
-        'bot_download': 'Bot下载',
-        'app_ocr':      'AppOCR',
-        'app_export':   'App导出',
-        'app_upload':   'App上传',
-      }[perm] ?? perm;
+  String _permLabel(String perm) {
+    final l10n = AppLocalizations.of(context)!;
+    return switch (perm) {
+      'bot_text'     => l10n.botTextLabel,
+      'bot_receipt'  => l10n.botReceiptLabel,
+      'bot_voice'    => l10n.botVoiceLabel,
+      'bot_download' => l10n.botDownloadLabel,
+      'app_ocr'      => l10n.appOcrLabel,
+      'app_export'   => l10n.appExportLabel,
+      'app_upload'   => l10n.appUploadLabel,
+      _              => perm,
+    };
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -787,16 +800,6 @@ class _Badge extends StatelessWidget {
 // 权限配置抽屉
 // ============================================================
 
-const _allPerms = [
-  ('bot_text',     'Bot 文字记账',    Icons.text_fields),
-  ('bot_receipt',  'Bot 图片识别',    Icons.camera_alt_outlined),
-  ('bot_voice',    'Bot 语音记账',    Icons.mic_outlined),
-  ('bot_download', 'Bot 下载功能',    Icons.download_outlined),
-  ('app_ocr',      'App OCR 识别',   Icons.document_scanner_outlined),
-  ('app_export',   'App 数据导出',   Icons.file_download_outlined),
-  ('app_upload',   'App 图片上传',   Icons.upload_outlined),
-];
-
 class _PermissionsSheet extends ConsumerStatefulWidget {
   final int      userId;
   final String   userName;
@@ -818,6 +821,16 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   bool _saving = false;
   String? _error;
 
+  static List<(String, String, IconData)> _getPerms(AppLocalizations l10n) => [
+    ('bot_text',     l10n.botText,     Icons.text_fields),
+    ('bot_receipt',  l10n.botReceipt,  Icons.camera_alt_outlined),
+    ('bot_voice',    l10n.botVoice,    Icons.mic_outlined),
+    ('bot_download', l10n.botDownload, Icons.download_outlined),
+    ('app_ocr',      l10n.appOcr,     Icons.document_scanner_outlined),
+    ('app_export',   l10n.appExport,  Icons.file_download_outlined),
+    ('app_upload',   l10n.appUpload,   Icons.upload_outlined),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -832,9 +845,10 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
       widget.onSaved();
       if (mounted) Navigator.pop(context);
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('权限已更新，已实时推送至用户设备'),
+          SnackBar(
+            content: Text(l10n.permissionUpdated),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -848,6 +862,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -876,7 +891,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('权限配置',
+                      Text(l10n.configPermission,
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       Text(widget.userName,
@@ -887,12 +902,15 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                 ),
                 // 全选 / 清空
                 TextButton(
-                  onPressed: () => setState(() => _selected =
-                      _selected.length == _allPerms.length
-                          ? {}
-                          : _allPerms.map((e) => e.$1).toSet()),
+                  onPressed: () {
+                    final perms = _getPerms(l10n);
+                    setState(() => _selected =
+                        _selected.length == perms.length
+                            ? {}
+                            : perms.map((e) => e.$1).toSet());
+                  },
                   child: Text(
-                      _selected.length == _allPerms.length ? '清空全部' : '全部勾选'),
+                      _selected.length == _getPerms(l10n).length ? l10n.clearAll : l10n.selectAll),
                 ),
               ],
             ),
@@ -910,7 +928,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
             child: ListView(
               controller: ctrl,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _allPerms.map((entry) {
+              children: _getPerms(l10n).map((entry) {
                 final (perm, label, icon) = entry;
                 final checked = _selected.contains(perm);
                 return Card(
@@ -986,7 +1004,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : Text(
-                          '保存权限（${_selected.length} 项）',
+                          l10n.savePermission(_selected.length),
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
@@ -1020,7 +1038,9 @@ class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.error, required this.onRetry});
 
   @override
-  Widget build(BuildContext context) => Center(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1034,8 +1054,9 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             FilledButton.tonal(
-                onPressed: onRetry, child: const Text('重试')),
+                onPressed: onRetry, child: Text(l10n.retry)),
           ],
         ),
       );
+  }
 }

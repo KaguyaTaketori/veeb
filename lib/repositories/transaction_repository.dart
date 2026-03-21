@@ -1,23 +1,35 @@
 // lib/repositories/transaction_repository.dart
+import 'dart:async';
+import 'package:drift/drift.dart';
+import '../api/transactions_api.dart';
+import '../database/app_database.dart';
+import '../services/sync_service.dart';
+
 class TransactionRepository {
   final AppDatabase _db;
   final TransactionsApi _api;
   final SyncService _sync;
 
-  // ── 写操作（先写本地，后台同步）─────────────────────────────────
+  TransactionRepository({
+    required AppDatabase db,
+    required TransactionsApi api,
+    required SyncService sync,
+  })  : _db = db,
+        _api = api,
+        _sync = sync;
 
   Future<int> create(TransactionsCompanion data) async {
     final id = await _db.into(_db.transactions).insert(
       data.copyWith(syncStatus: const Value('pending_create')),
     );
-    unawaited(_sync.trySync());
+    _sync.trySync();
     return id;
   }
 
   Future<void> update(int id, TransactionsCompanion data) async {
     await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
         .write(data.copyWith(syncStatus: const Value('pending_update')));
-    unawaited(_sync.trySync());
+    _sync.trySync();
   }
 
   Future<void> delete(int id) async {
@@ -26,10 +38,8 @@ class TransactionRepository {
           isDeleted: Value(true),
           syncStatus: Value('pending_delete'),
         ));
-    unawaited(_sync.trySync());
+    _sync.trySync();
   }
-
-  // ── 读操作（只读本地）──────────────────────────────────────────
 
   Stream<List<Transaction>> watchByMonth(int groupId, int year, int month) {
     final start = DateTime(year, month, 1).millisecondsSinceEpoch ~/ 1000;
@@ -44,10 +54,7 @@ class TransactionRepository {
         .watch();
   }
 
-  // ── 月度汇总 ──────────────────────────────────────────────────
-
   Future<MonthlyStats> getMonthlyStats(int groupId, int year, int month) async {
-    // 直接查本地，无网络延迟
     final start = DateTime(year, month, 1).millisecondsSinceEpoch ~/ 1000;
     final end   = DateTime(year, month + 1, 1).millisecondsSinceEpoch ~/ 1000;
 
@@ -65,4 +72,9 @@ class TransactionRepository {
 
     return MonthlyStats(totalExpense: totalExp);
   }
+}
+
+class MonthlyStats {
+  final int totalExpense;
+  const MonthlyStats({required this.totalExpense});
 }

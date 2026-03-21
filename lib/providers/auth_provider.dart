@@ -86,7 +86,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   // ── 登录 ──────────────────────────────────────────────────────────────────
 
-  Future<void> login(String identifier, String password) async {
+  Future<bool> login(String identifier, String password) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
       final data = await _api.login(
@@ -102,10 +102,15 @@ class AuthNotifier extends Notifier<AuthState> {
       // 登录成功后把本地未同步数据推送到云端
       await _mergeLocalDataToCloud();
 
+      state = state.copyWith(loading: false);
+      return true;
+
     } on AppException catch (e) {
       state = state.copyWith(loading: false, error: e.message);
+      return false;
     } catch (e) {
       state = state.copyWith(loading: false, error: '登录失败，请稍后重试');
+      return false;
     }
   }
 
@@ -126,6 +131,37 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> refreshProfile() => _loadMe();
 
   void clearError() => state = state.copyWith(clearError: true);
+
+  // ── Telegram 绑定 ─────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> requestTgBindCode() async {
+    return await _meApi.requestTgBindCode();
+  }
+
+  Future<void> deleteTgBind() async {
+    await _meApi.deleteTgBind();
+    await _loadMe();
+  }
+
+  // ── 用户信息更新 ─────────────────────────────────────────────────────────
+
+  Future<void> updateProfile({String? displayName, String? avatarUrl}) async {
+    final user = await _meApi.updateMe(
+      displayName: displayName,
+      avatarUrl: avatarUrl,
+    );
+    state = state.copyWith(user: user);
+  }
+
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    await _meApi.changePassword(
+      oldPassword: oldPassword,
+      newPassword: newPassword,
+    );
+  }
 
   // ── 登录后合并本地数据 ────────────────────────────────────────────────────
 

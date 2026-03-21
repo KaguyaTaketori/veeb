@@ -1,9 +1,10 @@
 // lib/screens/profile/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
+import '../../providers/auth_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile user;
@@ -27,19 +28,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() { _nameCtrl.dispose(); super.dispose(); }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_nameCtrl.text.trim().isEmpty) {
-      setState(() => _error = '昵称不能为空');
+      setState(() => _error = l10n.nicknameRequired);
       return;
     }
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(meApiProvider).updateMe(
+      await ref.read(authProvider.notifier).updateProfile(
             displayName: _nameCtrl.text.trim());
       if (mounted) Navigator.pop(context, true);
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = '保存失败，请稍后重试');
+      setState(() => _error = l10n.saveFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -47,11 +49,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('编辑资料'),
+        title: Text(l10n.editProfileTitle),
         centerTitle: true,
         actions: [
           if (_loading)
@@ -62,7 +65,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ))
           else
             TextButton(onPressed: _save,
-                child: const Text('保存', style: TextStyle(
+                child: Text(l10n.save, style: const TextStyle(
                     fontWeight: FontWeight.w600, fontSize: 15))),
         ],
       ),
@@ -88,7 +91,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _nameCtrl,
                   maxLength: 30,
                   decoration: InputDecoration(
-                    labelText: '昵称',
+                    labelText: l10n.fullName,
                     prefixIcon: const Icon(Icons.person_outline, size: 20),
                     filled: true, fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -107,7 +110,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('用户名 @${widget.user.username} 和邮箱无法修改',
+                Text(l10n.usernameEmailCannotChange,
                     style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               ],
             ),

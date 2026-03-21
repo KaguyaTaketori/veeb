@@ -1,0 +1,529 @@
+{
+  "@@locale": "ja",
+  "appName": "Vee",
+  "transactions": "取引",
+  "record": "記録",
+  "stats": "統計",
+  "profile": "マイページ",
+  "admin": "管理",
+  "loading": "読み込み中...",
+  "error": "エラー",
+  "retry": "再試行",
+  "cancel": "キャンセル",
+  "confirm": "確認",
+  "save": "保存",
+  "delete": "削除",
+  "edit": "編集",
+  "add": "追加",
+  "search": "検索",
+  "noData": "データなし",
+  "login": "ログイン",
+  "logout": "ログアウト",
+  "register": "登録",
+  "email": "メールアドレス",
+  "password": "パスワード",
+  "confirmPassword": "パスワード確認",
+  "forgotPassword": "パスワードを忘れた場合",
+  "dontHaveAccount": "アカウントをお持ちでない方",
+  "alreadyHaveAccount": "すでにアカウントをお持ちの方",
+  "signUp": "新規登録",
+  "signIn": "ログイン",
+  "income": "収入",
+  "expense": "支出",
+  "transfer": "振替",
+  "amount": "金額",
+  "category": "カテゴリー",
+  "account": "口座",
+  "date": "日付",
+  "note": "メモ",
+  "description": "説明",
+  "total": "合計",
+  "balance": "残高",
+  "submit": "送信",
+  "success": "成功",
+  "failed": "失敗",
+  "pleaseSelect": "選択してください",
+  "required": "必須",
+  "invalidEmail": "無効なメールアドレスです",
+  "passwordTooShort": "パスワードは6文字以上必要です",
+  "passwordsDoNotMatch": "パスワードが一致しません",
+  "settings": "設定",
+  "language": "言語",
+  "languageSettings": "言語設定",
+  "currency": "通貨",
+  "theme": "テーマ",
+  "lightTheme": "ライト",
+  "darkTheme": "ダーク",
+  "systemTheme": "システム設定",
+  "camera": "カメラ",
+  "gallery": "ギャラリー",
+  "scanReceipt": "レシートをスキャン",
+  "scanReceiptHint": "写真を撮るかギャラリーから選択\nレシート情報を自動認識",
+  "ocrProcessing": "画像を処理中...",
+  "ocrSuccess": "文字認識に成功しました",
+  "ocrFailed": "文字認識に失敗しました",
+  "thisMonth": "今月",
+  "lastMonth": "先月",
+  "thisYear": "今年",
+  "custom": "カスタム",
+  "from": "開始",
+  "to": "終了",
+  "today": "今日",
+  "yesterday": "昨日",
+  "thisWeek": "今週",
+  "categories": "カテゴリー",
+  "accounts": "口座",
+  "createAccount": "口座を作成",
+  "accountName": "口座名",
+  "initialBalance": "初期残高",
+  "createCategory": "カテゴリーを作成",
+  "categoryName": "カテゴリー名",
+  "icon": "アイコン",
+  "color": "色",
+  "parentCategory": "親カテゴリー",
+  "subcategories": "サブカテゴリー",
+  "bills": "請求書",
+  "recurring": "定期",
+  "addBill": "請求書を追加",
+  "billName": "請求書名",
+  "billAmount": "金額",
+  "billDate": "日付",
+  "frequency": "頻度",
+  "daily": "毎日",
+  "weekly": "毎週",
+  "monthly": "毎月",
+  "yearly": "毎年",
+  "nextBill": "次回請求",
+  "paid": "支払済",
+  "unpaid": "未払い",
+  "overdue": "期限超過",
+  "dueSoon": "まもなく期限",
+  "group": "グループ",
+  "groups": "グループ",
+  "createGroup": "グループを作成",
+  "groupName": "グループ名",
+  "members": "メンバー",
+  "inviteMember": "メンバーを招待",
+  "removeMember": "メンバーを削除",
+  "leaveGroup": "グループを退出",
+  "deleteGroup": "グループを削除",
+  "shareTransactions": "取引を共有",
+  "syncStatus": "同期状態",
+  "synced": "同期済",
+  "notSynced": "未同期",
+  "syncing": "同期中...",
+  "syncNow": "今すぐ同期",
+  "lastSynced": "最終同期: {time}",
+  "@lastSynced": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDelete": "本当に削除しますか？",
+  "deleteConfirm": "削除確認",
+  "deleteThisRecord": "この記録を削除しますか？",
+  "yes": "はい",
+  "no": "いいえ",
+  "ok": "OK",
+  "done": "完了",
+  "close": "閉じる",
+  "back": "戻る",
+  "next": "次へ",
+  "finish": "完了",
+  "skip": "スキップ",
+  "continueText": "続ける",
+  "welcome": "ようこそ",
+  "welcomeBack": "おかえりなさい",
+  "getStarted": "始める",
+  "username": "ユーザー名",
+  "fullName": "氏名",
+  "phone": "電話番号",
+  "changePassword": "パスワード変更",
+  "currentPassword": "現在のパスワード",
+  "newPassword": "新しいパスワード",
+  "confirmNewPassword": "新しいパスワード確認",
+  "oldPassword": "以前のパスワード",
+  "passwordChanged": "パスワードが変更されました",
+  "changePhoto": "写真を変更",
+  "removePhoto": "写真を削除",
+  "takePhoto": "写真を撮る",
+  "chooseFromLibrary": "ライブラリから選択",
+  "editProfile": "プロフィール編集",
+  "profileUpdated": "プロフィールが更新されました",
+  "emailVerified": "メール確認済",
+  "emailNotVerified": "メール未確認",
+  "verifyEmail": "メールを確認",
+  "verificationEmailSent": "確認メールを送信しました",
+  "verificationSent": "確認コードを再送信しました",
+  "resendVerification": "確認メールを再送信",
+  "resetPassword": "パスワードをリセット",
+  "resetPasswordTitle": "パスワードをリセット",
+  "resetPasswordSuccess": "パスワードがリセットされました。もう一度ログインしてください。",
+  "resetPasswordSent": "リセットメールを送信しました",
+  "noTransactions": "取引がありません",
+  "addTransaction": "取引を追加",
+  "editTransaction": "取引を編集",
+  "deleteTransaction": "取引を削除",
+  "transactionAdded": "取引が追加されました",
+  "transactionUpdated": "取引が更新されました",
+  "transactionDeleted": "取引が削除されました",
+  "incomeAmount": "+{amount}",
+  "@incomeAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseAmount": "-{amount}",
+  "@expenseAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "totalIncome": "総収入",
+  "totalExpense": "総支出",
+  "netBalance": "純残高",
+  "surplus": "黒字",
+  "deficit": "赤字",
+  "noBills": "請求書がありません",
+  "billPaid": "支払済請求書",
+  "billUnpaid": "未払い請求書",
+  "markAsPaid": "支払済にする",
+  "markAsUnpaid": "未払いにする",
+  "remindMe": "リマインダー設定",
+  "reminderSet": "リマインダーが設定されました",
+  "noGroups": "グループがありません",
+  "joinGroup": "グループに参加",
+  "createNewGroup": "新しいグループを作成",
+  "inviteCode": "招待コード",
+  "enterInviteCode": "招待コードを入力",
+  "copyInviteCode": "招待コードをコピー",
+  "inviteCodeCopied": "招待コードをクリップボードにコピーしました",
+  "share": "共有",
+  "shareVia": "共有方法",
+  "permissions": "権限",
+  "cameraPermission": "カメラの権限",
+  "storagePermission": "ストレージの権限",
+  "notificationPermission": "通知の権限",
+  "grantPermission": "権限を付与",
+  "permissionDenied": "権限が拒否されました",
+  "permissionRequired": "権限が必要です",
+  "about": "このアプリについて",
+  "version": "バージョン",
+  "privacyPolicy": "プライバシーポリシー",
+  "termsOfService": "利用規約",
+  "contactUs": "お問い合わせ",
+  "rateApp": "アプリを評価",
+  "logoutConfirm": "本当にログアウトしますか？",
+  "unsavedChanges": "保存されていない変更があります。破棄しますか？",
+  "discard": "破棄",
+  "keepEditing": "編集を続ける",
+  "errorOccurred": "エラーが発生しました",
+  "tryAgain": "再試行",
+  "networkError": "ネットワークエラー。接続を確認してください。",
+  "serverError": "サーバーエラー。後でもう一度お試しください。",
+  "unknownError": "不明なエラーが発生しました",
+  "unauthorized": "認証が必要です。再度ログインしてください。",
+  "forbidden": "アクセスが拒否されました",
+  "notFound": "見つかりません",
+  "tooManyRequests": "リクエストが多すぎます。しばらくお待ちください。",
+  "maintenance": "メンテナンス中です。後でもう一度お試しください。",
+  "guestMode": "ゲストモード",
+  "dataStoredLocally": "データはこのデバイスにのみ保存されています",
+  "loginBenefits": "ログインのメリット",
+  "syncDataMultipleDevices": "複数デバイスでデータを同期",
+  "cloudBackup": "クラウドバックアップで安心",
+  "shareWithFamily": "家族・パートナーと家計を共有",
+  "aiUsageManagement": "AI使用量の管理",
+  "loginOrRegister": "ログイン / 新規登録",
+  "localData": "ローカルデータ",
+  "recordCount": "記録件数",
+  "cloudSync": "クラウド同期",
+  "notSet": "未設定",
+  "myPage": "マイページ",
+  "statistics": "統計",
+  "accountSettings": "アカウント",
+  "systemSettings": "システム",
+  "aboutVee": "Veeについて",
+  "seeMore": "もっと見る",
+  "loadMore": "もっと見る",
+  "loadMoreData": "データを読み込む",
+  "cancelDelete": "キャンセル",
+  "deleting": "削除",
+  "recordCompleted": "記帳が完了しました！",
+  "categoryLoading": "カテゴリーを読み込み中...",
+  "categoryLoadError": "エラー: {error}",
+  "@categoryLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "private": "プライベート",
+  "product": "商品",
+  "discount": "割引",
+  "tax": "税金",
+  "retake": "再撮影",
+  "chooseAgain": "選び直す",
+  "addDetail": "明細を追加",
+  "cancelConfirm": "キャンセル",
+  "confirmConfirm": "確認",
+  "layoutUpdated": "配置が更新されました",
+  "updateFailed": "更新に失敗しました: {error}",
+  "@updateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "permissionUpdated": "権限が更新され、リアルタイムでユーザーデバイスにプッシュされました",
+  "operationFailed": "操作に失敗しました: {error}",
+  "@operationFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "changePasswordTitle": "パスワード変更",
+  "editProfileTitle": "プロフィール編集",
+  "createAccountTitle": "アカウント作成",
+  "verifyEmailTitle": "メール確認",
+  "removeThis": "これを削除",
+  "cannotUndo": "この操作は元に戻せません。",
+  "selectMonthYear": "月/年を選択",
+  "month": "月",
+  "year": "年",
+  "monthReset": "{date}にリセット",
+  "@monthReset": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "used": "{count}回使用済み",
+  "@used": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "totalQuota": "合計{count}回/月",
+  "@totalQuota": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiUsageQuota": "AI使用クォータ",
+  "unlimited": "無制限",
+  "telegramBind": "Telegram連携",
+  "bound": "連携済み",
+  "unbound": "未連携",
+  "boundWithTelegram": "Telegram #{id}と紐付け済み",
+  "@boundWithTelegram": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "quotaSharedAfterBind": "連携後、BotとAppでAI使用量を共有し、一括管理できます",
+  "bindTelegram": "Telegramを連携",
+  "bindTelegramDesc": "連携するとBotとAppでAI使用量を共有できます",
+  "verificationCode": "確認コード",
+  "validFor10Minutes": "10分間有効",
+  "sendBindCommand": "Telegram Botに移動して送信：\n/bind {code}",
+  "@sendBindCommand": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshCode": "確認コードを再発行",
+  "applyBindCode": "連携コードを取得",
+  "unbind": "連携解除",
+  "telegramConnection": "Telegram接続",
+  "detail": "詳細",
+  "receiptImages": "レシート画像",
+  "itemsCount": "明細 ({count}件)",
+  "uncategorized": "未分類",
+  "fromSource": "{source}から記録",
+  "merchant": "店舗",
+  "notEntered": "未入力",
+  "unknown": "不明",
+  "itemsTotal": "明細合計",
+  "totalRecords": "{count}件の記録",
+  "noRecords": "記録がありません",
+  "tryDifferentKeyword": "別のキーワードをお試しください",
+  "adminConsole": "管理コンソール",
+  "dataDashboard": "データダッシュボード",
+  "systemConfig": "システム設定",
+  "userManagement": "ユーザー管理",
+  "userOverview": "ユーザー概要",
+  "totalUsers": "総ユーザー数",
+  "activeUsers": "アクティブユーザー",
+  "adminCount": "管理者数",
+  "wsOnline": "WSオンライン",
+  "billOverview": "請求書概要",
+  "totalBills": "請求書総数",
+  "billsThisMonth": "今月の請求書",
+  "aiUsageThisMonth": "今月のAI使用量",
+  "aiUsageCountTimes": "{count}回",
+  "wsConnections": "WS接続数",
+  "configValue": "設定値",
+  "empty": "（空）",
+  "searchEmailUsername": "メール/ユーザー名/ニックネームで検索",
+  "all": "すべて",
+  "banned": "BAN済み",
+  "configPermission": "権限設定",
+  "botText": "Botテキスト",
+  "botReceipt": "Bot画像",
+  "botVoice": "Bot音声",
+  "botDownload": "Botダウンロード",
+  "appOcr": "App OCR",
+  "appExport": "Appエクスポート",
+  "appUpload": "Appアップロード",
+  "botTextLabel": "Botテキスト記帳",
+  "botReceiptLabel": "Bot画像認識",
+  "botVoiceLabel": "Bot音声記帳",
+  "botDownloadLabel": "Botダウンロード機能",
+  "appOcrLabel": "App OCR認識",
+  "appExportLabel": "Appデータエクスポート",
+  "appUploadLabel": "App画像アップロード",
+  "selectAll": "すべて選択",
+  "clearAll": "すべてクリア",
+  "savePermission": "権限を保存（{count}項目）",
+  "registrationIp": "登録IP: {ip}",
+  "lastIp": "最終IP: {ip}",
+  "noPermission": "権限なし",
+  "itemsLabel": "項目",
+  "category": "カテゴリー",
+  "date": "日付",
+  "productName": "商品名",
+  "quantity": "数量",
+  "enterAmount": "金額を入力",
+  "invalidAmount": "無効な金額",
+  "amountGreaterThanZero": "0より大きい金額を入力",
+  "calculatedFromTotal": "明細合計から自動計算",
+  "enterProductName": "商品名を入力",
+  "invalidAmountForItem": "明細 {num} の金額が無効です",
+  "additionalInfo": "追加情報...",
+  "records": "{count}件",
+  "expenseTotal": "支出合計",
+  "smartBillAssistant": "スマート帳簿アシスタント",
+  "usernameOrEmail": "ユーザー名またはメール",
+  "enterUsernameOrEmail": "ユーザー名またはメールを入力してください",
+  "enterPassword": "パスワードを入力してください",
+  "defaultCategory": "その他",
+  "imageUploadFailed": "画像アップロード失敗：{error}",
+  "@imageUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "notEnteredYet": "（未入力）",
+  "monthDayFormat": "{month}/{day}",
+  "@monthDayFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "quotaResetsOn": "{date}リセット",
+  "@quotaResetsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "yearMonthFormat": "{year}年{month}月",
+  "@yearMonthFormat": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "monthDayJapaneseFormat": "{month}月{day}日",
+  "@monthDayJapaneseFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "enterEmail": "メールアドレスを入力",
+  "sendFailed": "送信に失敗しました",
+  "enter6DigitCode": "6桁の確認コードを入力",
+  "passwordMinLength": "パスワードは6文字以上必要です",
+  "verificationFailed": "確認に失敗しました",
+  "enterRegisteredEmail": "登録メールアドレスを入力",
+  "willSendResetCode": "パスワードリセットコードが送信されます",
+  "sendVerificationCode": "確認コードを送信",
+  "setNewPassword": "新しいパスワードを設定",
+  "verificationSentTo": "確認コードを {email} に送信しました",
+  "@verificationSentTo": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "sixDigitCode": "6桁コード",
+  "confirmReset": "リセットを確認",
+  "resendCodeWithCountdown": "{seconds}秒後に再送信",
+  "@resendCodeWithCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "再送信",
+  "registerFailed": "登録に失敗しました",
+  "usernameFormat": "ユーザー名形式",
+  "usernameMinLength": "ユーザー名は3文字以上必要です",
+  "usernameInvalid": "無効なユーザー名",
+  "enterValidEmail": "有効なメールアドレスを入力してください",
+  "passwordNeedsNumber": "パスワードには数字が必要です",
+  "passwordNeedsLetter": "パスワードには文字が必要です",
+  "registerAgree": "利用規約に同意します",
+  "checkVerificationCode": "確認コードを確認",
+  "verifyAndActivate": "確認して有効化",
+  "didNotReceiveResend": "届かない？再送信",
+  "changePasswordFailed": "パスワード変更に失敗しました",
+  "nicknameRequired": "ニックネームは必須です",
+  "saveFailed": "保存に失敗しました",
+  "usernameEmailCannotChange": "ユーザー名とメールアドレスは変更できません",
+  "noPermission": "権限がありません",
+  "contactAdmin": "管理者にお問い合わせください",
+  "noAiPermission": "AI認識の権限がありません",
+  "contactAdminForOcr": "管理者に連絡して「App OCR」機能を有効にしてください",
+  "noUploadPermission": "レシート画像をアップロードする権限がありません",
+  "myLedger": "マイ帳簿"
+}

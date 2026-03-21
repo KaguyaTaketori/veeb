@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../constants/categories.dart';
+import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../providers/bills_provider.dart';
 import '../../widgets/bill_item_tile.dart';
@@ -63,6 +64,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(billsProvider);
 
     return Scaffold(
@@ -76,7 +78,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
                 autofocus: true,
                 style: const TextStyle(fontSize: 15),
                 decoration: InputDecoration(
-                  hintText: '商家・メモ・カテゴリで検索',
+                  hintText: l10n.search,
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
                   contentPadding:
@@ -94,7 +96,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
                 onChanged: _onSearch,
                 onSubmitted: _onSearch,
               )
-            : const Text('流水', style: TextStyle(fontWeight: FontWeight.bold)),
+            : Text(l10n.bills, style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions:[
           if (!_showSearch) ...[
@@ -117,19 +119,19 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
           child: Column(
             children:[
               // 1. 月度汇总卡片 (搜索模式下隐藏)
-              if (!_showSearch) _buildSummaryDashboard(context, state),
+              if (!_showSearch) _buildSummaryDashboard(context, l10n, state),
 
               // 2. 列表区域
               Expanded(
                 child: state.error != null
-                    ? _buildErrorState(state)
+                    ? _buildErrorState(state, l10n)
                     : RefreshIndicator(
                         onRefresh: () => ref
                             .read(billsProvider.notifier)
                             .load(selectedMonth, refresh: true),
                         child: state.bills.isEmpty && !state.loading
-                            ? _buildEmptyState()
-                            : _buildList(state),
+                            ? _buildEmptyState(l10n)
+                            : _buildList(state, l10n),
                       ),
               ),
 
@@ -161,7 +163,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
   // ── 子组件 ────────────────────────────────────────────────────────────
 
   // 现代化的仪表盘卡片
-  Widget _buildSummaryDashboard(BuildContext context, BillsState state) {
+  Widget _buildSummaryDashboard(BuildContext context, AppLocalizations l10n, BillsState state) {
     final totalText = kAmountFormat.format(state.monthTotal);
 
     return Padding(
@@ -189,7 +191,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
                         minimumSize: const Size(40, 40)),
                   ),
                   Text(
-                    '${selectedMonth.year}年 ${selectedMonth.month}月',
+                    l10n.yearMonthFormat(selectedMonth.year, selectedMonth.month),
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
@@ -207,8 +209,8 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('支出合計',
+                  children: [
+                    Text(l10n.totalExpense,
                       style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   const SizedBox(width: 12),
                   Text(
@@ -230,7 +232,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${state.monthCount} 件の記録',
+                  l10n.records(state.monthCount),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontSize: 12,
@@ -245,7 +247,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
     );
   }
 
-  Widget _buildList(BillsState state) {
+  Widget _buildList(BillsState state, AppLocalizations l10n) {
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 80, top: 4), // 避开FAB
       itemCount: state.bills.length + (state.hasNext ? 1 : 0),
@@ -257,7 +259,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
             child: FilledButton.tonal(
               onPressed: () =>
                   ref.read(billsProvider.notifier).loadMore(selectedMonth),
-              child: const Text('もっと見る'),
+              child: Text(l10n.seeMore),
             ),
           );
         }
@@ -281,17 +283,17 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
             return await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text('削除確認'),
-                content: const Text('この記録を削除しますか？'),
+                title: Text(l10n.deleteConfirm),
+                content: Text(l10n.deleteThisRecord),
                 actions:[
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('キャンセル'),
+                    child: Text(l10n.cancel),
                   ),
                   FilledButton(
                     style: FilledButton.styleFrom(backgroundColor: Colors.red),
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('削除'),
+                    child: Text(l10n.delete),
                   ),
                 ],
               ),
@@ -307,7 +309,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Center(
@@ -319,10 +321,10 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
               Icon(Icons.receipt_long_outlined,
                   size: 64, color: Colors.grey[300]),
               const SizedBox(height: 16),
-              Text('記録がありません', style: TextStyle(color: Colors.grey[500])),
+              Text(l10n.noRecords, style: TextStyle(color: Colors.grey[500])),
               if (_showSearch) ...[
                 const SizedBox(height: 8),
-                Text('別のキーワードをお試しください',
+                Text(l10n.tryDifferentKeyword,
                     style: TextStyle(color: Colors.grey[400], fontSize: 13)),
               ]
             ],
@@ -332,7 +334,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
     );
   }
 
-  Widget _buildErrorState(BillsState state) {
+  Widget _buildErrorState(BillsState state, AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -344,7 +346,7 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
           FilledButton.tonal(
             onPressed: () =>
                 ref.read(billsProvider.notifier).load(selectedMonth, refresh: true),
-            child: const Text('再試行'),
+            child: Text(l10n.retry),
           ),
         ],
       ),

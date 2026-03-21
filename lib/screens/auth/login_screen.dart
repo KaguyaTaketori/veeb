@@ -1,7 +1,10 @@
 // lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../main.dart';
+import '../home/home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -27,14 +30,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authProvider.notifier).login(
+    final success = await ref.read(authProvider.notifier).login(
           _identCtrl.text.trim(),
           _passwordCtrl.text,
         );
+    if (success && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final auth  = ref.watch(authProvider);
     final theme = Theme.of(context);
 
@@ -69,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 fontWeight: FontWeight.w900,
                                 color: theme.colorScheme.primary)),
                         const SizedBox(height: 4),
-                        Text('智能账单助手',
+                        Text(l10n.smartBillAssistant,
                             style: theme.textTheme.bodyMedium?.copyWith(
                                 color: Colors.grey[500])),
                       ],
@@ -108,10 +117,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       textInputAction: TextInputAction.next,
                       onTap: () => ref.read(authProvider.notifier).clearError(),
                       decoration: _inputDeco(
-                          label: '用户名或邮箱',
+                          label: l10n.usernameOrEmail,
                           icon: Icons.person_outline),
                       validator: (v) =>
-                          v == null || v.trim().isEmpty ? '请输入用户名或邮箱' : null,
+                          v == null || v.trim().isEmpty ? l10n.enterUsernameOrEmail : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -122,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submit(),
                       decoration: _inputDeco(
-                        label: '密码',
+                        label: l10n.password,
                         icon: Icons.lock_outline,
                         suffix: IconButton(
                           icon: Icon(
@@ -133,7 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       validator: (v) =>
-                          v == null || v.isEmpty ? '请输入密码' : null,
+                          v == null || v.isEmpty ? l10n.enterPassword : null,
                     ),
 
                     // 忘记密码
@@ -145,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           MaterialPageRoute(
                               builder: (_) => const ForgotPasswordScreen()),
                         ),
-                        child: const Text('忘记密码？', style: TextStyle(fontSize: 13)),
+                        child: Text(l10n.forgotPassword, style: TextStyle(fontSize: 13)),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -164,7 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 width: 20, height: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white))
-                            : const Text('登录',
+                            : Text(l10n.login,
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
@@ -175,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('还没有账号？',
+                        Text(l10n.dontHaveAccount,
                             style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                         TextButton(
                           onPressed: () => Navigator.push(
@@ -183,7 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             MaterialPageRoute(
                                 builder: (_) => const RegisterScreen()),
                           ),
-                          child: const Text('立即注册',
+                          child: Text(l10n.signUp,
                               style: TextStyle(fontWeight: FontWeight.w600,
                                                fontSize: 14)),
                         ),

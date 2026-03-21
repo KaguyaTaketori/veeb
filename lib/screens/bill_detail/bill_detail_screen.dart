@@ -1,6 +1,7 @@
 // lib/screens/bill_detail/bill_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../constants/categories.dart';
 import '../../models/bill.dart';
 import '../../providers/bills_provider.dart';
@@ -15,6 +16,7 @@ class BillDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final emoji  = kCategoryEmoji[bill.category] ?? '📦';
     final amount = formatAmount(bill.amount, bill.currency);
 
@@ -24,7 +26,7 @@ class BillDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title:
-            const Text('詳細', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.detail, style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           TextButton.icon(
@@ -40,7 +42,7 @@ class BillDetailScreen extends ConsumerWidget {
               }
             },
             icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('編集', style: TextStyle(fontSize: 15)),
+            label: Text(l10n.edit, style: TextStyle(fontSize: 15)),
           ),
           const SizedBox(width: 8),
         ],
@@ -52,14 +54,14 @@ class BillDetailScreen extends ConsumerWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             children: [
-              _buildAmountHeader(context, emoji, amount),
+              _buildAmountHeader(context, l10n, emoji, amount),
               const SizedBox(height: 32),
-              _buildInfoCard(context),
+              _buildInfoCard(context, l10n),
               const SizedBox(height: 24),
 
               // 凭证图片
               if (bill.hasReceipt) ...[
-                _buildSectionTitle('レシート・領収書画像'),
+                _buildSectionTitle(l10n.receiptImages),
                 const SizedBox(height: 12),
                 _ReceiptImage(url: bill.receiptUrl),
                 const SizedBox(height: 24),
@@ -67,9 +69,9 @@ class BillDetailScreen extends ConsumerWidget {
 
               // 明细
               if (bill.items.isNotEmpty) ...[
-                _buildSectionTitle('明細 (${bill.items.length}件)'),
+                _buildSectionTitle(l10n.itemsCount(bill.items.length)),
                 const SizedBox(height: 12),
-                _buildItemsCard(context),
+                _buildItemsCard(context, l10n),
                 const SizedBox(height: 24),
               ],
 
@@ -85,8 +87,8 @@ class BillDetailScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () => _confirmDelete(context, ref),
-                  child: const Text(
-                    'この記録を削除する',
+                  child: Text(
+                    l10n.deleteThisRecord,
                     style: TextStyle(
                         fontSize: 15, fontWeight: FontWeight.bold),
                   ),
@@ -103,7 +105,7 @@ class BillDetailScreen extends ConsumerWidget {
   // ── 顶部金额区域 ─────────────────────────────────────────────────────
 
   Widget _buildAmountHeader(
-      BuildContext context, String emoji, String amount) {
+      BuildContext context, AppLocalizations l10n, String emoji, String amount) {
     return Column(
       children: [
         Container(
@@ -122,7 +124,7 @@ class BillDetailScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         // 分类名
         Text(
-          bill.category ?? '未分類',
+          bill.category ?? l10n.uncategorized,
           style: TextStyle(
               fontSize: 15,
               color: Colors.grey[600],
@@ -165,7 +167,7 @@ class BillDetailScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${bill.sourceLabel!} から記録',
+              l10n.fromSource(bill.sourceLabel!),
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ),
@@ -176,7 +178,7 @@ class BillDetailScreen extends ConsumerWidget {
 
   // ── 基本信息卡片 ─────────────────────────────────────────────────────
 
-  Widget _buildInfoCard(BuildContext context) {
+  Widget _buildInfoCard(BuildContext context, AppLocalizations l10n) {
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surface,
@@ -188,22 +190,22 @@ class BillDetailScreen extends ConsumerWidget {
         children: [
           _buildInfoRow(
             icon: Icons.store_outlined,
-            label: '商家',
-            value: bill.merchant ?? '未入力',
+            label: l10n.merchant,
+            value: bill.merchant ?? l10n.notEntered,
             isValueFaded:
                 bill.merchant == null || bill.merchant!.isEmpty,
           ),
           const Divider(height: 1, indent: 48),
           _buildInfoRow(
             icon: Icons.calendar_today_outlined,
-            label: '日付',
-            value: bill.billDate ?? '不明',
+            label: l10n.date,
+            value: bill.billDate ?? l10n.unknown,
           ),
           if (bill.description?.isNotEmpty == true) ...[
             const Divider(height: 1, indent: 48),
             _buildInfoRow(
               icon: Icons.notes_outlined,
-              label: '備考',
+              label: l10n.note,
               value: bill.description!,
             ),
           ],
@@ -269,7 +271,7 @@ class BillDetailScreen extends ConsumerWidget {
 
   // ── 明细卡片 ─────────────────────────────────────────────────────────
 
-  Widget _buildItemsCard(BuildContext context) {
+  Widget _buildItemsCard(BuildContext context, AppLocalizations l10n) {
     // 明细合计（amount 已是 float）
     final itemsTotal =
         bill.items.fold(0.0, (sum, e) => sum + e.amount);
@@ -295,7 +297,7 @@ class BillDetailScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '明細合計',
+                  l10n.itemsTotal,
                   style: TextStyle(
                       color: Colors.grey[600], fontSize: 13),
                 ),
@@ -316,22 +318,22 @@ class BillDetailScreen extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('削除確認'),
-        content:
-            const Text('この記録を削除しますか？\nこの操作は元に戻せません。'),
+        title: Text(l10n.deleteConfirm),
+        content: Text('${l10n.deleteThisRecord}\n${l10n.cannotUndo}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('キャンセル'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('削除する'),
+            child: Text(l10n.delete),
           ),
         ],
       ),

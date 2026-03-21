@@ -30,11 +30,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  google_fonts: ^6.2.1
   dio: ^5.9.2
   flutter_secure_storage: ^9.0.0
   image_picker: ^1.2.1
   fl_chart: ^0.68.0
-  intl: ^0.19.0
+  intl: ^0.20.2
   provider: ^6.1.0
   flutter_riverpod: ^3.3.1
 
@@ -43,23 +46,26 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_dotenv: ^6.0.0
   cached_network_image: ^3.4.1
+  drift: ^2.27.0
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.32
+  path_provider: ^2.1.5
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  drift_dev: ^2.27.0
+  build_runner: ^2.4.17
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

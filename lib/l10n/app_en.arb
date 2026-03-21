@@ -1,0 +1,585 @@
+{
+  "@@locale": "en",
+  "appName": "Vee",
+  "transactions": "Transactions",
+  "record": "Record",
+  "stats": "Statistics",
+  "profile": "Profile",
+  "admin": "Admin",
+  "loading": "Loading...",
+  "error": "Error",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "add": "Add",
+  "search": "Search",
+  "noData": "No data",
+  "login": "Login",
+  "logout": "Logout",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "forgotPassword": "Forgot Password?",
+  "dontHaveAccount": "Don't have an account?",
+  "alreadyHaveAccount": "Already have an account?",
+  "signUp": "Sign Up",
+  "signIn": "Sign In",
+  "income": "Income",
+  "expense": "Expense",
+  "transfer": "Transfer",
+  "amount": "Amount",
+  "category": "Category",
+  "account": "Account",
+  "date": "Date",
+  "note": "Note",
+  "description": "Description",
+  "total": "Total",
+  "balance": "Balance",
+  "submit": "Submit",
+  "success": "Success",
+  "failed": "Failed",
+  "pleaseSelect": "Please select",
+  "required": "Required",
+  "invalidEmail": "Invalid email address",
+  "passwordTooShort": "Password must be at least 6 characters",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "settings": "Settings",
+  "language": "Language",
+  "languageSettings": "Language Settings",
+  "currency": "Currency",
+  "theme": "Theme",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "systemTheme": "System",
+  "camera": "Camera",
+  "gallery": "Gallery",
+  "scanReceipt": "Scan Receipt",
+  "scanReceiptHint": "Take a photo or select from gallery\nto automatically recognize receipt",
+  "ocrProcessing": "Processing image...",
+  "ocrSuccess": "Text recognized successfully",
+  "ocrFailed": "Failed to recognize text",
+  "thisMonth": "This Month",
+  "lastMonth": "Last Month",
+  "thisYear": "This Year",
+  "custom": "Custom",
+  "from": "From",
+  "to": "To",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "thisWeek": "This Week",
+  "categories": "Categories",
+  "accounts": "Accounts",
+  "createAccount": "Create Account",
+  "accountName": "Account Name",
+  "initialBalance": "Initial Balance",
+  "createCategory": "Create Category",
+  "categoryName": "Category Name",
+  "icon": "Icon",
+  "color": "Color",
+  "parentCategory": "Parent Category",
+  "subcategories": "Subcategories",
+  "bills": "Bills",
+  "recurring": "Recurring",
+  "addBill": "Add Bill",
+  "billName": "Bill Name",
+  "billAmount": "Amount",
+  "billDate": "Date",
+  "frequency": "Frequency",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "yearly": "Yearly",
+  "nextBill": "Next Bill",
+  "paid": "Paid",
+  "unpaid": "Unpaid",
+  "overdue": "Overdue",
+  "dueSoon": "Due Soon",
+  "group": "Group",
+  "groups": "Groups",
+  "createGroup": "Create Group",
+  "groupName": "Group Name",
+  "members": "Members",
+  "inviteMember": "Invite Member",
+  "removeMember": "Remove Member",
+  "leaveGroup": "Leave Group",
+  "deleteGroup": "Delete Group",
+  "shareTransactions": "Share Transactions",
+  "syncStatus": "Sync Status",
+  "synced": "Synced",
+  "notSynced": "Not Synced",
+  "syncing": "Syncing...",
+  "syncNow": "Sync Now",
+  "lastSynced": "Last synced: {time}",
+  "@lastSynced": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDelete": "Are you sure you want to delete this?",
+  "deleteConfirm": "Delete Confirmation",
+  "deleteThisRecord": "Are you sure you want to delete this record?",
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "done": "Done",
+  "close": "Close",
+  "back": "Back",
+  "next": "Next",
+  "finish": "Finish",
+  "skip": "Skip",
+  "continueText": "Continue",
+  "welcome": "Welcome",
+  "welcomeBack": "Welcome Back",
+  "getStarted": "Get Started",
+  "username": "Username",
+  "fullName": "Full Name",
+  "phone": "Phone",
+  "changePassword": "Change Password",
+  "currentPassword": "Current Password",
+  "newPassword": "New Password",
+  "confirmNewPassword": "Confirm New Password",
+  "oldPassword": "Old Password",
+  "passwordChanged": "Password changed successfully",
+  "changePhoto": "Change Photo",
+  "removePhoto": "Remove Photo",
+  "takePhoto": "Take Photo",
+  "chooseFromLibrary": "Choose from Library",
+  "editProfile": "Edit Profile",
+  "profileUpdated": "Profile updated successfully",
+  "emailVerified": "Email Verified",
+  "emailNotVerified": "Email Not Verified",
+  "verifyEmail": "Verify Email",
+  "verificationEmailSent": "Verification email sent",
+  "verificationSent": "Verification code resent",
+  "resendVerification": "Resend Verification Email",
+  "resetPassword": "Reset Password",
+  "resetPasswordTitle": "Reset Password",
+  "resetPasswordSuccess": "Password reset successful, please login again",
+  "resetPasswordSent": "Reset password email sent",
+  "noTransactions": "No transactions yet",
+  "addTransaction": "Add Transaction",
+  "editTransaction": "Edit Transaction",
+  "deleteTransaction": "Delete Transaction",
+  "transactionAdded": "Transaction added successfully",
+  "transactionUpdated": "Transaction updated successfully",
+  "transactionDeleted": "Transaction deleted successfully",
+  "incomeAmount": "+{amount}",
+  "@incomeAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseAmount": "-{amount}",
+  "@expenseAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "totalIncome": "Total Income",
+  "totalExpense": "Total Expense",
+  "netBalance": "Net Balance",
+  "surplus": "Surplus",
+  "deficit": "Deficit",
+  "noBills": "No bills yet",
+  "billPaid": "Bill paid",
+  "billUnpaid": "Bill unpaid",
+  "markAsPaid": "Mark as Paid",
+  "markAsUnpaid": "Mark as Unpaid",
+  "remindMe": "Remind Me",
+  "reminderSet": "Reminder set",
+  "noGroups": "No groups yet",
+  "joinGroup": "Join Group",
+  "createNewGroup": "Create New Group",
+  "inviteCode": "Invite Code",
+  "enterInviteCode": "Enter Invite Code",
+  "copyInviteCode": "Copy Invite Code",
+  "inviteCodeCopied": "Invite code copied to clipboard",
+  "share": "Share",
+  "shareVia": "Share via",
+  "permissions": "Permissions",
+  "cameraPermission": "Camera Permission",
+  "storagePermission": "Storage Permission",
+  "notificationPermission": "Notification Permission",
+  "grantPermission": "Grant Permission",
+  "permissionDenied": "Permission Denied",
+  "permissionRequired": "Permission Required",
+  "about": "About",
+  "version": "Version",
+  "privacyPolicy": "Privacy Policy",
+  "termsOfService": "Terms of Service",
+  "contactUs": "Contact Us",
+  "rateApp": "Rate App",
+  "logoutConfirm": "Are you sure you want to logout?",
+  "unsavedChanges": "You have unsaved changes. Discard?",
+  "discard": "Discard",
+  "keepEditing": "Keep Editing",
+  "errorOccurred": "An error occurred",
+  "tryAgain": "Try Again",
+  "networkError": "Network error. Please check your connection.",
+  "serverError": "Server error. Please try again later.",
+  "unknownError": "Unknown error occurred",
+  "unauthorized": "Unauthorized. Please login again.",
+  "forbidden": "Access denied",
+  "notFound": "Not found",
+  "tooManyRequests": "Too many requests. Please wait.",
+  "maintenance": "System maintenance. Please try again later.",
+  "guestMode": "Guest Mode",
+  "dataStoredLocally": "Data is stored only on this device",
+  "loginBenefits": "Login Benefits",
+  "syncDataMultipleDevices": "Sync data across multiple devices",
+  "cloudBackup": "Cloud backup for peace of mind",
+  "shareWithFamily": "Share finances with family or partner",
+  "aiUsageManagement": "AI usage management",
+  "loginOrRegister": "Login / Register",
+  "localData": "Local Data",
+  "recordCount": "Records",
+  "cloudSync": "Cloud Sync",
+  "notSet": "Not Set",
+  "myPage": "My Page",
+  "statistics": "Statistics",
+  "accountSettings": "Account",
+  "systemSettings": "System",
+  "aboutVee": "About Vee",
+  "seeMore": "See More",
+  "loadMore": "Load More",
+  "loadMoreData": "Load More Data",
+  "cancelDelete": "Cancel",
+  "deleting": "Delete",
+  "recordCompleted": "Recording completed!",
+  "categoryLoading": "Loading categories...",
+  "categoryLoadError": "Error: {error}",
+  "@categoryLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "private": "Private",
+  "product": "Product",
+  "discount": "Discount",
+  "tax": "Tax",
+  "retake": "Retake",
+  "chooseAgain": "Choose Again",
+  "addDetail": "Add Detail",
+  "cancelConfirm": "Cancel",
+  "confirmConfirm": "Confirm",
+  "layoutUpdated": "Layout updated",
+  "updateFailed": "Update failed: {error}",
+  "@updateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "permissionUpdated": "Permission updated, pushed to user devices in real time",
+  "operationFailed": "Operation failed: {error}",
+  "@operationFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "changePasswordTitle": "Change Password",
+  "editProfileTitle": "Edit Profile",
+  "createAccountTitle": "Create Account",
+  "verifyEmailTitle": "Verify Email",
+  "removeThis": "Remove This",
+  "cannotUndo": "This action cannot be undone.",
+  "selectMonthYear": "Select Month/Year",
+  "month": "Month",
+  "year": "Year",
+  "monthReset": "Resets on {date}",
+  "@monthReset": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "used": "{count, plural, =1{Used {count} time} other{Used {count} times}}",
+  "@used": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "totalQuota": "{count, plural, =1{Total {count} time/month} other{Total {count} times/month}}",
+  "@totalQuota": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiUsageQuota": "AI Usage Quota",
+  "unlimited": "Unlimited",
+  "telegramBind": "Telegram Binding",
+  "bound": "Bound",
+  "unbound": "Not Bound",
+  "boundWithTelegram": "Bound with Telegram #{id}",
+  "@boundWithTelegram": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "quotaSharedAfterBind": "After binding, Bot and App share the same AI quota for unified management",
+  "bindTelegram": "Bind Telegram",
+  "bindTelegramDesc": "Bind to share AI quota between Bot download/recognition and App",
+  "verificationCode": "Verification Code",
+  "validFor10Minutes": "Valid for 10 minutes",
+  "sendBindCommand": "Go to Telegram Bot and send:\n/bind {code}",
+  "@sendBindCommand": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshCode": "Refresh Code",
+  "applyBindCode": "Get Bind Code",
+  "unbind": "Unbind",
+  "telegramConnection": "Telegram Connection",
+  "detail": "Detail",
+  "receiptImages": "Receipt Images",
+  "itemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uncategorized": "Uncategorized",
+  "fromSource": "From {source}",
+  "@fromSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "merchant": "Merchant",
+  "notEntered": "Not entered",
+  "unknown": "Unknown",
+  "itemsTotal": "Items Total",
+  "totalRecords": "{count, plural, =0{No records} =1{1 record} other{{count} records}}",
+  "@totalRecords": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecords": "No records",
+  "tryDifferentKeyword": "Try a different keyword",
+  "adminConsole": "Admin Console",
+  "dataDashboard": "Data Dashboard",
+  "systemConfig": "System Config",
+  "userManagement": "User Management",
+  "userOverview": "User Overview",
+  "totalUsers": "Total Users",
+  "activeUsers": "Active Users",
+  "adminCount": "Admin Count",
+  "wsOnline": "WS Online",
+  "billOverview": "Bill Overview",
+  "totalBills": "Total Bills",
+  "billsThisMonth": "Bills This Month",
+  "aiUsageThisMonth": "AI Usage This Month",
+  "aiUsageCountTimes": "{count, plural, =1{{count} time} other{{count} times}}",
+  "wsConnections": "WS Connections",
+  "configValue": "Config Value",
+  "empty": "(Empty)",
+  "searchEmailUsername": "Search email / username / nickname",
+  "all": "All",
+  "banned": "Banned",
+  "configPermission": "Permission Config",
+  "botText": "Bot Text",
+  "botReceipt": "Bot Receipt",
+  "botVoice": "Bot Voice",
+  "botDownload": "Bot Download",
+  "appOcr": "App OCR",
+  "appExport": "App Export",
+  "appUpload": "App Upload",
+  "botTextLabel": "Bot Text Entry",
+  "botReceiptLabel": "Bot Image Recognition",
+  "botVoiceLabel": "Bot Voice Entry",
+  "botDownloadLabel": "Bot Download",
+  "appOcrLabel": "App OCR Recognition",
+  "appExportLabel": "App Data Export",
+  "appUploadLabel": "App Image Upload",
+  "selectAll": "Select All",
+  "clearAll": "Clear All",
+  "savePermission": "{count, plural, =1{Save Permission (1 item)} other{Save Permission ({count} items)}}",
+  "@savePermission": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "registrationIp": "Reg IP: {ip}",
+  "@registrationIp": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "lastIp": "Last IP: {ip}",
+  "@lastIp": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "noPermission": "No Permission",
+  "itemsLabel": "Items",
+  "category": "Category",
+  "date": "Date",
+  "productName": "Product Name",
+  "quantity": "Quantity",
+  "enterAmount": "Enter amount",
+  "invalidAmount": "Invalid amount",
+  "amountGreaterThanZero": "Amount must be greater than 0",
+  "calculatedFromTotal": "Calculated from total",
+  "enterProductName": "Enter product name",
+  "invalidAmountForItem": "Invalid amount for item {num}",
+  "@invalidAmountForItem": {
+    "placeholders": {
+      "num": {
+        "type": "int"
+      }
+    }
+  },
+  "additionalInfo": "Additional info...",
+  "notEnteredYet": "(Not entered)",
+  "records": "{count, plural, =1{1 record} other{{count} records}}",
+  "@records": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expenseTotal": "Total Expense",
+  "smartBillAssistant": "Smart Bill Assistant",
+  "usernameOrEmail": "Username or Email",
+  "enterUsernameOrEmail": "Please enter username or email",
+  "enterPassword": "Please enter password",
+  "defaultCategory": "Other",
+  "imageUploadFailed": "Image upload failed: {error}",
+  "@imageUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "monthDayFormat": "{month}/{day}",
+  "@monthDayFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "quotaResetsOn": "{date} reset",
+  "@quotaResetsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "yearMonthFormat": "{year}{month}",
+  "@yearMonthFormat": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "monthDayJapaneseFormat": "{month}{day}",
+  "@monthDayJapaneseFormat": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "enterEmail": "Enter email",
+  "sendFailed": "Send failed",
+  "enter6DigitCode": "Enter 6-digit code",
+  "passwordMinLength": "Password must be at least 6 characters",
+  "verificationFailed": "Verification failed",
+  "enterRegisteredEmail": "Enter registered email",
+  "willSendResetCode": "A password reset code will be sent",
+  "sendVerificationCode": "Send Verification Code",
+  "setNewPassword": "Set New Password",
+  "verificationSentTo": "Verification code sent to {email}",
+  "@verificationSentTo": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "sixDigitCode": "6-digit code",
+  "confirmReset": "Confirm Reset",
+  "resendCodeWithCountdown": "Resend code in {seconds}s",
+  "@resendCodeWithCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "Resend Code",
+  "registerFailed": "Registration failed",
+  "usernameFormat": "Username format",
+  "usernameMinLength": "Username must be at least 3 characters",
+  "usernameInvalid": "Invalid username",
+  "enterValidEmail": "Please enter a valid email",
+  "passwordNeedsNumber": "Password must contain a number",
+  "passwordNeedsLetter": "Password must contain a letter",
+  "registerAgree": "I agree to the Terms of Service",
+  "checkVerificationCode": "Check Verification Code",
+  "verifyAndActivate": "Verify and Activate",
+  "didNotReceiveResend": "Didn't receive it? Resend",
+  "changePasswordFailed": "Change password failed",
+  "nicknameRequired": "Nickname is required",
+  "saveFailed": "Save failed",
+  "usernameEmailCannotChange": "Username and email cannot be changed",
+  "noPermission": "No Permission",
+  "contactAdmin": "Please contact administrator",
+  "noAiPermission": "No AI Recognition Permission",
+  "contactAdminForOcr": "Please contact admin to enable \"App OCR\" feature",
+  "noUploadPermission": "No permission to upload receipt images",
+  "myLedger": "My Ledger"
+}
