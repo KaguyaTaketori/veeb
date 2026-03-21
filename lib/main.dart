@@ -1,11 +1,10 @@
-// lib/main.dart（完整替换）
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'providers/auth_provider.dart';
 import 'providers/permission_provider.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/bills_list/bills_list_screen.dart';
+import 'screens/transactions/transactions_screen.dart';
 import 'screens/ocr/ocr_screen.dart';
 import 'screens/stats/stats_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -36,23 +35,43 @@ class VeeApp extends StatelessWidget {
   }
 }
 
+// ── AuthGate ─────────────────────────────────────────────────────────────────
+// 不再强制登录，checking 状态结束后无论是否登录都进入 HomeScreen
+
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 启动 WS 生命周期（登录后自动连接，退出后自动断开）
+    // 启动 WS 生命周期（已登录时自动连接，退出后自动断开）
     ref.watch(wsListenerProvider);
 
     final authState = ref.watch(authProvider);
-    return switch (authState.status) {
-      AuthStatus.checking        => const Scaffold(
-          body: Center(child: CircularProgressIndicator())),
-      AuthStatus.authenticated   => const HomeScreen(),
-      AuthStatus.unauthenticated => const LoginScreen(),
-    };
+
+    // 启动检查期间显示 splash（通常很短，< 500ms）
+    if (authState.status == AuthStatus.checking) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Vee',
+                  style: TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // checking 结束后无论 authenticated / unauthenticated 都进主界面
+    return const HomeScreen();
   }
 }
+
+// ── HomeScreen ────────────────────────────────────────────────────────────────
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -68,16 +87,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
 
-    // 动态 tab：管理员多一个「管理」tab
     final screens = [
-      const BillsListScreen(),
+      const TransactionsScreen(),
       const OcrScreen(),
       const StatsScreen(),
       const ProfileScreen(),
       if (isAdmin) const AdminDashboardScreen(),
     ];
 
-    // 当前 index 超出范围时重置（角色变化时防越界）
     if (_currentIndex >= screens.length) {
       _currentIndex = 0;
     }
@@ -109,7 +126,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
-          // 宽屏：侧边 NavigationRail
           return Scaffold(
             backgroundColor: Colors.grey.shade50,
             body: Row(
@@ -139,12 +155,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         }
 
-        // 窄屏：底部 NavigationBar
         return Scaffold(
           body: screens[_currentIndex],
           bottomNavigationBar: NavigationBar(
-            backgroundColor:
-                Theme.of(context).colorScheme.surface,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             selectedIndex: _currentIndex,
             onDestinationSelected: (i) =>
                 setState(() => _currentIndex = i),
@@ -155,34 +169,3 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 }
-
-
-// ============================================================
-// 第四步完整落地清单
-// ============================================================
-//
-// 新建文件：
-//   lib/services/ws_service.dart          ← WS 连接/断连/重连/心跳
-//   lib/providers/permission_provider.dart ← 权限/WS事件/isAdmin Provider
-//   lib/widgets/permission_gate.dart       ← PermissionGate 组件
-//   lib/api/admin_api.dart                 ← 管理员 API 客户端
-//   lib/screens/admin/admin_dashboard_screen.dart ← 管理控制台
-//
-//
-//   lib/models/user.dart
-//     - UserProfile 追加 role: String, permissions: List<String>
-//     - fromJson 中解析 permissions JSON
-//
-//   lib/providers/bills_provider.dart
-//     - BillsNotifier 追加 insertBillFromWs / updateBillFromWs / removeBillById
-//
-//   lib/screens/ocr/ocr_screen.dart
-//     - body 用 PermissionGate(perm: 'app_ocr') 包裹
-//
-//   lib/screens/add_edit_bill/add_edit_bill_screen.dart
-//     - _ReceiptPicker 用 PermissionGate(perm: 'app_upload') 包裹
-//
-// pubspec.yaml 追加：
-//   web_socket_channel: ^2.4.0
-//
-// ============================================================

@@ -1,48 +1,50 @@
-// lib/providers/stats_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../api/bills_api.dart';
-import '../models/bill.dart';
-
+import '../api/transactions_api.dart';
+import '../models/transaction.dart';
+import '../providers/group_provider.dart';
+ 
 class StatsState {
-  final MonthlySummary? summary;
-  final bool loading;
-  final String? error;
-
+  final MonthlyStat? summary;
+  final bool         loading;
+  final String?      error;
+ 
   const StatsState({this.summary, this.loading = false, this.error});
-
+ 
   StatsState copyWith({
-    MonthlySummary? summary,
-    bool? loading,
-    String? error,
+    MonthlyStat? summary,
+    bool?        loading,
+    String?      error,
   }) =>
       StatsState(
         summary: summary ?? this.summary,
         loading: loading ?? this.loading,
-        error: error,
+        error:   error,
       );
 }
-
+ 
 class StatsNotifier extends Notifier<StatsState> {
   @override
   StatsState build() => const StatsState();
-
-  BillsApi get _api => ref.watch(billsApiProvider);
-
+ 
+  TransactionsApi get _api => ref.watch(transactionsApiProvider);
+ 
   Future<void> load(DateTime month) async {
+    final groupId = ref.read(currentGroupIdProvider);
+    if (groupId == null) return;
+ 
     state = state.copyWith(loading: true, error: null);
     try {
-      final data = await _api.getMonthlySummary(
-        year: month.year,
-        month: month.month,
+      final summary = await _api.getMonthlySummary(
+        groupId: groupId,
+        year:    month.year,
+        month:   month.month,
       );
-      state = state.copyWith(
-        summary: MonthlySummary.fromJson(data),
-        loading: false,
-      );
+      state = state.copyWith(summary: summary, loading: false);
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
 }
-
-final statsProvider = NotifierProvider<StatsNotifier, StatsState>(() => StatsNotifier());
+ 
+final statsProvider =
+    NotifierProvider<StatsNotifier, StatsState>(StatsNotifier.new);

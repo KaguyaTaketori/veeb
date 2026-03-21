@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
-import '../providers/auth_provider.dart';
+import 'auth_provider.dart';
 import '../services/ws_service.dart';
-import '../providers/bills_provider.dart';
+import 'transactions_provider.dart';
+import 'bills_provider.dart';
 
 // ── 权限 Provider ─────────────────────────────────────────────────────────
 
@@ -78,15 +79,27 @@ class _WsLifecycleNotifier extends Notifier<void> {
 
   void _onEvent(WsEvent event) {
     switch (event.type) {
-      case 'new_bill':
-        ref.read(billsProvider.notifier).insertBillFromWs(event.data);
+      case 'new_transaction':
+        ref.read(transactionsProvider.notifier).insertFromWs(event.data);  
 
-      case 'bill_updated':
-        ref.read(billsProvider.notifier).updateBillFromWs(event.data);
-
-      case 'bill_deleted':
+      case 'transaction_updated':
+        ref.read(transactionsProvider.notifier).updateFromWs(event.data);
+ 
+      case 'transaction_deleted':
         final id = event.data['id'] as int?;
-        if (id != null) ref.read(billsProvider.notifier).removeBillById(id);
+        if (id != null) {
+          ref.read(transactionsProvider.notifier).removeById(id);
+        }
+
+      case 'new_bill':
+        // 旧版服务端推送，暂时忽略（新版用 new_transaction）
+        break;
+ 
+      case 'bill_updated':
+        break;
+ 
+      case 'bill_deleted':
+        break;
 
       case 'permissions_updated':
         // 权限变更：刷新用户信息（只调用一次）

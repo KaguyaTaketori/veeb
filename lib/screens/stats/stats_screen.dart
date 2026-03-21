@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../constants/categories.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../providers/stats_provider.dart';
-import '../../models/bill.dart' show MonthlySummary;
+import '../../models/transaction.dart' show MonthlyStat;
 
 class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
@@ -104,7 +104,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
 // ── ボディ部（レイアウト構成） ──────────────────────────────────────────
 
 class _Body extends StatelessWidget {
-  final MonthlySummary summary;
+  final MonthlyStat summary;
   final DateTime selectedMonth;
   final int touchedIndex;
   final ValueChanged<int> onTouch;
@@ -156,9 +156,9 @@ class _Body extends StatelessWidget {
 
   // 1. サマリーカード
   Widget _buildSummaryCard(BuildContext context) {
-    final total = kAmountFormat.format(summary.total);
+    final total = kAmountFormat.format(summary.totalExpense);
     final currency = summary.byCurrency.isNotEmpty
-        ? summary.byCurrency.first.currency
+        ? summary.byCurrency.first['currency'] as String? ?? 'JPY'
         : 'JPY';
 
     return Card(
@@ -276,7 +276,7 @@ class _Body extends StatelessWidget {
                 final isTouched = i == touchedIndex;
                 final color = kCategoryColors[i % kCategoryColors.length];
                 final pct =
-                    summary.total > 0 ? cat.total / summary.total * 100 : 0.0;
+                    summary.totalExpense > 0 ? cat.total / summary.totalExpense * 100 : 0.0;
                 return PieChartSectionData(
                   color: color,
                   value: cat.total,
@@ -315,9 +315,9 @@ class _Body extends StatelessWidget {
         itemBuilder: (ctx, i) {
           final cat = summary.byCategory[i];
           final color = kCategoryColors[i % kCategoryColors.length];
-          final emoji = kCategoryEmoji[cat.category] ?? '📦';
+          final emoji = kCategoryEmoji[cat.name] ?? '📦';
           final catAmount = kAmountFormat.format(cat.total);
-          final pct = summary.total > 0 ? cat.total / summary.total * 100 : 0.0;
+          final pct = summary.totalExpense > 0 ? cat.total / summary.totalExpense * 100 : 0.0;
           final isTouched = i == touchedIndex;
 
           return InkWell(
@@ -352,7 +352,7 @@ class _Body extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children:[
                         Text(
-                          cat.category,
+                          cat.name,
                           style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w600),
                         ),
