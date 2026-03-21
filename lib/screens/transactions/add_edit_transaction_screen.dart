@@ -11,6 +11,7 @@ import '../../providers/categories_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../utils/currency.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;     // null = 新建
@@ -358,15 +359,7 @@ class _AddEditTransactionScreenState
                   horizontal: 16, vertical: 8),
               children: [
                 if (_error != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(_error!,
-                        style: TextStyle(color: Colors.red.shade700)),
-                  ),
+                  VeeErrorBanner(message: _error!),
 
                 // 类型选择
                 _buildTypeSelector(),

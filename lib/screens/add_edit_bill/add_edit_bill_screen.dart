@@ -7,6 +7,7 @@ import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/bill.dart';
 import '../../providers/bills_provider.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class AddEditBillScreen extends ConsumerStatefulWidget {
   final Bill? bill;
@@ -428,16 +429,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children:[
                 if (_error != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(_error!,
-                        style: TextStyle(color: Colors.red.shade700)),
-                  ),
+                  VeeErrorBanner(message: _error!),
 
                 // 优化点 2：突出核心要素（大字号金额输入）
                 _buildAmountHeader(l10n),

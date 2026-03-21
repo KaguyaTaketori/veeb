@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/ui_core/vee_submit_button.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -66,13 +68,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_error != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(_error!, style: TextStyle(
-                        color: Colors.red.shade700, fontSize: 13)),
-                  ),
+                  VeeErrorBanner(message: _error!),
                   const SizedBox(height: 16),
                 ],
                 _pwField(_oldCtrl, l10n.currentPassword),
@@ -81,19 +77,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 const SizedBox(height: 14),
                 _pwField(_confCtrl, l10n.confirmNewPassword),
                 const SizedBox(height: 28),
-                SizedBox(height: 52,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14))),
-                    onPressed: _loading ? null : _submit,
-                    child: _loading
-                        ? const SizedBox(width: 20, height: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : Text(l10n.confirm,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                  ),
+                VeeSubmitButton(
+                  label: l10n.confirm,
+                  onPressed: _loading ? null : _submit,
+                  isLoading: _loading,
                 ),
               ],
             ),

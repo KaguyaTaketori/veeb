@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../screens/auth/login_screen.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -896,14 +897,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
           const SizedBox(height: 16),
 
           if (_error != null) ...[
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10)),
-              child: Text(_error!,
-                  style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
-            ),
+            VeeErrorBanner(message: _error!),
             const SizedBox(height: 12),
           ],
 

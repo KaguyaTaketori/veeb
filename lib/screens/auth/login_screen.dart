@@ -7,6 +7,8 @@ import '../../main.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -87,60 +89,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     // 错误提示
                     if (auth.error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline,
-                                size: 18, color: Colors.red.shade700),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(auth.error!,
-                                  style: TextStyle(
-                                      color: Colors.red.shade700,
-                                      fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                      ),
+                      VeeErrorBanner(message: auth.error!),
                       const SizedBox(height: 16),
                     ],
 
                     // 用户名/邮箱
-                    TextFormField(
+                    VeeTextField(
                       controller: _identCtrl,
+                      label: l10n.usernameOrEmail,
+                      prefixIcon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      onTap: () => ref.read(authProvider.notifier).clearError(),
-                      decoration: _inputDeco(
-                          label: l10n.usernameOrEmail,
-                          icon: Icons.person_outline),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? l10n.enterUsernameOrEmail : null,
+                      validator: (v) => v!.isEmpty ? l10n.enterUsernameOrEmail : null,
                     ),
                     const SizedBox(height: 16),
 
                     // 密码
-                    TextFormField(
+                    VeeTextField(
                       controller: _passwordCtrl,
-                      obscureText: _obscure,
+                      label: l10n.password,
+                      prefixIcon: Icons.lock_outline,
+                      isPassword: true,
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      decoration: _inputDeco(
-                        label: l10n.password,
-                        icon: Icons.lock_outline,
-                        suffix: IconButton(
-                          icon: Icon(
-                              _obscure ? Icons.visibility_off_outlined
-                                       : Icons.visibility_outlined,
-                              size: 20),
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                        ),
-                      ),
+                      onSubmitted: (_) => _submit(),
                       validator: (v) =>
                           v == null || v.isEmpty ? l10n.enterPassword : null,
                     ),

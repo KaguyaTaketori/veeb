@@ -5,6 +5,7 @@ import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import 'verify_email_screen.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -88,7 +89,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_error != null) ...[
-                    _ErrorBanner(_error!),
+                    VeeErrorBanner(message: _error!),
                     const SizedBox(height: 16),
                   ],
 
@@ -188,28 +189,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
-}
-
-// ── 复用子组件 ─────────────────────────────────────────────────────────────
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner(this.message);
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(children: [
-          Icon(Icons.error_outline, size: 18, color: Colors.red.shade700),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message,
-              style: TextStyle(color: Colors.red.shade700, fontSize: 13))),
-        ]),
-      );
 }
 
 class _Field extends StatelessWidget {

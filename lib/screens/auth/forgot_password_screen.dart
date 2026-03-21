@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/ui_core/vee_submit_button.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -110,13 +112,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_error != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(_error!,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
-                  ),
+                  VeeErrorBanner(message: _error!),
                   const SizedBox(height: 16),
                 ],
 
@@ -133,18 +129,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     decoration: _deco(l10n.email, Icons.email_outlined),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14))),
-                      onPressed: _loading ? null : _sendCode,
-                      child: _loading
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(l10n.sendVerificationCode,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
+                  VeeSubmitButton(
+                    label: l10n.sendVerificationCode,
+                    onPressed: _loading ? null : _sendCode,
+                    isLoading: _loading,
                   ),
                 ] else ...[
                   Text(l10n.setNewPassword, style: Theme.of(context).textTheme.titleMedium
@@ -178,18 +166,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     decoration: _deco(l10n.confirmNewPassword, Icons.lock_outline),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14))),
-                      onPressed: _loading ? null : _resetPassword,
-                      child: _loading
-                          ? const SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(l10n.confirmReset,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
+                  VeeSubmitButton(
+                    label: l10n.confirmReset,
+                    onPressed: _loading ? null : _resetPassword,
+                    isLoading: _loading,
                   ),
                   const SizedBox(height: 12),
                   TextButton(

@@ -12,6 +12,7 @@ import '../../providers/bills_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/bill_item_row.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class OcrScreen extends ConsumerStatefulWidget {
   const OcrScreen({super.key});
@@ -238,14 +239,7 @@ class _PickerView extends StatelessWidget {
           
           if (error != null) ...[
             const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(error!, style: TextStyle(color: Colors.red.shade700)),
-            ),
+            VeeErrorBanner(message: error!),
           ],
         ],
       ),
