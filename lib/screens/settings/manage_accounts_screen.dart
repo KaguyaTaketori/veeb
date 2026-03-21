@@ -17,7 +17,7 @@ class ManageAccountsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text(l10n.manageAccounts),
+        title: Text(l10n.accounts),
         centerTitle: true,
         backgroundColor: Colors.transparent,
       ),
