@@ -67,7 +67,7 @@ class VeeApp extends ConsumerWidget {
       // ── Card ──────────────────────────────────────────────────────────────
       // 扁平卡片 + 细边框，作用于所有未显式设置 shape 的 Card widget
       // 注意：显式设置了 shape 的 Card（如 VeeCard）不受此影响
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: VeeTokens.elevationNone,
         margin: EdgeInsets.zero,
         color: VeeTokens.surfaceCard,
@@ -233,7 +233,7 @@ class VeeApp extends ConsumerWidget {
       ),
 
       // ── Dialog ────────────────────────────────────────────────────────────
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         elevation: VeeTokens.elevationModal,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VeeTokens.rXl),
