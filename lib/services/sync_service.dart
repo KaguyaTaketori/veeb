@@ -285,25 +285,25 @@ class SyncService {
       }
     }
   }
-}
 
-Future<int> _resolveRemoteCategoryId(int localId) async {
-  final row = await (_db.select(_db.categories)
-        ..where((c) => c.id.equals(localId)))
-      .getSingleOrNull();
-  // 系统分类 remoteId 就是服务端真实 ID（在 fullPull 时写入）
-  // 自定义分类如果还没同步，fallback 到「其他」的 remoteId
-  if (row?.remoteId != null) return row!.remoteId!;
-  // fallback：查服务端「其他」分类
-  final other = await (_db.select(_db.categories)
-        ..where((c) => c.name.equals('其他') & c.isSystem.equals(true)))
-      .getSingleOrNull();
-  return other?.remoteId ?? 1;
-}
+  Future<int> _resolveRemoteCategoryId(int localId) async {
+    final row = await (_db.select(_db.categories)
+          ..where((c) => c.id.equals(localId)))
+        .getSingleOrNull();
+    // 系统分类 remoteId 就是服务端真实 ID（在 fullPull 时写入）
+    // 自定义分类如果还没同步，fallback 到「其他」的 remoteId
+    if (row?.remoteId != null) return row!.remoteId!;
+    // fallback：查服务端「其他」分类
+    final other = await (_db.select(_db.categories)
+          ..where((c) => c.name.equals('其他') & c.isSystem.equals(true)))
+        .getSingleOrNull();
+    return other?.remoteId ?? 1;
+  }
 
-Future<int> _resolveRemoteGroupId(int localId) async {
-  final row = await (_db.select(_db.groups)
-        ..where((g) => g.id.equals(localId)))
-      .getSingleOrNull();
-  return row?.remoteId ?? localId;
+  Future<int> _resolveRemoteGroupId(int localId) async {
+    final row = await (_db.select(_db.groups)
+          ..where((g) => g.id.equals(localId)))
+        .getSingleOrNull();
+    return row?.remoteId ?? localId;
+  }
 }

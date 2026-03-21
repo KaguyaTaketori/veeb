@@ -182,7 +182,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await db.markAllLocalAsPending();
 
       // 3. 触发同步
-      final syncService = ref.read(syncCoordinatorProvider);
+      final syncService = ref.read(syncServiceProvider);
       await syncService.syncNow();
 
     } catch (e) {

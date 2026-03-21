@@ -6,6 +6,9 @@ import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../providers/group_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../api/client.dart';
+import '../../api/transactions_api.dart';
 
 class ManageCategoriesScreen extends ConsumerWidget {
   const ManageCategoriesScreen({super.key});
@@ -167,9 +170,30 @@ class _CategoriesGrid extends ConsumerWidget {
     );
   }
 
+  Color _parseColor(String colorStr) {
+    final hex = colorStr.replaceFirst('#', '0xFF');
+    return Color(int.parse(hex));
+  }
+
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, Category c) async {
-    final ok = await showDialog<bool>(...); // 不变
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('删除分类"${c.name}"？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
     if (ok != true) return;
 
     final isLoggedIn =
@@ -193,6 +217,7 @@ class _CategoriesGrid extends ConsumerWidget {
     final groupId = ref.read(currentGroupIdProvider);
     ref.invalidate(categoriesProvider(groupId));
   }
+}
 
 // ── 添加分类表单 ─────────────────────────────────────────────────────
 

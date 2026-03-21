@@ -6,7 +6,6 @@ import '../models/user.dart';
 import 'auth_provider.dart';
 import '../services/ws_service.dart';
 import 'transactions_provider.dart';
-import 'bills_provider.dart';
 
 // ── 权限 Provider ─────────────────────────────────────────────────────────
 

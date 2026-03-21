@@ -10,26 +10,29 @@ import '../../providers/group_provider.dart';
 import '../../utils/currency.dart';
 import '../../widgets/ui_core/vee_card.dart';
 import 'add_edit_transaction_screen.dart';
-import 'transaction_detail_screen.dart';
+
+// TransactionDetailScreen は AddEditTransactionScreen(isReadOnly: true) に統合済み
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
   @override
-  ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
+  ConsumerState<TransactionsScreen> createState() =>
+      _TransactionsScreenState();
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     with MonthSelectorMixin {
   final _searchCtrl = TextEditingController();
-  bool   _showSearch  = false;
+  bool _showSearch = false;
   String? _typeFilter;
 
   @override
   void initState() {
     super.initState();
     selectedMonth = DateTime.now();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load(refresh: true));
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _load(refresh: true));
   }
 
   @override
@@ -44,8 +47,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   void _load({bool refresh = false}) {
     ref.read(transactionsProvider.notifier).load(
           selectedMonth,
-          refresh:    refresh,
-          keyword:    _searchCtrl.text.trim(),
+          refresh: refresh,
+          keyword: _searchCtrl.text.trim(),
           typeFilter: _typeFilter,
         );
   }
@@ -60,9 +63,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     });
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final state   = ref.watch(transactionsProvider);
+    final state = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
     if (groupId == null && !ref.watch(groupProvider).loading) {
@@ -87,9 +92,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                     ? _buildError(state.error!)
                     : RefreshIndicator(
                         onRefresh: () async => _load(refresh: true),
-                        child: state.transactions.isEmpty && !state.loading
-                            ? _buildEmpty()
-                            : _buildList(state),
+                        child:
+                            state.transactions.isEmpty && !state.loading
+                                ? _buildEmpty()
+                                : _buildList(state),
                       ),
               ),
               if (state.loading && state.transactions.isEmpty)
@@ -99,7 +105,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () async {
           final created = await Navigator.push<bool>(
             context,
@@ -116,6 +123,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
+  // ── AppBar ────────────────────────────────────────────────────────────────
+
   AppBar _buildAppBar(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return AppBar(
@@ -127,7 +136,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               controller: _searchCtrl,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '${l10n.note}・${l10n.category}${l10n.search}',
+                hintText:
+                    '${l10n.note}・${l10n.category}${l10n.search}',
                 filled: true,
                 fillColor: Theme.of(context).colorScheme.surface,
                 contentPadding:
@@ -136,7 +146,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
                 ),
-                prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
+                prefixIcon: const Icon(Icons.search,
+                    size: 20, color: Colors.grey),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.close, size: 18),
                   onPressed: _toggleSearch,
@@ -146,12 +157,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   .read(transactionsProvider.notifier)
                   .search(selectedMonth, v.trim()),
             )
-          : Text(l10n.transactions, style: const TextStyle(fontWeight: FontWeight.bold)),
+          : Text(l10n.transactions,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
       actions: _showSearch
           ? []
           : [
               IconButton(
-                  icon: const Icon(Icons.search), onPressed: _toggleSearch),
+                  icon: const Icon(Icons.search),
+                  onPressed: _toggleSearch),
               IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () => _load(refresh: true)),
@@ -159,11 +172,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
+  // ── 月度汇总卡 ────────────────────────────────────────────────────────────
+
   Widget _buildSummaryCard(BuildContext context, TransactionsState state) {
     final l10n = AppLocalizations.of(context)!;
     final expenseStr = formatAmount(state.monthExpense, 'JPY');
-    final incomeStr  = formatAmount(state.monthIncome,  'JPY');
-    final netStr     = formatAmount(
+    final incomeStr = formatAmount(state.monthIncome, 'JPY');
+    final netStr = formatAmount(
         (state.monthIncome - state.monthExpense).abs(), 'JPY');
     final isPositive = state.monthIncome >= state.monthExpense;
 
@@ -171,90 +186,98 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: VeeCard(
         padding: const EdgeInsets.all(20),
-        child: Column(
+        child: Column(children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: prevMonth,
-                    icon: const Icon(Icons.chevron_left),
-                    style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey.shade100),
-                  ),
-                  Text(
-                    l10n.yearMonthFormat(selectedMonth.year, selectedMonth.month),
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    onPressed: nextMonth,
-                    icon: const Icon(Icons.chevron_right),
-                    style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey.shade100),
-                  ),
-                ],
+              IconButton(
+                onPressed: prevMonth,
+                icon: const Icon(Icons.chevron_left),
+                style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade100),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _SummaryCell(label: l10n.expense, value: '¥$expenseStr',
-                      color: Colors.red.shade400)),
-                  Container(width: 1, height: 40, color: Colors.grey.shade200),
-                  Expanded(child: _SummaryCell(label: l10n.income, value: '¥$incomeStr',
-                      color: Colors.green.shade600)),
-                ],
+              Text(
+                l10n.yearMonthFormat(
+                    selectedMonth.year, selectedMonth.month),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const Divider(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('${l10n.balance} ', style: TextStyle(
-                      fontSize: 13, color: Colors.grey[600])),
-                  Text(
-                    '${isPositive ? "+" : "-"}¥$netStr',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: isPositive
-                          ? Colors.green.shade600
-                          : Colors.red.shade400,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${state.monthCount} ${l10n.recordCount}',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
+              IconButton(
+                onPressed: nextMonth,
+                icon: const Icon(Icons.chevron_right),
+                style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade100),
               ),
             ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                  child: _SummaryCell(
+                      label: l10n.expense,
+                      value: '¥$expenseStr',
+                      color: Colors.red.shade400)),
+              Container(
+                  width: 1, height: 40, color: Colors.grey.shade200),
+              Expanded(
+                  child: _SummaryCell(
+                      label: l10n.income,
+                      value: '¥$incomeStr',
+                      color: Colors.green.shade600)),
+            ],
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('${l10n.balance} ',
+                  style:
+                      TextStyle(fontSize: 13, color: Colors.grey[600])),
+              Text(
+                '${isPositive ? "+" : "-"}¥$netStr',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isPositive
+                      ? Colors.green.shade600
+                      : Colors.red.shade400,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${state.monthCount} ${l10n.recordCount}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ]),
       ),
     );
   }
 
+  // ── 类型筛选条 ────────────────────────────────────────────────────────────
+
   Widget _buildTypeFilter() {
     final l10n = AppLocalizations.of(context)!;
     final filters = [
-      (null,       l10n.total),
-      ('expense',  l10n.expense),
-      ('income',   l10n.income),
+      (null, l10n.total),
+      ('expense', l10n.expense),
+      ('income', l10n.income),
       ('transfer', l10n.transfer),
     ];
     return Padding(
@@ -307,6 +330,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       ),
     );
   }
+
+  // ── 列表 ──────────────────────────────────────────────────────────────────
 
   Widget _buildList(TransactionsState state) {
     final l10n = AppLocalizations.of(context)!;
@@ -368,12 +393,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _TransactionTile(
               transaction: txn,
+              // ★ 直接打开 AddEditTransactionScreen 查看模式
               onTap: () async {
                 final updated = await Navigator.push<bool>(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        TransactionDetailScreen(transaction: txn),
+                    builder: (_) => AddEditTransactionScreen(
+                      transaction: txn,
+                      selectedMonth: selectedMonth,
+                      isReadOnly: true, // 以查看模式打开，用户可切换至编辑
+                    ),
                   ),
                 );
                 if (updated == true) _load(refresh: true);
@@ -385,58 +414,60 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
+  // ── 空/错误状态 ───────────────────────────────────────────────────────────
+
   Widget _buildEmpty() {
     final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 60),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.receipt_long_outlined,
-                    size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(l10n.noTransactions,
-                    style: TextStyle(color: Colors.grey[500])),
-              ],
-            ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.receipt_long_outlined,
+                  size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(l10n.noTransactions,
+                  style: TextStyle(color: Colors.grey[500])),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildError(String error) {
     final l10n = AppLocalizations.of(context)!;
     return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(error, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 16),
-            FilledButton.tonal(
-              onPressed: () => _load(refresh: true),
-              child: Text(l10n.retry),
-            ),
-          ],
-        ),
-      );
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+          const SizedBox(height: 16),
+          Text(error, style: const TextStyle(color: Colors.red)),
+          const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () => _load(refresh: true),
+            child: Text(l10n.retry),
+          ),
+        ],
+      ),
+    );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 子组件（与原版一致）
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SummaryCell extends StatelessWidget {
   final String label;
   final String value;
-  final Color  color;
-
-  const _SummaryCell({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  final Color color;
+  const _SummaryCell(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Column(
@@ -456,93 +487,89 @@ class _SummaryCell extends StatelessWidget {
 class _TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback onTap;
-
-  const _TransactionTile({
-    required this.transaction,
-    required this.onTap,
-  });
+  const _TransactionTile(
+      {required this.transaction, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final t       = transaction;
-    final icon    = t.categoryIcon ?? '📦';
-    final color   = _parseColor(t.categoryColor);
-    final isExp   = t.type == 'expense';
+    final t = transaction;
+    final icon = t.categoryIcon ?? '📦';
+    final color = _parseColor(t.categoryColor);
+    final isExp = t.type == 'expense';
     final isTrans = t.type == 'transfer';
     final amtColor = isTrans
         ? Colors.blue
         : isExp
             ? Colors.red.shade400
             : Colors.green.shade600;
-    final prefix  = isTrans ? '↔' : (isExp ? '-' : '+');
+    final prefix = isTrans ? '↔' : (isExp ? '-' : '+');
 
     return VeeCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(icon, style: const TextStyle(fontSize: 20)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.categoryName ?? l10n.pleaseSelect,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 15),
                 ),
-                alignment: Alignment.center,
-                child: Text(icon, style: const TextStyle(fontSize: 20)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t.categoryName ?? l10n.pleaseSelect,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    if (t.note?.isNotEmpty == true) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        t.note!,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey[500]),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.monthDayJapaneseFormat(t.date.month, t.date.day),
+                if (t.note?.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text(t.note!,
                       style:
-                          TextStyle(fontSize: 11, color: Colors.grey[400]),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$prefix ${t.currencyCode} ${t.formattedAmount}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: amtColor,
-                    ),
-                  ),
-                  if (t.hasReceipt)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(Icons.image_outlined,
-                          size: 14, color: Colors.grey[400]),
-                    ),
+                          TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ],
+                const SizedBox(height: 2),
+                Text(
+                  l10n.monthDayJapaneseFormat(
+                      t.date.month, t.date.day),
+                  style: TextStyle(
+                      fontSize: 11, color: Colors.grey[400]),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$prefix ${t.currencyCode} ${t.formattedAmount}',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: amtColor),
               ),
+              if (t.hasReceipt)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(Icons.image_outlined,
+                      size: 14, color: Colors.grey[400]),
+                ),
             ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 
   Color _parseColor(String? hex) {
@@ -563,37 +590,38 @@ class _NoGroupPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.book_outlined, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 20),
-                Text(l10n.noGroups,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(l10n.enterInviteCode,
-                    style: TextStyle(color: Colors.grey[500]),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton.icon(
-                    onPressed: onCreateGroup,
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.createNewGroup,
-                        style: const TextStyle(fontSize: 15)),
-                  ),
+      backgroundColor: Colors.grey.shade50,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.book_outlined,
+                  size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 20),
+              Text(l10n.noGroups,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(l10n.enterInviteCode,
+                  style: TextStyle(color: Colors.grey[500]),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: onCreateGroup,
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.createNewGroup,
+                      style: const TextStyle(fontSize: 15)),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
