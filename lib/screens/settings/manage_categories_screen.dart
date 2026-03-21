@@ -9,6 +9,11 @@ import '../../providers/group_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/client.dart';
 import '../../api/transactions_api.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
+import '../../widgets/ui_core/vee_empty_state.dart';
+import '../../widgets/ui_core/vee_confirm_dialog.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class ManageCategoriesScreen extends ConsumerWidget {
   const ManageCategoriesScreen({super.key});
@@ -19,66 +24,68 @@ class ManageCategoriesScreen extends ConsumerWidget {
     final catsAsync = ref.watch(currentCategoriesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('管理分类'),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
       ),
       body: catsAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(e.toString())),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => VeeEmptyState(
+          icon: Icons.error_outline,
+          title: e.toString(),
+          iconColor: VeeTokens.error,
+        ),
         data: (cats) {
           final system = cats.where((c) => c.isSystem).toList();
           final custom = cats.where((c) => !c.isSystem).toList();
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: VeeTokens.cardPadding,
             children: [
               _SectionHeader('系统分类', system.length),
-              const SizedBox(height: 8),
+              const SizedBox(height: VeeTokens.spacingXs),
               _CategoriesGrid(categories: system, canDelete: false),
-              const SizedBox(height: 20),
+              const SizedBox(height: VeeTokens.spacingLg),
               _SectionHeader('自定义分类', custom.length),
-              const SizedBox(height: 8),
+              const SizedBox(height: VeeTokens.spacingXs),
               if (custom.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('暂无自定义分类',
-                        style: TextStyle(color: Colors.grey[400])),
+                Padding(
+                  padding: const EdgeInsets.all(VeeTokens.s24),
+                  child: Center(
+                    child: Text(
+                      '暂无自定义分类',
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                   ),
                 )
               else
-                _CategoriesGrid(
-                    categories: custom, canDelete: true),
+                _CategoriesGrid(categories: custom, canDelete: true),
             ],
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        onPressed: () =>
-            _showAddSheet(context, ref, groupId),
+            borderRadius: BorderRadius.circular(VeeTokens.rLg)),
+        onPressed: () => _showAddSheet(context, ref, groupId),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _showAddSheet(
-      BuildContext context, WidgetRef ref, int? groupId) {
+  void _showAddSheet(BuildContext context, WidgetRef ref, int? groupId) {
     if (groupId == null) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(VeeTokens.rXl))),
       builder: (_) => _AddCategorySheet(groupId: groupId),
     );
   }
 }
+
+// ── 区块标题 ──────────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final String title;
@@ -88,22 +95,24 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
         Text(title,
-            style: const TextStyle(
-                fontSize: 15, fontWeight: FontWeight.bold)),
-        const SizedBox(width: 8),
+            style: context.veeText.sectionTitle),
+        const SizedBox(width: VeeTokens.spacingXs),
         Container(
           padding: const EdgeInsets.symmetric(
-              horizontal: 8, vertical: 2),
+              horizontal: VeeTokens.s8, vertical: VeeTokens.s2),
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(VeeTokens.rFull),
           ),
-          child: Text('$count',
-              style: TextStyle(
-                  fontSize: 12, color: Colors.grey[600])),
+          child: Text(
+            '$count',
+            style: context.veeText.micro.copyWith(color: Colors.grey[600]),
+          ),
         ),
       ]);
 }
+
+// ── 分类网格 ──────────────────────────────────────────────────────────────────
 
 class _CategoriesGrid extends ConsumerWidget {
   final List<Category> categories;
@@ -116,11 +125,10 @@ class _CategoriesGrid extends ConsumerWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+        mainAxisSpacing: VeeTokens.s12,
+        crossAxisSpacing: VeeTokens.s12,
         childAspectRatio: 0.85,
       ),
       itemCount: categories.length,
@@ -131,36 +139,38 @@ class _CategoriesGrid extends ConsumerWidget {
           children: [
             Column(children: [
               Container(
-                width: 56, height: 56,
+                width: VeeTokens.s56,
+                height: VeeTokens.s56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: VeeTokens.selectedTint(color),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(c.icon,
-                    style: const TextStyle(fontSize: 26)),
+                    style: TextStyle(fontSize: VeeTokens.iconXl - 2)),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: VeeTokens.spacingXxs),
               Text(c.name,
-                  style: const TextStyle(fontSize: 11),
+                  style: context.veeText.micro,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
             ]),
             if (canDelete)
               Positioned(
-                top: 0, right: 0,
+                top: 0,
+                right: 0,
                 child: GestureDetector(
-                  onTap: () =>
-                      _confirmDelete(context, ref, c),
+                  onTap: () => _confirmDelete(context, ref, c),
                   child: Container(
-                    width: 20, height: 20,
+                    width: VeeTokens.s20,
+                    height: VeeTokens.s20,
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: VeeTokens.error,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.close,
-                        size: 12, color: Colors.white),
+                        size: VeeTokens.iconXs, color: Colors.white),
                   ),
                 ),
               ),
@@ -177,22 +187,9 @@ class _CategoriesGrid extends ConsumerWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, Category c) async {
-    final ok = await showDialog<bool>(
+    final ok = await VeeConfirmDialog.showDelete(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('删除分类"${c.name}"？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      content: '删除分类"${c.name}"？',
     );
     if (ok != true) return;
 
@@ -202,7 +199,6 @@ class _CategoriesGrid extends ConsumerWidget {
 
     if (isLoggedIn && c.id != 0) {
       try {
-        // 调服务端删除
         final dio = ref.read(apiClientProvider);
         await dio.delete('/categories/${c.id}');
       } catch (e) {
@@ -219,90 +215,89 @@ class _CategoriesGrid extends ConsumerWidget {
   }
 }
 
-// ── 添加分类表单 ─────────────────────────────────────────────────────
+// ── 添加分类表单 ──────────────────────────────────────────────────────────────
 
 class _AddCategorySheet extends ConsumerStatefulWidget {
   final int groupId;
   const _AddCategorySheet({required this.groupId});
 
   @override
-  ConsumerState<_AddCategorySheet> createState() =>
-      _AddCategorySheetState();
+  ConsumerState<_AddCategorySheet> createState() => _AddCategorySheetState();
 }
 
-class _AddCategorySheetState
-    extends ConsumerState<_AddCategorySheet> {
+class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
   final _nameCtrl = TextEditingController();
-  String _icon    = '📦';
-  String _type    = 'expense';
-  String _color   = '#95A5A6';
-  bool   _saving  = false;
+  String _icon = '📦';
+  String _type = 'expense';
+  String _color = '#95A5A6';
+  bool _saving = false;
   String? _error;
 
-  // 预设 emoji 供选择
   static const _emojis = [
-    '🍜','🍕','☕','🚇','🚗','✈️','🛍️','👗',
-    '🎮','🎬','🎵','💊','🏠','💡','⛽','🛒',
-    '💰','📚','🎓','🐾','🌿','🏋️','💅','🎁',
+    '🍜', '🍕', '☕', '🚇', '🚗', '✈️', '🛍️', '👗',
+    '🎮', '🎬', '🎵', '💊', '🏠', '💡', '⛽', '🛒',
+    '💰', '📚', '🎓', '🐾', '🌿', '🏋️', '💅', '🎁',
   ];
 
   static const _colors = [
-    '#E85D30','#3B8BD4','#1D9E75','#EF9F27',
-    '#9B59B6','#E74C3C','#2ECC71','#1ABC9C',
-    '#95A5A6','#F39C12','#16A085','#8E44AD',
+    '#E85D30', '#3B8BD4', '#1D9E75', '#EF9F27',
+    '#9B59B6', '#E74C3C', '#2ECC71', '#1ABC9C',
+    '#95A5A6', '#F39C12', '#16A085', '#8E44AD',
   ];
 
   @override
-  void dispose() { _nameCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) {
       setState(() => _error = '请输入分类名称');
       return;
     }
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
     try {
       final isLoggedIn =
           ref.read(authProvider).status == AuthStatus.authenticated;
 
       if (isLoggedIn) {
-        // 登录模式：调 API，返回的 remoteId 写回本地
         final remote = await ref.read(categoriesApiProvider).createCategory({
-          'name':       _nameCtrl.text.trim(),
-          'icon':       _icon,
-          'color':      _color,
-          'type':       _type,
-          'group_id':   widget.groupId,
+          'name': _nameCtrl.text.trim(),
+          'icon': _icon,
+          'color': _color,
+          'type': _type,
+          'group_id': widget.groupId,
           'sort_order': 100,
         });
-        // 同时写本地，标记已同步
-        final db  = ref.read(appDatabaseProvider);
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final db = ref.read(appDatabaseProvider);
         await db.into(db.categories).insert(
           CategoriesCompanion.insert(
-            remoteId:  Value(remote.id),
-            name:      _nameCtrl.text.trim(),
-            icon:      Value(_icon),
-            color:     Value(_color),
-            type:      Value(_type),
-            isSystem:  const Value(false),
-            groupId:   Value(widget.groupId),
+            remoteId: Value(remote.id),
+            name: _nameCtrl.text.trim(),
+            icon: Value(_icon),
+            color: Value(_color),
+            type: Value(_type),
+            isSystem: const Value(false),
+            groupId: Value(widget.groupId),
             sortOrder: const Value(100),
             syncStatus: const Value('synced'),
           ),
         );
       } else {
-        // Guest 模式：只写本地
-        final db  = ref.read(appDatabaseProvider);
+        final db = ref.read(appDatabaseProvider);
         await db.into(db.categories).insert(
           CategoriesCompanion.insert(
-            name:      _nameCtrl.text.trim(),
-            icon:      Value(_icon),
-            color:     Value(_color),
-            type:      Value(_type),
-            isSystem:  const Value(false),
-            groupId:   Value(widget.groupId),
+            name: _nameCtrl.text.trim(),
+            icon: Value(_icon),
+            color: Value(_color),
+            type: Value(_type),
+            isSystem: const Value(false),
+            groupId: Value(widget.groupId),
             sortOrder: const Value(100),
             syncStatus: const Value('pending_create'),
           ),
@@ -321,153 +316,121 @@ class _AddCategorySheetState
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
+      padding: VeeTokens.sheetPadding(context),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('添加分类',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
+            Text('添加分类', style: context.veeText.sectionTitle),
+            const SizedBox(height: VeeTokens.spacingLg),
 
             if (_error != null) ...[
-              Text(_error!,
-                  style: const TextStyle(
-                      color: Colors.red, fontSize: 13)),
-              const SizedBox(height: 12),
+              VeeErrorBanner(message: _error!),
             ],
 
             // 名称
             TextField(
               controller: _nameCtrl,
-              decoration: InputDecoration(
-                labelText: '分类名称',
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-              ),
+              decoration: const InputDecoration(labelText: '分类名称'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: VeeTokens.spacingMd),
 
             // 收支类型
-            const Text('类型',
-                style: TextStyle(
-                    fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 8),
+            Text('类型', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            const SizedBox(height: VeeTokens.spacingXs),
             SegmentedButton<String>(
               segments: const [
                 ButtonSegment(value: 'expense', label: Text('支出')),
-                ButtonSegment(value: 'income',  label: Text('收入')),
-                ButtonSegment(value: 'both',    label: Text('通用')),
+                ButtonSegment(value: 'income', label: Text('收入')),
+                ButtonSegment(value: 'both', label: Text('通用')),
               ],
               selected: {_type},
-              onSelectionChanged: (s) =>
-                  setState(() => _type = s.first),
+              onSelectionChanged: (s) => setState(() => _type = s.first),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: VeeTokens.spacingMd),
 
             // emoji
-            const Text('图标',
-                style: TextStyle(
-                    fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 8),
+            Text('图标', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            const SizedBox(height: VeeTokens.spacingXs),
             Wrap(
-              spacing: 8, runSpacing: 8,
+              spacing: VeeTokens.spacingXs,
+              runSpacing: VeeTokens.spacingXs,
               children: _emojis.map((e) {
                 final selected = _icon == e;
                 return GestureDetector(
                   onTap: () => setState(() => _icon = e),
                   child: Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: selected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.15)
+                          ? VeeTokens.selectedTint(
+                              Theme.of(context).colorScheme.primary)
                           : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(VeeTokens.rSm),
                       border: Border.all(
                         color: selected
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primary
+                            ? Theme.of(context).colorScheme.primary
                             : Colors.transparent,
                         width: 1.5,
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Text(e,
-                        style: const TextStyle(fontSize: 22)),
+                    child: Text(e, style: const TextStyle(fontSize: 22)),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: VeeTokens.spacingMd),
 
             // 颜色
-            const Text('颜色',
-                style: TextStyle(
-                    fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 8),
+            Text('颜色', style: context.veeText.caption.copyWith(color: Colors.grey)),
+            const SizedBox(height: VeeTokens.spacingXs),
             Wrap(
-              spacing: 8, runSpacing: 8,
+              spacing: VeeTokens.spacingXs,
+              runSpacing: VeeTokens.spacingXs,
               children: _colors.map((c) {
-                final color = Color(
-                    int.parse(c.replaceFirst('#', '0xFF')));
+                final color = Color(int.parse(c.replaceFirst('#', '0xFF')));
                 final selected = _color == c;
                 return GestureDetector(
                   onTap: () => setState(() => _color = c),
                   child: Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
                       border: selected
-                          ? Border.all(
-                              color: Colors.white, width: 2)
+                          ? Border.all(color: Colors.white, width: 2)
                           : null,
                       boxShadow: selected
                           ? [BoxShadow(
-                              color: color.withOpacity(0.5),
+                              color: VeeTokens.overlayTint(color),
                               blurRadius: 6)]
                           : null,
                     ),
                     child: selected
                         ? const Icon(Icons.check,
-                            color: Colors.white, size: 18)
+                            color: Colors.white, size: VeeTokens.iconSm)
                         : null,
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: VeeTokens.spacingLg),
 
             SizedBox(
-              height: 52,
+              height: VeeTokens.buttonHeight,
               child: FilledButton(
-                style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14))),
                 onPressed: _saving ? null : _save,
                 child: _saving
                     ? const SizedBox(
-                        width: 20, height: 20,
+                        width: VeeTokens.iconMd,
+                        height: VeeTokens.iconMd,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white))
-                    : const Text('添加',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('添加'),
               ),
             ),
           ],

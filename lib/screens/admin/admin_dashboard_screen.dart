@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/admin_api.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
+import '../../widgets/ui_core/vee_card.dart';
+import '../../widgets/ui_core/vee_empty_state.dart';
+import '../../widgets/ui_core/vee_chip.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -12,8 +18,7 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
       _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState
-    extends ConsumerState<AdminDashboardScreen>
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
 
@@ -33,12 +38,9 @@ class _AdminDashboardScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
         title: Text(l10n.adminConsole,
-            style: TextStyle(fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabs,
@@ -46,9 +48,9 @@ class _AdminDashboardScreenState
           unselectedLabelColor: Colors.grey,
           indicatorColor: Theme.of(context).colorScheme.primary,
           tabs: [
-            Tab(icon: Icon(Icons.bar_chart), text: l10n.dataDashboard),
-            Tab(icon: Icon(Icons.tune), text: l10n.systemConfig),
-            Tab(icon: Icon(Icons.people), text: l10n.userManagement),
+            Tab(icon: const Icon(Icons.bar_chart), text: l10n.dataDashboard),
+            Tab(icon: const Icon(Icons.tune), text: l10n.systemConfig),
+            Tab(icon: const Icon(Icons.people), text: l10n.userManagement),
           ],
         ),
       ),
@@ -64,13 +66,13 @@ class _AdminDashboardScreenState
   }
 }
 
-
 // ============================================================
 // Tab 1：全局数据看板
 // ============================================================
 
 class _StatsTab extends ConsumerStatefulWidget {
   const _StatsTab();
+
   @override
   ConsumerState<_StatsTab> createState() => _StatsTabState();
 }
@@ -87,12 +89,15 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await ref.read(adminApiProvider).getStats();
-      setState(() { _stats = data; });
+      setState(() => _stats = data);
     } catch (e) {
-      setState(() { _error = e.toString(); });
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -102,32 +107,73 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return _ErrorView(error: _error!, onRetry: _load);
+    if (_error != null) {
+      return VeeEmptyState(
+        icon: Icons.error_outline,
+        title: _error!,
+        iconColor: VeeTokens.error,
+        actionLabel: l10n.retry,
+        onAction: _load,
+      );
+    }
 
     final s = _stats!;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: VeeTokens.cardPadding,
         children: [
           _SectionTitle(l10n.userOverview),
-          const SizedBox(height: 12),
+          const SizedBox(height: VeeTokens.spacingMd),
           _StatsGrid(items: [
-            _StatCard(label: l10n.totalUsers,  value: '${s['total_users']}',  icon: Icons.people,        color: Colors.blue),
-            _StatCard(label: l10n.activeUsers,  value: '${s['active_users']}', icon: Icons.check_circle,  color: Colors.green),
-            _StatCard(label: l10n.adminCount,  value: '${s['admin_count']}',  icon: Icons.admin_panel_settings, color: Colors.orange),
-            _StatCard(label: l10n.wsOnline,   value: '${s['online_ws_users']}', icon: Icons.wifi,        color: Colors.teal),
+            _StatCard(
+                label: l10n.totalUsers,
+                value: '${s['total_users']}',
+                icon: Icons.people,
+                color: Colors.blue),
+            _StatCard(
+                label: l10n.activeUsers,
+                value: '${s['active_users']}',
+                icon: Icons.check_circle,
+                color: Colors.green),
+            _StatCard(
+                label: l10n.adminCount,
+                value: '${s['admin_count']}',
+                icon: Icons.admin_panel_settings,
+                color: Colors.orange),
+            _StatCard(
+                label: l10n.wsOnline,
+                value: '${s['online_ws_users']}',
+                icon: Icons.wifi,
+                color: Colors.teal),
           ]),
-          const SizedBox(height: 24),
+          const SizedBox(height: VeeTokens.spacingLg),
           _SectionTitle(l10n.billOverview),
-          const SizedBox(height: 12),
+          const SizedBox(height: VeeTokens.spacingMd),
           _StatsGrid(items: [
-            _StatCard(label: l10n.totalBills,    value: '${s['total_bills']}',         icon: Icons.receipt_long,    color: Colors.purple),
-            _StatCard(label: l10n.billsThisMonth,    value: '${s['bills_this_month']}',    icon: Icons.calendar_month,  color: Colors.pink),
-            _StatCard(label: l10n.aiUsageThisMonth, value: l10n.aiUsageCountTimes(s['ai_quota_used_this_month'] as int), icon: Icons.auto_awesome, color: Colors.amber),
-            _StatCard(label: l10n.wsConnections,  value: '${s['total_ws_connections']}', icon: Icons.cable,           color: Colors.cyan),
+            _StatCard(
+                label: l10n.totalBills,
+                value: '${s['total_bills']}',
+                icon: Icons.receipt_long,
+                color: Colors.purple),
+            _StatCard(
+                label: l10n.billsThisMonth,
+                value: '${s['bills_this_month']}',
+                icon: Icons.calendar_month,
+                color: Colors.pink),
+            _StatCard(
+                label: l10n.aiUsageThisMonth,
+                value: l10n.aiUsageCountTimes(
+                    s['ai_quota_used_this_month'] as int),
+                icon: Icons.auto_awesome,
+                color: Colors.amber),
+            _StatCard(
+                label: l10n.wsConnections,
+                value: '${s['total_ws_connections']}',
+                icon: Icons.cable,
+                color: Colors.cyan),
           ]),
-          const SizedBox(height: 32),
+          const SizedBox(height: VeeTokens.spacingXxl),
         ],
       ),
     );
@@ -144,8 +190,8 @@ class _StatsGrid extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+      crossAxisSpacing: VeeTokens.s12,
+      mainAxisSpacing: VeeTokens.s12,
       childAspectRatio: 1.6,
       children: items,
     );
@@ -157,42 +203,43 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard({required this.label, required this.value,
-      required this.icon, required this.color});
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: color.withOpacity(0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withOpacity(0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(icon, color: color, size: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-                Text(label,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ],
-            ),
-          ],
-        ),
+    return VeeCard(
+      backgroundColor: VeeTokens.hoverTint(color),
+      borderColor: VeeTokens.strongTint(color),
+      padding: VeeTokens.cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(icon, color: color, size: VeeTokens.iconLg),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: color)),
+              Text(label,
+                  style: context.veeText.micro
+                      .copyWith(color: Colors.grey[600])),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
-
 
 // ============================================================
 // Tab 2：系统配置
@@ -200,6 +247,7 @@ class _StatCard extends StatelessWidget {
 
 class _ConfigTab extends ConsumerStatefulWidget {
   const _ConfigTab();
+
   @override
   ConsumerState<_ConfigTab> createState() => _ConfigTabState();
 }
@@ -216,15 +264,16 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await ref.read(adminApiProvider).listConfigs();
       final list = data['configs'] as List? ?? [];
-      setState(() {
-        _configs = list.cast<Map<String, dynamic>>();
-      });
+      setState(() => _configs = list.cast<Map<String, dynamic>>());
     } catch (e) {
-      setState(() { _error = e.toString(); });
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -232,33 +281,31 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
 
   Future<void> _editConfig(Map<String, dynamic> config) async {
     final l10n = AppLocalizations.of(context)!;
-    final ctrl = TextEditingController(
-        text: config['config_value'] as String? ?? '');
-    final key  = config['config_key'] as String;
+    final ctrl =
+        TextEditingController(text: config['config_value'] as String? ?? '');
+    final key = config['config_key'] as String;
     final desc = config['description'] as String? ?? '';
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(key, style: const TextStyle(fontSize: 15,
-            fontFamily: 'monospace')),
+        title: Text(key,
+            style: const TextStyle(
+                fontSize: 15, fontFamily: 'monospace')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (desc.isNotEmpty) ...[
               Text(desc,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              const SizedBox(height: 12),
+                  style: context.veeText.micro
+                      .copyWith(color: Colors.grey[600])),
+              const SizedBox(height: VeeTokens.s12),
             ],
             TextField(
               controller: ctrl,
               maxLines: null,
-              decoration: InputDecoration(
-                labelText: l10n.configValue,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
+              decoration: InputDecoration(labelText: l10n.configValue),
             ),
           ],
         ),
@@ -281,13 +328,17 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.layoutUpdated), behavior: SnackBarBehavior.floating),
+          SnackBar(
+              content: Text(l10n.layoutUpdated),
+              behavior: SnackBarBehavior.floating),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.updateFailed(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l10n.updateFailed(e.toString())),
+              backgroundColor: VeeTokens.error),
         );
       }
     }
@@ -297,55 +348,60 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return _ErrorView(error: _error!, onRetry: _load);
+    if (_error != null) {
+      return VeeEmptyState(
+        icon: Icons.error_outline,
+        title: _error!,
+        iconColor: VeeTokens.error,
+        actionLabel: l10n.retry,
+        onAction: _load,
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: VeeTokens.cardPadding,
         itemCount: _configs.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) =>
+            const SizedBox(height: VeeTokens.spacingXs),
         itemBuilder: (_, i) {
           final cfg = _configs[i];
-          final key  = cfg['config_key']   as String;
-          final val  = cfg['config_value'] as String? ?? '';
-          final desc = cfg['description']  as String? ?? '';
+          final key = cfg['config_key'] as String;
+          final val = cfg['config_value'] as String? ?? '';
+          final desc = cfg['description'] as String? ?? '';
 
-          return Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-            ),
+          return VeeCard(
+            padding: EdgeInsets.zero,
             child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: VeeTokens.s16, vertical: VeeTokens.spacingXs),
               title: Text(key,
-                  style: const TextStyle(
-                      fontSize: 13,
+                  style: context.veeText.micro.copyWith(
                       fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600)),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 4),
-                  Text(val.isEmpty ? l10n.empty : val,
-                      style: TextStyle(
-                          fontSize: 14,
-                          color: val.isEmpty
-                              ? Colors.grey[400]
-                              : Colors.black87)),
+                  const SizedBox(height: VeeTokens.spacingXxs),
+                  Text(
+                    val.isEmpty ? l10n.empty : val,
+                    style: context.veeText.bodyDefault.copyWith(
+                        color:
+                            val.isEmpty ? Colors.grey[400] : Colors.black87),
+                  ),
                   if (desc.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: VeeTokens.spacingXxs),
                     Text(desc,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[500])),
+                        style: context.veeText.micro
+                            .copyWith(color: Colors.grey[500])),
                   ],
                 ],
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
+                icon: const Icon(Icons.edit_outlined,
+                    size: VeeTokens.iconMd),
                 onPressed: () => _editConfig(cfg),
               ),
             ),
@@ -356,13 +412,13 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
   }
 }
 
-
 // ============================================================
 // Tab 3：用户管理
 // ============================================================
 
 class _UsersTab extends ConsumerStatefulWidget {
   const _UsersTab();
+
   @override
   ConsumerState<_UsersTab> createState() => _UsersTabState();
 }
@@ -373,9 +429,9 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
   String? _error;
   final _searchCtrl = TextEditingController();
   String _roleFilter = '';
-  int?   _activeFilter;
-  int    _page = 1;
-  bool   _hasNext = false;
+  int? _activeFilter;
+  int _page = 1;
+  bool _hasNext = false;
 
   @override
   void initState() {
@@ -391,22 +447,25 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
 
   Future<void> _load({bool refresh = false}) async {
     if (refresh) _page = 1;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await ref.read(adminApiProvider).listUsers(
-        page: _page,
-        keyword: _searchCtrl.text.trim(),
-        role: _roleFilter.isEmpty ? null : _roleFilter,
-        isActive: _activeFilter,
-      );
-      final list = (data['users'] as List? ?? [])
-          .cast<Map<String, dynamic>>();
+            page: _page,
+            keyword: _searchCtrl.text.trim(),
+            role: _roleFilter.isEmpty ? null : _roleFilter,
+            isActive: _activeFilter,
+          );
+      final list =
+          (data['users'] as List? ?? []).cast<Map<String, dynamic>>();
       setState(() {
-        _users   = refresh ? list : [..._users, ...list];
+        _users = refresh ? list : [..._users, ...list];
         _hasNext = data['has_next'] as bool? ?? false;
       });
     } catch (e) {
-      setState(() { _error = e.toString(); });
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -417,10 +476,17 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
     final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
-        // 搜索栏 + 筛选器
-        _buildToolbar(),
+        _buildToolbar(l10n),
         if (_error != null)
-          Expanded(child: _ErrorView(error: _error!, onRetry: () => _load(refresh: true)))
+          Expanded(
+            child: VeeEmptyState(
+              icon: Icons.error_outline,
+              title: _error!,
+              iconColor: VeeTokens.error,
+              actionLabel: l10n.retry,
+              onAction: () => _load(refresh: true),
+            ),
+          )
         else if (_loading && _users.isEmpty)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else
@@ -428,9 +494,11 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
             child: RefreshIndicator(
               onRefresh: () => _load(refresh: true),
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: const EdgeInsets.fromLTRB(
+                    VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s16),
                 itemCount: _users.length + (_hasNext ? 1 : 0),
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: VeeTokens.spacingXs),
                 itemBuilder: (_, i) {
                   if (i == _users.length) {
                     return FilledButton.tonal(
@@ -453,65 +521,65 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
     );
   }
 
-  Widget _buildToolbar() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildToolbar(AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+          VeeTokens.s16, VeeTokens.s12, VeeTokens.s16, VeeTokens.spacingXs),
       child: Column(
         children: [
-          // 搜索框
           TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
               hintText: l10n.searchEmailUsername,
-              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIcon:
+                  const Icon(Icons.search, size: VeeTokens.iconMd),
               suffixIcon: _searchCtrl.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close, size: 18),
+                      icon: const Icon(Icons.close, size: VeeTokens.iconSm),
                       onPressed: () {
                         _searchCtrl.clear();
                         _load(refresh: true);
                       })
                   : null,
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
             ),
             onSubmitted: (_) => _load(refresh: true),
           ),
-          const SizedBox(height: 8),
-          // 角色 / 状态筛选
+          const SizedBox(height: VeeTokens.spacingXs),
+          // 角色 / 状态筛选 — 用 VeeChip 替代手写 GestureDetector 容器
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _FilterChip(
+                VeeChip(
                   label: l10n.all,
-                  selected: _roleFilter.isEmpty && _activeFilter == null,
+                  selected:
+                      _roleFilter.isEmpty && _activeFilter == null,
                   onTap: () {
-                    _roleFilter   = '';
-                    _activeFilter = null;
+                    setState(() {
+                      _roleFilter = '';
+                      _activeFilter = null;
+                    });
                     _load(refresh: true);
                   },
                 ),
-                _FilterChip(
+                const SizedBox(width: VeeTokens.spacingXs),
+                VeeChip(
                   label: l10n.admin,
                   selected: _roleFilter == 'admin',
                   onTap: () {
-                    _roleFilter   = _roleFilter == 'admin' ? '' : 'admin';
+                    setState(() => _roleFilter =
+                        _roleFilter == 'admin' ? '' : 'admin');
                     _load(refresh: true);
                   },
                 ),
-                _FilterChip(
+                const SizedBox(width: VeeTokens.spacingXs),
+                VeeChip(
                   label: l10n.banned,
                   selected: _activeFilter == 0,
-                  color: Colors.red,
+                  accentColor: VeeTokens.error,
                   onTap: () {
-                    _activeFilter = _activeFilter == 0 ? null : 0;
+                    setState(() =>
+                        _activeFilter = _activeFilter == 0 ? null : 0);
                     _load(refresh: true);
                   },
                 ),
@@ -524,49 +592,12 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool   selected;
-  final Color? color;
-  final VoidCallback onTap;
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? Theme.of(context).colorScheme.primary;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? c.withOpacity(0.12) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? c : Colors.transparent, width: 1.5),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.normal,
-                color: selected ? c : Colors.grey[700])),
-      ),
-    );
-  }
-}
-
-
-// ── 用户卡片 ──────────────────────────────────────────────────────────────
+// ── 用户卡片 ──────────────────────────────────────────────────────────────────
 
 class _UserCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
   final VoidCallback onRefresh;
+
   const _UserCard({required this.user, required this.onRefresh});
 
   @override
@@ -577,12 +608,13 @@ class _UserCardState extends ConsumerState<_UserCard> {
   bool _toggling = false;
 
   Map<String, dynamic> get u => widget.user;
-  int    get userId   => u['id'] as int;
-  bool   get isActive => (u['is_active'] as bool?) ?? true;
-  String get role     => u['role'] as String? ?? 'user';
-  String get name     => (u['display_name'] as String?)?.isNotEmpty == true
-      ? u['display_name'] as String
-      : (u['app_username'] as String? ?? 'ID:$userId');
+  int get userId => u['id'] as int;
+  bool get isActive => (u['is_active'] as bool?) ?? true;
+  String get role => u['role'] as String? ?? 'user';
+  String get name =>
+      (u['display_name'] as String?)?.isNotEmpty == true
+          ? u['display_name'] as String
+          : (u['app_username'] as String? ?? 'ID:$userId');
 
   List<String> get perms {
     final raw = u['permissions'];
@@ -594,14 +626,16 @@ class _UserCardState extends ConsumerState<_UserCard> {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _toggling = true);
     try {
-      await ref.read(adminApiProvider).setUserActive(
-            userId, isActive: !isActive);
+      await ref
+          .read(adminApiProvider)
+          .setUserActive(userId, isActive: !isActive);
       widget.onRefresh();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.operationFailed(e.toString())),
-              backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l10n.operationFailed(e.toString())),
+              backgroundColor: VeeTokens.error),
         );
       }
     } finally {
@@ -614,7 +648,8 @@ class _UserCardState extends ConsumerState<_UserCard> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(VeeTokens.rXl))),
       builder: (_) => _PermissionsSheet(
         userId: userId,
         userName: name,
@@ -627,116 +662,98 @@ class _UserCardState extends ConsumerState<_UserCard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final statusColor = isActive ? Colors.green : Colors.red;
-    final roleColor   = role == 'admin' ? Colors.orange : Colors.grey;
+    final roleColor = role == 'admin' ? Colors.orange : Colors.grey;
 
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-            color: isActive
-                ? Colors.grey.withOpacity(0.2)
-                : Colors.red.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 顶部：名称 + 状态角标 + 封禁开关
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15)),
-                          const SizedBox(width: 8),
-                          // 角色角标
-                          _Badge(
-                            label: role == 'admin' ? l10n.admin : l10n.username,
-                            color: roleColor,
-                          ),
-                          if (!isActive) ...[
-                            const SizedBox(width: 6),
-                            _Badge(label: l10n.banned, color: Colors.red),
-                          ],
-                        ],
+    return VeeCard(
+      borderColor:
+          isActive ? null : VeeTokens.error.withOpacity(0.3),
+      padding: VeeTokens.cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 顶部：名称 + 状态角标 + 封禁开关
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text(name, style: context.veeText.cardTitle),
+                      const SizedBox(width: VeeTokens.spacingXs),
+                      _Badge(
+                        label: role == 'admin' ? l10n.admin : l10n.username,
+                        color: roleColor,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        u['email'] as String? ?? '',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
-                ),
-                // 封禁 Switch
-                _toggling
-                    ? const SizedBox(
-                        width: 32, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : Switch(
-                        value: isActive,
-                        onChanged: (_) => _toggleActive(),
-                        activeColor: Colors.green,
-                        inactiveThumbColor: Colors.red,
-                      ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // 中间：IP 信息
-            _InfoRow(Icons.location_on_outlined,
-                AppLocalizations.of(context)!.registrationIp(u['registration_ip'] ?? '—')),
-            const SizedBox(height: 2),
-            _InfoRow(Icons.history,
-                AppLocalizations.of(context)!.lastIp(u['last_login_ip'] ?? '—')),
-            const SizedBox(height: 10),
-            // 权限标签行
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                if (perms.isEmpty)
-                  _Badge(label: l10n.noPermission, color: Colors.grey)
-                else
-                  ...perms.map((p) => _Badge(
-                        label: _permLabel(p),
-                        color: Theme.of(context).colorScheme.primary,
-                      )),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 底部操作按钮
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      side: BorderSide(
-                          color: Colors.grey.withOpacity(0.3)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                      if (!isActive) ...[
+                        const SizedBox(width: VeeTokens.spacingXxs),
+                        _Badge(label: l10n.banned, color: VeeTokens.error),
+                      ],
+                    ]),
+                    const SizedBox(height: VeeTokens.s2),
+                    Text(
+                      u['email'] as String? ?? '',
+                      style: context.veeText.micro
+                          .copyWith(color: Colors.grey[500]),
                     ),
-                    onPressed: _showPermissionsSheet,
-                    icon: const Icon(Icons.tune, size: 16),
-                    label: Text(l10n.configPermission,
-                        style: TextStyle(fontSize: 13)),
-                  ),
+                  ],
                 ),
-              ],
+              ),
+              _toggling
+                  ? const SizedBox(
+                      width: 32,
+                      height: 20,
+                      child:
+                          CircularProgressIndicator(strokeWidth: 2))
+                  : Switch(
+                      value: isActive,
+                      onChanged: (_) => _toggleActive(),
+                      activeColor: VeeTokens.success,
+                      inactiveThumbColor: VeeTokens.error,
+                    ),
+            ],
+          ),
+          const SizedBox(height: VeeTokens.s10),
+          // IP 信息
+          _InfoRow(Icons.location_on_outlined,
+              AppLocalizations.of(context)!
+                  .registrationIp(u['registration_ip'] ?? '—')),
+          const SizedBox(height: VeeTokens.s2),
+          _InfoRow(Icons.history,
+              AppLocalizations.of(context)!
+                  .lastIp(u['last_login_ip'] ?? '—')),
+          const SizedBox(height: VeeTokens.s10),
+          // 权限标签行
+          Wrap(
+            spacing: VeeTokens.spacingXxs,
+            runSpacing: VeeTokens.spacingXxs,
+            children: perms.isEmpty
+                ? [_Badge(label: l10n.noPermission, color: Colors.grey)]
+                : perms
+                    .map((p) => _Badge(
+                          label: _permLabel(p),
+                          color: Theme.of(context).colorScheme.primary,
+                        ))
+                    .toList(),
+          ),
+          const SizedBox(height: VeeTokens.s12),
+          // 权限操作按钮
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: VeeTokens.spacingXs),
+                side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(VeeTokens.rSm)),
+              ),
+              onPressed: _showPermissionsSheet,
+              icon: const Icon(Icons.tune, size: VeeTokens.iconSm),
+              label: Text(l10n.configPermission,
+                  style: context.veeText.chipLabel),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -744,31 +761,32 @@ class _UserCardState extends ConsumerState<_UserCard> {
   String _permLabel(String perm) {
     final l10n = AppLocalizations.of(context)!;
     return switch (perm) {
-      'bot_text'     => l10n.botTextLabel,
-      'bot_receipt'  => l10n.botReceiptLabel,
-      'bot_voice'    => l10n.botVoiceLabel,
+      'bot_text' => l10n.botTextLabel,
+      'bot_receipt' => l10n.botReceiptLabel,
+      'bot_voice' => l10n.botVoiceLabel,
       'bot_download' => l10n.botDownloadLabel,
-      'app_ocr'      => l10n.appOcrLabel,
-      'app_export'   => l10n.appExportLabel,
-      'app_upload'   => l10n.appUploadLabel,
-      _              => perm,
+      'app_ocr' => l10n.appOcrLabel,
+      'app_export' => l10n.appExportLabel,
+      'app_upload' => l10n.appUploadLabel,
+      _ => perm,
     };
   }
 }
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
-  final String   text;
+  final String text;
   const _InfoRow(this.icon, this.text);
 
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Icon(icon, size: 13, color: Colors.grey[400]),
-          const SizedBox(width: 6),
+          Icon(icon, size: VeeTokens.iconXs, color: Colors.grey[400]),
+          const SizedBox(width: VeeTokens.spacingXxs),
           Expanded(
             child: Text(text,
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: context.veeText.micro
+                    .copyWith(color: Colors.grey[500]),
                 overflow: TextOverflow.ellipsis),
           ),
         ],
@@ -777,34 +795,32 @@ class _InfoRow extends StatelessWidget {
 
 class _Badge extends StatelessWidget {
   final String label;
-  final Color  color;
+  final Color color;
   const _Badge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        padding: VeeTokens.badgePadding,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(6),
+          color: VeeTokens.selectedTint(color),
+          borderRadius: VeeTokens.badgeBorderRadius,
         ),
         child: Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600)),
+            style: context.veeText.micro.copyWith(
+                color: color, fontWeight: FontWeight.w600)),
       );
 }
-
 
 // ============================================================
 // 权限配置抽屉
 // ============================================================
 
 class _PermissionsSheet extends ConsumerStatefulWidget {
-  final int      userId;
-  final String   userName;
+  final int userId;
+  final String userName;
   final List<String> currentPerms;
   final VoidCallback onSaved;
+
   const _PermissionsSheet({
     required this.userId,
     required this.userName,
@@ -813,7 +829,8 @@ class _PermissionsSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_PermissionsSheet> createState() => _PermissionsSheetState();
+  ConsumerState<_PermissionsSheet> createState() =>
+      _PermissionsSheetState();
 }
 
 class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
@@ -821,15 +838,17 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   bool _saving = false;
   String? _error;
 
-  static List<(String, String, IconData)> _getPerms(AppLocalizations l10n) => [
-    ('bot_text',     l10n.botText,     Icons.text_fields),
-    ('bot_receipt',  l10n.botReceipt,  Icons.camera_alt_outlined),
-    ('bot_voice',    l10n.botVoice,    Icons.mic_outlined),
-    ('bot_download', l10n.botDownload, Icons.download_outlined),
-    ('app_ocr',      l10n.appOcr,     Icons.document_scanner_outlined),
-    ('app_export',   l10n.appExport,  Icons.file_download_outlined),
-    ('app_upload',   l10n.appUpload,   Icons.upload_outlined),
-  ];
+  static List<(String, String, IconData)> _getPerms(
+          AppLocalizations l10n) =>
+      [
+        ('bot_text', l10n.botText, Icons.text_fields),
+        ('bot_receipt', l10n.botReceipt, Icons.camera_alt_outlined),
+        ('bot_voice', l10n.botVoice, Icons.mic_outlined),
+        ('bot_download', l10n.botDownload, Icons.download_outlined),
+        ('app_ocr', l10n.appOcr, Icons.document_scanner_outlined),
+        ('app_export', l10n.appExport, Icons.file_download_outlined),
+        ('app_upload', l10n.appUpload, Icons.upload_outlined),
+      ];
 
   @override
   void initState() {
@@ -838,10 +857,14 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   }
 
   Future<void> _save() async {
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
-      await ref.read(adminApiProvider).setUserPermissions(
-            widget.userId, _selected.toList());
+      await ref
+          .read(adminApiProvider)
+          .setUserPermissions(widget.userId, _selected.toList());
       widget.onSaved();
       if (mounted) Navigator.pop(context);
       if (mounted) {
@@ -870,81 +893,81 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
       maxChildSize: 0.9,
       builder: (_, ctrl) => Column(
         children: [
-          // 拖拽把手
-          const SizedBox(height: 8),
+          const SizedBox(height: VeeTokens.spacingXs),
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
                 color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2)),
+                borderRadius:
+                    BorderRadius.circular(VeeTokens.s2)),
           ),
-          const SizedBox(height: 16),
-          // 标题
+          const SizedBox(height: VeeTokens.spacingMd),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(
+                horizontal: VeeTokens.spacingLg),
             child: Row(
               children: [
                 Icon(Icons.tune,
                     color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: VeeTokens.s10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(l10n.configPermission,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: context.veeText.sectionTitle),
                       Text(widget.userName,
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey[600])),
+                          style: context.veeText.caption
+                              .copyWith(color: Colors.grey[600])),
                     ],
                   ),
                 ),
-                // 全选 / 清空
                 TextButton(
                   onPressed: () {
                     final perms = _getPerms(l10n);
-                    setState(() => _selected =
-                        _selected.length == perms.length
-                            ? {}
-                            : perms.map((e) => e.$1).toSet());
+                    setState(() => _selected = _selected.length ==
+                            perms.length
+                        ? {}
+                        : perms.map((e) => e.$1).toSet());
                   },
-                  child: Text(
-                      _selected.length == _getPerms(l10n).length ? l10n.clearAll : l10n.selectAll),
+                  child: Text(_selected.length == _getPerms(l10n).length
+                      ? l10n.clearAll
+                      : l10n.selectAll),
                 ),
               ],
             ),
           ),
-          const Divider(height: 16),
+          const Divider(height: VeeTokens.spacingMd),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              child: Text(_error!,
-                  style: TextStyle(
-                      color: Colors.red.shade700, fontSize: 13)),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: VeeTokens.spacingLg,
+                  vertical: VeeTokens.spacingXxs),
+              child: VeeErrorBanner(message: _error!),
             ),
-          // 权限多选列表
           Expanded(
             child: ListView(
               controller: ctrl,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: VeeTokens.s16),
               children: _getPerms(l10n).map((entry) {
                 final (perm, label, icon) = entry;
                 final checked = _selected.contains(perm);
                 return Card(
                   elevation: 0,
                   color: checked
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.06)
+                      ? VeeTokens.surfaceTint(
+                          Theme.of(context).colorScheme.primary)
                       : Theme.of(context).colorScheme.surface,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius:
+                        BorderRadius.circular(VeeTokens.rMd),
                     side: BorderSide(
                       color: checked
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.3)
-                          : Colors.grey.withOpacity(0.15),
+                          ? VeeTokens.pressedTint(
+                              Theme.of(context).colorScheme.primary)
+                          : VeeTokens.borderColor.withOpacity(0.5),
                       width: 1.5,
                     ),
                   ),
@@ -957,56 +980,53 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                       height: 36,
                       decoration: BoxDecoration(
                         color: checked
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.1)
+                            ? VeeTokens.selectedTint(
+                                Theme.of(context).colorScheme.primary)
                             : Colors.grey.shade100,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(icon,
-                          size: 18,
+                          size: VeeTokens.iconSm,
                           color: checked
                               ? Theme.of(context).colorScheme.primary
                               : Colors.grey[500]),
                     ),
                     title: Text(label,
-                        style: TextStyle(
+                        style: context.veeText.cardTitle.copyWith(
                             fontWeight: checked
                                 ? FontWeight.w600
                                 : FontWeight.normal)),
                     subtitle: Text('`$perm`',
-                        style: const TextStyle(
-                            fontSize: 11, fontFamily: 'monospace')),
+                        style: context.veeText.micro
+                            .copyWith(fontFamily: 'monospace')),
                     activeColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius:
+                            BorderRadius.circular(VeeTokens.rMd)),
                   ),
                 );
               }).toList(),
             ),
           ),
-          // 保存按钮
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(
+                  VeeTokens.spacingLg,
+                  VeeTokens.spacingXs,
+                  VeeTokens.spacingLg,
+                  VeeTokens.spacingMd),
               child: SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: VeeTokens.buttonHeight,
                 child: FilledButton(
-                  style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14))),
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(
-                          width: 20, height: 20,
+                          width: VeeTokens.iconMd,
+                          height: VeeTokens.iconMd,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : Text(
-                          l10n.savePermission(_selected.length),
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      : Text(l10n.savePermission(_selected.length)),
                 ),
               ),
             ),
@@ -1017,10 +1037,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
   }
 }
 
-
-// ============================================================
-// 共用错误视图
-// ============================================================
+// ── 区块标题（内部复用） ──────────────────────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
   final String text;
@@ -1028,35 +1045,5 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87));
-}
-
-class _ErrorView extends StatelessWidget {
-  final String error;
-  final VoidCallback onRetry;
-  const _ErrorView({required this.error, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red)),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonal(
-                onPressed: onRetry, child: Text(l10n.retry)),
-          ],
-        ),
-      );
-  }
+      style: context.veeText.sectionTitle);
 }

@@ -4,73 +4,86 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/accounts_provider.dart';
 import '../../providers/group_provider.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
+import '../../widgets/ui_core/vee_card.dart';
+import '../../widgets/ui_core/vee_empty_state.dart';
+import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_amount_display.dart';
 
 class ManageAccountsScreen extends ConsumerWidget {
   const ManageAccountsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n    = AppLocalizations.of(context)!;
-    final state   = ref.watch(accountsProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final state = ref.watch(accountsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: Text(l10n.accounts),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: state.accounts.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (_, i) {
-          final a = state.accounts[i];
-          return Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+      body: state.accounts.isEmpty && !state.loading
+          ? VeeEmptyState(
+              icon: Icons.account_balance_wallet_outlined,
+              title: '暂无账户',
+              subtitle: '点击右下角按钮添加账户',
+            )
+          : ListView.separated(
+              padding: VeeTokens.cardPadding,
+              itemCount: state.accounts.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: VeeTokens.spacingXs),
+              itemBuilder: (_, i) {
+                final a = state.accounts[i];
+                return VeeCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    contentPadding: VeeTokens.tilePadding,
+                    leading: Text(a.typeIcon,
+                        style: TextStyle(fontSize: VeeTokens.iconLg)),
+                    title: Text(a.name,
+                        style: context.veeText.cardTitle),
+                    subtitle: Text(
+                      '${a.typeLabel} · ${a.currencyCode}',
+                      style: context.veeText.caption.copyWith(
+                        color: VeeTokens.textSecondaryVal,
+                      ),
+                    ),
+                    trailing: VeeAmountDisplay(
+                      amount: a.balanceFloat,
+                      currency: a.currencyCode,
+                      size: VeeAmountSize.small,
+                    ),
+                  ),
+                );
+              },
             ),
-            child: ListTile(
-              leading: Text(a.typeIcon,
-                  style: const TextStyle(fontSize: 24)),
-              title: Text(a.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('${a.typeLabel} · ${a.currencyCode}'),
-              trailing: Text(
-                a.formattedBalance,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          );
-        },
-      ),
       floatingActionButton: FloatingActionButton(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+            borderRadius: BorderRadius.circular(VeeTokens.rLg)),
         onPressed: () => _showAddSheet(context, ref, groupId),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _showAddSheet(
-      BuildContext context, WidgetRef ref, int? groupId) {
+  void _showAddSheet(BuildContext context, WidgetRef ref, int? groupId) {
     if (groupId == null) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(VeeTokens.rXl))),
       builder: (_) => _AddAccountSheet(groupId: groupId),
     );
   }
 }
+
+// ── 添加账户表单 ──────────────────────────────────────────────────────────────
 
 class _AddAccountSheet extends ConsumerStatefulWidget {
   final int groupId;
@@ -82,35 +95,41 @@ class _AddAccountSheet extends ConsumerStatefulWidget {
 
 class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
   final _nameCtrl = TextEditingController();
-  String _type     = 'cash';
+  String _type = 'cash';
   String _currency = 'JPY';
-  bool   _saving   = false;
+  bool _saving = false;
   String? _error;
 
   static const _types = [
-    ('cash',        '💵', '现金'),
-    ('bank',        '🏦', '银行卡'),
+    ('cash', '💵', '现金'),
+    ('bank', '🏦', '银行卡'),
     ('credit_card', '💳', '信用卡'),
   ];
 
   static const _currencies = ['JPY', 'CNY', 'USD', 'EUR', 'HKD'];
 
   @override
-  void dispose() { _nameCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) {
       setState(() => _error = '请输入账户名称');
       return;
     }
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       await ref.read(accountsProvider.notifier).createAccount(
-        name:         _nameCtrl.text.trim(),
-        type:         _type,
-        currencyCode: _currency,
-        groupId:      widget.groupId,
-      );
+            name: _nameCtrl.text.trim(),
+            type: _type,
+            currencyCode: _currency,
+            groupId: widget.groupId,
+          );
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _error = e.toString());
@@ -122,44 +141,27 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
+      padding: VeeTokens.sheetPadding(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('添加账户',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
+          Text('添加账户', style: context.veeText.sectionTitle),
+          const SizedBox(height: VeeTokens.spacingLg),
 
-          if (_error != null) ...[
-            Text(_error!,
-                style: const TextStyle(color: Colors.red, fontSize: 13)),
-            const SizedBox(height: 12),
-          ],
+          if (_error != null) VeeErrorBanner(message: _error!),
 
           // 账户名
           TextField(
             controller: _nameCtrl,
-            decoration: InputDecoration(
-              labelText: '账户名称',
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none),
-            ),
+            decoration: const InputDecoration(labelText: '账户名称'),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: VeeTokens.spacingMd),
 
-          // 类型
-          const Text('账户类型',
-              style: TextStyle(
-                  fontSize: 13, color: Colors.grey)),
-          const SizedBox(height: 8),
+          // 账户类型
+          Text('账户类型',
+              style: context.veeText.caption.copyWith(color: Colors.grey)),
+          const SizedBox(height: VeeTokens.spacingXs),
           Row(
             children: _types.map((t) {
               final selected = _type == t.$1;
@@ -167,16 +169,17 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
                 child: GestureDetector(
                   onTap: () => setState(() => _type = t.$1),
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: VeeTokens.spacingXxs),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: VeeTokens.s12),
                     decoration: BoxDecoration(
                       color: selected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.1)
+                          ? VeeTokens.selectedTint(
+                              Theme.of(context).colorScheme.primary)
                           : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius:
+                          BorderRadius.circular(VeeTokens.rMd),
                       border: Border.all(
                         color: selected
                             ? Theme.of(context).colorScheme.primary
@@ -186,48 +189,45 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
                     ),
                     child: Column(children: [
                       Text(t.$2,
-                          style: const TextStyle(fontSize: 22)),
-                      const SizedBox(height: 4),
+                          style:
+                              TextStyle(fontSize: VeeTokens.iconMd + 2)),
+                      const SizedBox(height: VeeTokens.spacingXxs),
                       Text(t.$3,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: selected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: selected
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                  : Colors.grey[700])),
+                          style: context.veeText.micro.copyWith(
+                            fontWeight: selected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: selected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey[700],
+                          )),
                     ]),
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: VeeTokens.spacingMd),
 
           // 货币
-          const Text('货币',
-              style: TextStyle(fontSize: 13, color: Colors.grey)),
-          const SizedBox(height: 8),
+          Text('货币',
+              style: context.veeText.caption.copyWith(color: Colors.grey)),
+          const SizedBox(height: VeeTokens.spacingXs),
           Wrap(
-            spacing: 8,
+            spacing: VeeTokens.spacingXs,
             children: _currencies.map((c) {
               final selected = _currency == c;
               return GestureDetector(
                 onTap: () => setState(() => _currency = c),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  padding: VeeTokens.chipPadding,
                   decoration: BoxDecoration(
                     color: selected
-                        ? Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.1)
+                        ? VeeTokens.selectedTint(
+                            Theme.of(context).colorScheme.primary)
                         : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius:
+                        BorderRadius.circular(VeeTokens.rFull),
                     border: Border.all(
                       color: selected
                           ? Theme.of(context).colorScheme.primary
@@ -236,34 +236,31 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
                     ),
                   ),
                   child: Text(c,
-                      style: TextStyle(
-                          fontWeight: selected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: selected
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey[700])),
+                      style: context.veeText.chipLabel.copyWith(
+                        fontWeight: selected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey[700],
+                      )),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: VeeTokens.spacingLg),
 
           SizedBox(
-            height: 52,
+            height: VeeTokens.buttonHeight,
             child: FilledButton(
-              style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
               onPressed: _saving ? null : _save,
               child: _saving
                   ? const SizedBox(
-                      width: 20, height: 20,
+                      width: VeeTokens.iconMd,
+                      height: VeeTokens.iconMd,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : const Text('添加',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                  : const Text('添加'),
             ),
           ),
         ],

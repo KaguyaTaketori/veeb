@@ -5,12 +5,15 @@ import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_text_field.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile user;
   const EditProfileScreen({super.key, required this.user});
+
   @override
   ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
@@ -27,7 +30,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   @override
-  void dispose() { _nameCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
@@ -35,10 +41,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() => _error = l10n.nicknameRequired);
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      await ref.read(authProvider.notifier).updateProfile(
-            displayName: _nameCtrl.text.trim());
+      await ref
+          .read(authProvider.notifier)
+          .updateProfile(displayName: _nameCtrl.text.trim());
       if (mounted) Navigator.pop(context, true);
     } on AppException catch (e) {
       setState(() => _error = e.message);
@@ -52,46 +62,68 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         title: Text(l10n.editProfileTitle),
         centerTitle: true,
         actions: [
+          // 保存按钮放在 AppBar actions，loading 时换成 indicator
           if (_loading)
-            const Center(child: Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            ))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: VeeTokens.s16),
+                child: SizedBox(
+                  width: VeeTokens.iconMd,
+                  height: VeeTokens.iconMd,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
           else
-            TextButton(onPressed: _save,
-                child: Text(l10n.save, style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 15))),
+            TextButton(
+              onPressed: _save,
+              child: Text(
+                l10n.save,
+                style: context.veeText.chipLabel.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
         ],
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: VeeTokens.maxFormWidth),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            padding: VeeTokens.formPadding.copyWith(
+              top: VeeTokens.s24,
+              bottom: VeeTokens.s24,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_error != null) ...[
-                  VeeErrorBanner(message: _error!),
-                  const SizedBox(height: 16),
-                ],
+                // ── 错误提示 ─────────────────────────────────────────
+                if (_error != null) VeeErrorBanner(message: _error!),
+
+                // ── 昵称输入框 ───────────────────────────────────────
                 VeeTextField(
                   controller: _nameCtrl,
                   label: l10n.fullName,
                   prefixIcon: Icons.person_outline,
-                  validator: (v) => (v?.trim().isEmpty ?? true) ? l10n.nicknameRequired : null,
+                  validator: (v) => (v?.trim().isEmpty ?? true)
+                      ? l10n.nicknameRequired
+                      : null,
                 ),
-                const SizedBox(height: 8),
-                Text(l10n.usernameEmailCannotChange,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                const SizedBox(height: VeeTokens.spacingXs),
+
+                // ── 不可修改提示 ─────────────────────────────────────
+                Text(
+                  l10n.usernameEmailCannotChange,
+                  style: context.veeText.micro.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
               ],
             ),
           ),

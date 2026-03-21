@@ -1,7 +1,4 @@
 // lib/screens/profile/profile_screen.dart
-//
-// 未登录时显示 Guest 引导页，已登录时显示正常个人信息页。
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -14,7 +11,13 @@ import '../../providers/transactions_provider.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/settings/manage_accounts_screen.dart';
 import '../../screens/settings/manage_categories_screen.dart';
+import '../../widgets/ui_core/vee_card.dart';
+import '../../widgets/ui_core/vee_confirm_dialog.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
+import '../../widgets/ui_core/vee_setting_group.dart';
+import '../../widgets/ui_core/vee_amount_display.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -25,18 +28,12 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
 
-    // ── Guest 模式 ────────────────────────────────────────────────────────
-    if (auth.isGuest) {
-      return const _GuestProfileView();
-    }
+    if (auth.isGuest) return const _GuestProfileView();
 
-    // ── checking（极短） ──────────────────────────────────────────────────
     if (auth.status == AuthStatus.checking || auth.user == null) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // ── 已登录 ────────────────────────────────────────────────────────────
     return _LoggedInProfileView(user: auth.user!);
   }
 }
@@ -54,238 +51,192 @@ class _GuestProfileView extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        title: Text(l10n.myPage,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(l10n.myPage), centerTitle: true),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
+          constraints: const BoxConstraints(
+            maxWidth: VeeTokens.maxFormWidth + 80,
+          ),
           child: ListView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(
+              horizontal: VeeTokens.s24,
+              vertical: VeeTokens.s32,
+            ),
             children: [
               // 头像占位
               Center(
                 child: Container(
-                  width: 80, height: 80,
+                  width: VeeTokens.s80,
+                  height: VeeTokens.s80,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_outline,
-                      size: 40, color: Colors.grey),
+                  child: const Icon(
+                    Icons.person_outline,
+                    size: VeeTokens.iconXxl,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: VeeTokens.s12),
               Center(
-                child: Text(l10n.guestMode,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  l10n.guestMode,
+                  style: context.veeText.sectionTitle,
+                ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: VeeTokens.spacingXxs),
               Center(
                 child: Text(
                   l10n.dataStoredLocally,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                  style: context.veeText.caption.copyWith(
+                    color: Colors.grey[500],
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: VeeTokens.s32),
 
               // 本地数据统计卡片
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.localData,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[500],
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _StatItem(
-                            icon: Icons.receipt_long_outlined,
-                            label: l10n.recordCount,
-                            value: l10n.records(txnState.monthCount),
-                          ),
-                          const SizedBox(width: 24),
-                          _StatItem(
-                            icon: Icons.cloud_off_outlined,
-                            label: l10n.cloudSync,
-                            value: l10n.notSet,
-                            valueColor: Colors.orange,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 登录引导卡片
-              Card(
-                elevation: 0,
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withOpacity(0.05),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withOpacity(0.2),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Icon(Icons.cloud_sync_outlined,
-                            color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(l10n.loginBenefits,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    Theme.of(context).colorScheme.primary)),
-                      ]),
-                      const SizedBox(height: 12),
-                      Text(l10n.syncDataMultipleDevices,
-                          style: const TextStyle(fontSize: 14)),
-                      const SizedBox(height: 3),
-                      Text(l10n.cloudBackup,
-                          style: const TextStyle(fontSize: 14)),
-                      const SizedBox(height: 3),
-                      Text(l10n.shareWithFamily,
-                          style: const TextStyle(fontSize: 14)),
-                      const SizedBox(height: 3),
-                      Text(l10n.aiUsageManagement,
-                          style: const TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 登录按钮
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const LoginScreen()),
-                  ),
-                  child: Text(l10n.loginOrRegister,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 系统设置
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-                ),
+              VeeCard(
+                padding: VeeTokens.cardPaddingLg,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ListTile(
-                      leading: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
+                    Text(
+                      l10n.localData,
+                      style: context.veeText.micro.copyWith(
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: VeeTokens.s12),
+                    Row(
+                      children: [
+                        _StatItem(
+                          icon: Icons.receipt_long_outlined,
+                          label: l10n.recordCount,
+                          value: l10n.records(txnState.monthCount),
                         ),
-                        child: Icon(Icons.language,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.primary),
-                      ),
-                      title: Text(l10n.languageSettings,
-                          style: const TextStyle(fontSize: 15)),
-                      trailing: Icon(Icons.chevron_right,
-                          color: Colors.grey[400], size: 20),
-                      onTap: () => _showLanguageSelector(context, ref),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    ),
-                    const Divider(height: 1, indent: 52),
-                    ListTile(
-                      leading: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(width: VeeTokens.spacingLg),
+                        _StatItem(
+                          icon: Icons.cloud_off_outlined,
+                          label: l10n.cloudSync,
+                          value: l10n.notSet,
+                          valueColor: Colors.orange,
                         ),
-                        child: Icon(Icons.info_outline,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.primary),
-                      ),
-                      title: Text(l10n.aboutVee,
-                          style: const TextStyle(fontSize: 15)),
-                      trailing: Icon(Icons.chevron_right,
-                          color: Colors.grey[400], size: 20),
-                      onTap: () => showAboutDialog(
-                        context: context,
-                        applicationName: 'Vee',
-                        applicationVersion: '2.0.0',
-                        applicationLegalese: '© 2025 Vee',
-                      ),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    ),
-                    _SettingItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: '管理账户',
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => ManageAccountsScreen())),
-                    ),
-                    _SettingItem(
-                      icon: Icons.category_outlined,
-                      label: '管理分类',
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => ManageCategoriesScreen())),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: VeeTokens.spacingLg),
+
+              // 登录引导卡片
+              VeeCard(
+                backgroundColor: VeeTokens.surfaceTint(
+                  Theme.of(context).colorScheme.primary,
+                ),
+                borderColor: VeeTokens.selectedTint(
+                  Theme.of(context).colorScheme.primary,
+                ),
+                padding: VeeTokens.cardPaddingLg,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.cloud_sync_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: VeeTokens.spacingXs),
+                        Text(
+                          l10n.loginBenefits,
+                          style: context.veeText.cardTitle.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: VeeTokens.s12),
+                    Text(
+                      l10n.syncDataMultipleDevices,
+                      style: context.veeText.bodyDefault,
+                    ),
+                    const SizedBox(height: VeeTokens.s2 + 1),
+                    Text(l10n.cloudBackup, style: context.veeText.bodyDefault),
+                    const SizedBox(height: VeeTokens.s2 + 1),
+                    Text(
+                      l10n.shareWithFamily,
+                      style: context.veeText.bodyDefault,
+                    ),
+                    const SizedBox(height: VeeTokens.s2 + 1),
+                    Text(
+                      l10n.aiUsageManagement,
+                      style: context.veeText.bodyDefault,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: VeeTokens.spacingLg),
+
+              // 登录按钮
+              SizedBox(
+                width: double.infinity,
+                height: VeeTokens.buttonHeight,
+                child: FilledButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                  child: Text(l10n.loginOrRegister),
+                ),
+              ),
+              const SizedBox(height: VeeTokens.spacingLg),
+
+              // 系统设置 — 使用 VeeSettingGroup
+              VeeSettingGroup(
+                items: [
+                  _SettingItem(
+                    icon: Icons.language,
+                    label: l10n.languageSettings,
+                    onTap: () => _showLanguageSelector(context, ref),
+                  ),
+                  _SettingItem(
+                    icon: Icons.info_outline,
+                    label: l10n.aboutVee,
+                    onTap: () => showAboutDialog(
+                      context: context,
+                      applicationName: 'Vee',
+                      applicationVersion: '2.0.0',
+                      applicationLegalese: '© 2025 Vee',
+                    ),
+                  ),
+                  _SettingItem(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: '管理账户',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ManageAccountsScreen(),
+                      ),
+                    ),
+                  ),
+                  _SettingItem(
+                    icon: Icons.category_outlined,
+                    label: '管理分类',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ManageCategoriesScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: VeeTokens.s48),
             ],
           ),
         ),
@@ -295,58 +246,23 @@ class _GuestProfileView extends ConsumerWidget {
 
   void _showLanguageSelector(BuildContext context, WidgetRef ref) {
     final currentLocale = ref.read(localeProvider);
-    
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 20, bottom: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  AppLocalizations.of(context)!.language,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            ...LocaleNotifier.supportedLocales.map((locale) {
-              final isSelected = locale.languageCode == currentLocale.languageCode;
-              return ListTile(
-                leading: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected 
-                      ? Theme.of(context).colorScheme.primary 
-                      : Colors.grey,
-                ),
-                title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
-                onTap: () {
-                  ref.read(localeProvider.notifier).setLocale(locale);
-                  Navigator.pop(ctx);
-                },
-              );
-            }),
-            const SizedBox(height: 16),
-          ],
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(VeeTokens.rXl),
         ),
       ),
+      builder: (ctx) => _LanguageSelectorSheet(currentLocale: currentLocale),
     );
   }
 }
 
 class _StatItem extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final String   value;
-  final Color?   valueColor;
+  final String label;
+  final String value;
+  final Color? valueColor;
 
   const _StatItem({
     required this.icon,
@@ -357,28 +273,33 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
         children: [
-          Row(children: [
-            Icon(icon, size: 16, color: Colors.grey[500]),
-            const SizedBox(width: 4),
-            Text(label,
-                style:
-                    TextStyle(fontSize: 12, color: Colors.grey[500])),
-          ]),
-          const SizedBox(height: 4),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: valueColor ??
-                      Theme.of(context).colorScheme.onSurface)),
+          Icon(icon, size: VeeTokens.iconSm, color: Colors.grey[500]),
+          const SizedBox(width: VeeTokens.spacingXxs),
+          Text(
+            label,
+            style: context.veeText.micro.copyWith(color: Colors.grey[500]),
+          ),
         ],
-      );
+      ),
+      const SizedBox(height: VeeTokens.spacingXxs),
+      Text(
+        value,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+        ),
+      ),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 已登录视图（原 ProfileScreen 内容不变，抽出为独立 Widget）
+// 已登录视图
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LoggedInProfileView extends ConsumerWidget {
@@ -390,29 +311,27 @@ class _LoggedInProfileView extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        title: Text(l10n.myPage,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(l10n.myPage), centerTitle: true),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
+          constraints: const BoxConstraints(
+            maxWidth: VeeTokens.maxContentWidth,
+          ),
           child: RefreshIndicator(
-            onRefresh: () =>
-                ref.read(authProvider.notifier).refreshProfile(),
+            onRefresh: () => ref.read(authProvider.notifier).refreshProfile(),
             child: ListView(
               padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 24),
+                horizontal: VeeTokens.s16,
+                vertical: VeeTokens.s24,
+              ),
               children: [
                 _UserHeaderCard(user: user),
-                const SizedBox(height: 20),
+                const SizedBox(height: VeeTokens.spacingLg),
                 _QuotaCard(user: user),
-                const SizedBox(height: 20),
-                _SectionCard(
+                const SizedBox(height: VeeTokens.spacingLg),
+
+                // 账户设置 — 使用 VeeSettingGroup
+                VeeSettingGroup(
                   title: l10n.accountSettings,
                   items: [
                     _SettingItem(
@@ -422,13 +341,11 @@ class _LoggedInProfileView extends ConsumerWidget {
                         final updated = await Navigator.push<bool>(
                           context,
                           MaterialPageRoute(
-                              builder: (_) =>
-                                  EditProfileScreen(user: user)),
+                            builder: (_) => EditProfileScreen(user: user),
+                          ),
                         );
                         if (updated == true) {
-                          ref
-                              .read(authProvider.notifier)
-                              .refreshProfile();
+                          ref.read(authProvider.notifier).refreshProfile();
                         }
                       },
                     ),
@@ -438,38 +355,44 @@ class _LoggedInProfileView extends ConsumerWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>
-                                const ChangePasswordScreen()),
+                          builder: (_) => const ChangePasswordScreen(),
+                        ),
                       ),
                     ),
                     _SettingItem(
                       icon: Icons.telegram,
                       label: l10n.telegramConnection,
                       trailing: user.tgUserId != null
-                          ? _Badge(l10n.bound,
-                              color: Colors.green)
+                          ? _Badge(l10n.bound, color: VeeTokens.success)
                           : _Badge(l10n.unbound, color: Colors.orange),
-                      onTap: () =>
-                          _showTgBindInfo(context, user, ref),
+                      onTap: () => _showTgBindInfo(context, user, ref),
                     ),
                     _SettingItem(
                       icon: Icons.account_balance_wallet_outlined,
                       label: '管理账户',
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => ManageAccountsScreen())),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ManageAccountsScreen(),
+                        ),
+                      ),
                     ),
                     _SettingItem(
                       icon: Icons.category_outlined,
                       label: '管理分类',
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => ManageCategoriesScreen())),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ManageCategoriesScreen(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                _SectionCard(
+                const SizedBox(height: VeeTokens.spacingMd),
+
+                // 系统设置 — 使用 VeeSettingGroup
+                VeeSettingGroup(
                   title: l10n.systemSettings,
                   items: [
                     _SettingItem(
@@ -489,27 +412,34 @@ class _LoggedInProfileView extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: VeeTokens.s32),
+
+                // 登出按钮
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: BorderSide(color: Colors.red.shade200),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: VeeTokens.error,
+                      side: VeeTokens.dangerBorder(VeeTokens.error),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: VeeTokens.s16,
+                      ),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(VeeTokens.rLg),
+                      ),
                     ),
-                    onPressed: () =>
-                        _confirmLogout(context, ref),
-                    icon: const Icon(Icons.logout, size: 20),
-                    label: Text(l10n.logout,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                    onPressed: () => _confirmLogout(context, ref),
+                    icon: const Icon(Icons.logout, size: VeeTokens.iconMd),
+                    label: Text(
+                      l10n.logout,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: VeeTokens.s48),
               ],
             ),
           ),
@@ -518,39 +448,24 @@ class _LoggedInProfileView extends ConsumerWidget {
     );
   }
 
-  void _showTgBindInfo(
-      BuildContext context, UserProfile user, WidgetRef ref) {
+  void _showTgBindInfo(BuildContext context, UserProfile user, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(VeeTokens.rXl),
+        ),
+      ),
       builder: (ctx) => _TgBindSheet(user: user),
-    ).whenComplete(
-        () => ref.read(authProvider.notifier).refreshProfile());
+    ).whenComplete(() => ref.read(authProvider.notifier).refreshProfile());
   }
 
-  Future<void> _confirmLogout(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
+    final ok = await VeeConfirmDialog.showLogout(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.logout),
-        content: Text(l10n.logoutConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style:
-                FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.logout),
-          ),
-        ],
-      ),
+      title: l10n.logout,
+      content: l10n.logoutConfirm,
     );
     if (ok == true) {
       await ref.read(authProvider.notifier).logout();
@@ -559,54 +474,67 @@ class _LoggedInProfileView extends ConsumerWidget {
 
   void _showLanguageSelector(BuildContext context, WidgetRef ref) {
     final currentLocale = ref.read(localeProvider);
-    
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 20, bottom: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  AppLocalizations.of(context)!.language,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            ...LocaleNotifier.supportedLocales.map((locale) {
-              final isSelected = locale.languageCode == currentLocale.languageCode;
-              return ListTile(
-                leading: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected 
-                      ? Theme.of(context).colorScheme.primary 
-                      : Colors.grey,
-                ),
-                title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
-                onTap: () {
-                  ref.read(localeProvider.notifier).setLocale(locale);
-                  Navigator.pop(ctx);
-                },
-              );
-            }),
-            const SizedBox(height: 16),
-          ],
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(VeeTokens.rXl),
         ),
+      ),
+      builder: (ctx) => _LanguageSelectorSheet(currentLocale: currentLocale),
+    );
+  }
+}
+
+// ── 语言选择器 Sheet（抽出，Guest/登录共用）──────────────────────────────────
+
+class _LanguageSelectorSheet extends ConsumerWidget {
+  final dynamic currentLocale;
+  const _LanguageSelectorSheet({required this.currentLocale});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: VeeTokens.spacingLg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(
+              left: VeeTokens.spacingLg,
+              bottom: VeeTokens.spacingMd,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(l10n.language, style: context.veeText.sectionTitle),
+            ),
+          ),
+          ...LocaleNotifier.supportedLocales.map((locale) {
+            final isSelected =
+                locale.languageCode == currentLocale.languageCode;
+            return ListTile(
+              leading: Icon(
+                isSelected ? Icons.check_circle : Icons.circle_outlined,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
+              ),
+              title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
+              onTap: () {
+                ref.read(localeProvider.notifier).setLocale(locale);
+                Navigator.pop(context);
+              },
+            );
+          }),
+          const SizedBox(height: VeeTokens.spacingMd),
+        ],
       ),
     );
   }
 }
 
-// ── 以下 Widget 与原 profile_screen.dart 保持一致 ──────────────────────────
+// ── 用户头部卡片 ──────────────────────────────────────────────────────────────
 
 class _UserHeaderCard extends StatelessWidget {
   final UserProfile user;
@@ -614,39 +542,35 @@ class _UserHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            _Avatar(avatarUrl: user.avatarUrl, name: user.name),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user.name,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
-                  Text('@${user.username}',
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey[500])),
-                  const SizedBox(height: 4),
-                  Text(user.email,
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600])),
-                ],
-              ),
+    return VeeCard(
+      padding: VeeTokens.cardPaddingLg,
+      child: Row(
+        children: [
+          _Avatar(avatarUrl: user.avatarUrl, name: user.name),
+          const SizedBox(width: VeeTokens.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.name, style: context.veeText.sectionTitle),
+                const SizedBox(height: VeeTokens.s2),
+                Text(
+                  '@${user.username}',
+                  style: context.veeText.caption.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
+                const SizedBox(height: VeeTokens.spacingXxs),
+                Text(
+                  user.email,
+                  style: context.veeText.caption.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -654,34 +578,43 @@ class _UserHeaderCard extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   final String? avatarUrl;
-  final String  name;
+  final String name;
   const _Avatar({this.avatarUrl, required this.name});
 
   @override
   Widget build(BuildContext context) {
-    final color    = Theme.of(context).colorScheme.primary;
+    final color = Theme.of(context).colorScheme.primary;
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return Container(
-      width: 64, height: 64,
+      width: VeeTokens.s64,
+      height: VeeTokens.s64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.1),
+        color: VeeTokens.selectedTint(color),
         image: avatarUrl != null && avatarUrl!.isNotEmpty
             ? DecorationImage(
-                image: NetworkImage(avatarUrl!), fit: BoxFit.cover)
+                image: NetworkImage(avatarUrl!),
+                fit: BoxFit.cover,
+              )
             : null,
       ),
       child: avatarUrl == null || avatarUrl!.isEmpty
           ? Center(
-              child: Text(initials,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: color)))
+              child: Text(
+                initials,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            )
           : null,
     );
   }
 }
+
+// ── AI 额度卡 ─────────────────────────────────────────────────────────────────
 
 class _QuotaCard extends StatelessWidget {
   final UserProfile user;
@@ -690,127 +623,101 @@ class _QuotaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme    = Theme.of(context);
-    final isUnlim  = user.aiQuotaMonthly == -1;
-    final percent  = user.aiQuotaPercent;
-    final color    = percent > 0.9
-        ? Colors.red
+    final theme = Theme.of(context);
+    final isUnlim = user.aiQuotaMonthly == -1;
+    final percent = user.aiQuotaPercent;
+    final color = percent > 0.9
+        ? VeeTokens.error
         : percent > 0.7
-            ? Colors.orange
-            : theme.colorScheme.primary;
-    final resetDate =
-        DateFormat('M/d').format(user.quotaResetDate);
+        ? Colors.orange
+        : theme.colorScheme.primary;
+    final resetDate = DateFormat('M/d').format(user.quotaResetDate);
 
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return VeeCard(
+      padding: VeeTokens.cardPaddingLg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: VeeTokens.iconSm,
+                    color: color,
+                  ),
+                  const SizedBox(width: VeeTokens.spacingXs),
+                  Text(l10n.aiUsageQuota, style: context.veeText.cardTitle),
+                ],
+              ),
+              if (!isUnlim)
+                Text(
+                  l10n.quotaResetsOn(resetDate),
+                  style: context.veeText.micro.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: VeeTokens.spacingMd),
+          if (isUnlim)
+            Row(
+              children: [
+                Icon(Icons.all_inclusive, size: VeeTokens.iconMd, color: color),
+                const SizedBox(width: VeeTokens.spacingXs),
+                Text(
+                  l10n.unlimited,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            )
+          else ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(children: [
-                  Icon(Icons.auto_awesome, size: 18, color: color),
-                  const SizedBox(width: 8),
-                  Text(l10n.aiUsageQuota,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold)),
-                ]),
-                if (!isUnlim)
-                  Text(l10n.quotaResetsOn(resetDate),
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey[500])),
+                Text(
+                  l10n.used(user.aiQuotaUsed),
+                  style: context.veeText.caption.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  l10n.totalQuota(user.aiQuotaMonthly),
+                  style: context.veeText.caption.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (isUnlim)
-              Row(children: [
-                Icon(Icons.all_inclusive, size: 20, color: color),
-                const SizedBox(width: 8),
-                Text(l10n.unlimited,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: color)),
-              ])
-            else ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(l10n.used(user.aiQuotaUsed),
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600])),
-                  Text(l10n.totalQuota(user.aiQuotaMonthly),
-                      style: TextStyle(
-                          fontSize: 13, color: Colors.grey[600])),
-                ],
+            const SizedBox(height: VeeTokens.s10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(VeeTokens.rSm),
+              child: LinearProgressIndicator(
+                value: percent,
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: percent,
-                  minHeight: 10,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final List<_SettingItem> items;
-  const _SectionCard({required this.title, required this.items});
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(title,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[500])),
-          ),
-          Card(
-            elevation: 0,
-            color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-            ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: items.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, indent: 52),
-              itemBuilder: (_, i) => items[i],
-            ),
-          ),
-        ],
-      );
-}
+// ── 设置项 ────────────────────────────────────────────────────────────────────
 
 class _SettingItem extends StatelessWidget {
-  final IconData   icon;
-  final String     label;
-  final Widget?    trailing;
+  final IconData icon;
+  final String label;
+  final Widget? trailing;
   final VoidCallback? onTap;
 
   const _SettingItem({
@@ -822,49 +729,55 @@ class _SettingItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .primary
-                .withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary),
+    leading: Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: VeeTokens.hoverTint(Theme.of(context).colorScheme.primary),
+        borderRadius: BorderRadius.circular(VeeTokens.rSm),
+      ),
+      child: Icon(
+        icon,
+        size: VeeTokens.iconMd,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+    title: Text(label, style: context.veeText.bodyDefault),
+    trailing:
+        trailing ??
+        Icon(
+          Icons.chevron_right,
+          color: Colors.grey[400],
+          size: VeeTokens.iconMd,
         ),
-        title: Text(label, style: const TextStyle(fontSize: 15)),
-        trailing: trailing ??
-            Icon(Icons.chevron_right,
-                color: Colors.grey[400], size: 20),
-        onTap: onTap,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      );
+    onTap: onTap,
+    contentPadding: VeeTokens.tilePadding,
+  );
 }
 
 class _Badge extends StatelessWidget {
   final String label;
-  final Color  color;
+  final Color color;
   const _Badge(this.label, {required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600)),
-      );
+    padding: VeeTokens.badgePadding,
+    decoration: BoxDecoration(
+      color: VeeTokens.selectedTint(color),
+      borderRadius: VeeTokens.badgeBorderRadius,
+    ),
+    child: Text(
+      label,
+      style: context.veeText.micro.copyWith(
+        color: color,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }
+
+// ── Telegram 绑定 Sheet ───────────────────────────────────────────────────────
 
 class _TgBindSheet extends ConsumerStatefulWidget {
   final UserProfile user;
@@ -875,12 +788,16 @@ class _TgBindSheet extends ConsumerStatefulWidget {
 }
 
 class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
-  bool    _loading = false;
+  bool _loading = false;
   String? _code;
   String? _error;
 
   Future<void> _requestCode() async {
-    setState(() { _loading = true; _error = null; _code = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _code = null;
+    });
     try {
       final resp = await ref.read(authProvider.notifier).requestTgBindCode();
       setState(() => _code = resp['code'] as String?);
@@ -892,7 +809,10 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
   }
 
   Future<void> _unbind() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await ref.read(authProvider.notifier).deleteTgBind();
       if (mounted) Navigator.pop(context);
@@ -906,131 +826,165 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme    = Theme.of(context);
-    final isBound  = widget.user.tgUserId != null;
+    final theme = Theme.of(context);
+    final isBound = widget.user.tgUserId != null;
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
+      padding: VeeTokens.sheetPadding(context),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [
-            Icon(Icons.telegram, color: const Color(0xFF2AABEE), size: 24),
-            const SizedBox(width: 8),
-            Text(l10n.telegramBind,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(
+                Icons.telegram,
+                color: Color(0xFF2AABEE),
+                size: VeeTokens.iconLg,
+              ),
+              const SizedBox(width: VeeTokens.spacingXs),
+              Text(l10n.telegramBind, style: context.veeText.sectionTitle),
+            ],
+          ),
+          const SizedBox(height: VeeTokens.spacingMd),
 
-          if (_error != null) ...[
-            VeeErrorBanner(message: _error!),
-            const SizedBox(height: 12),
-          ],
+          if (_error != null) VeeErrorBanner(message: _error!),
 
           if (isBound) ...[
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: VeeTokens.tilePadding,
               decoration: BoxDecoration(
                 color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(VeeTokens.rMd),
               ),
-              child: Row(children: [
-                Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
-                const SizedBox(width: 8),
-                Text(l10n.boundWithTelegram('${widget.user.tgUserId}'),
-                    style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.w600)),
-              ]),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade600,
+                    size: VeeTokens.iconMd,
+                  ),
+                  const SizedBox(width: VeeTokens.spacingXs),
+                  Text(
+                    l10n.boundWithTelegram('${widget.user.tgUserId}'),
+                    style: context.veeText.cardTitle.copyWith(
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(l10n.quotaSharedAfterBind,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            const SizedBox(height: 20),
+            const SizedBox(height: VeeTokens.spacingXs),
+            Text(
+              l10n.quotaSharedAfterBind,
+              style: context.veeText.caption.copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: VeeTokens.spacingLg),
             OutlinedButton(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: BorderSide(color: Colors.red.shade200),
+                foregroundColor: VeeTokens.error,
+                side: VeeTokens.dangerBorder(VeeTokens.error),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                  borderRadius: BorderRadius.circular(VeeTokens.rMd),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: VeeTokens.s14),
               ),
               onPressed: _loading ? null : _unbind,
               child: _loading
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: VeeTokens.iconSm,
+                      height: VeeTokens.iconSm,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Text(l10n.unbind),
             ),
           ] else ...[
-            Text(l10n.bindTelegramDesc,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5)),
-            const SizedBox(height: 20),
+            Text(
+              l10n.bindTelegramDesc,
+              style: context.veeText.caption.copyWith(
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: VeeTokens.spacingLg),
 
             if (_code != null) ...[
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.2)),
+                padding: const EdgeInsets.symmetric(
+                  vertical: VeeTokens.spacingLg,
                 ),
-                child: Column(children: [
-                  Text(l10n.verificationCode, style: TextStyle(
-                      fontSize: 13, color: Colors.grey[600])),
-                  const SizedBox(height: 8),
-                  Text(_code!,
+                decoration: BoxDecoration(
+                  color: VeeTokens.surfaceTint(theme.colorScheme.primary),
+                  borderRadius: BorderRadius.circular(VeeTokens.rLg),
+                  border: Border.all(
+                    color: VeeTokens.selectedTint(theme.colorScheme.primary),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      l10n.verificationCode,
+                      style: context.veeText.caption.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: VeeTokens.spacingXs),
+                    Text(
+                      _code!,
                       style: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 12,
                         color: theme.colorScheme.primary,
-                      )),
-                  const SizedBox(height: 8),
-                  Text(l10n.validFor10Minutes, style: TextStyle(
-                      fontSize: 12, color: Colors.grey[500])),
-                ]),
+                      ),
+                    ),
+                    const SizedBox(height: VeeTokens.spacingXs),
+                    Text(
+                      l10n.validFor10Minutes,
+                      style: context.veeText.micro.copyWith(
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: VeeTokens.s12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: VeeTokens.tilePadding,
                 decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(10)),
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(VeeTokens.rSm),
+                ),
                 child: Text(
                   l10n.sendBindCommand(_code!),
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontFamily: 'monospace',
-                      height: 1.6),
+                  style: context.veeText.bodyDefault.copyWith(
+                    fontFamily: 'monospace',
+                    height: 1.6,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: VeeTokens.s14),
               TextButton(
                 onPressed: _loading ? null : _requestCode,
                 child: Text(l10n.refreshCode),
               ),
             ] else ...[
               SizedBox(
-                height: 50,
+                height: VeeTokens.touchStandard + VeeTokens.s2,
                 child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
                   onPressed: _loading ? null : _requestCode,
                   icon: _loading
-                      ? const SizedBox(width: 18, height: 18,
+                      ? const SizedBox(
+                          width: VeeTokens.iconSm,
+                          height: VeeTokens.iconSm,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.link, size: 20),
-                  label: Text(l10n.applyBindCode,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.link, size: VeeTokens.iconMd),
+                  label: Text(l10n.applyBindCode),
                 ),
               ),
             ],

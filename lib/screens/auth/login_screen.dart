@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
-import '../../main.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
-import '../../widgets/ui_core/vee_text_field.dart';import '../../widgets/ui_core/vee_submit_button.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
+import '../../widgets/ui_core/vee_submit_button.dart';
+
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -17,10 +20,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _identCtrl    = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _identCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  bool _obscure = true;
 
   @override
   void dispose() {
@@ -31,79 +33,91 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final success = await ref.read(authProvider.notifier).login(
-          _identCtrl.text.trim(),
-          _passwordCtrl.text,
-        );
+    final success = await ref
+        .read(authProvider.notifier)
+        .login(_identCtrl.text.trim(), _passwordCtrl.text);
     if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final auth  = ref.watch(authProvider);
+    final auth = ref.watch(authProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: VeeTokens.maxFormWidth),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+              padding: VeeTokens.formPadding.copyWith(
+                top: VeeTokens.s40,
+                bottom: VeeTokens.s40,
+              ),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo 区域
+                    // ── Logo 区域 ──────────────────────────────────────
                     Column(
                       children: [
                         Container(
-                          width: 72, height: 72,
+                          width: 72,
+                          height: 72,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            color: VeeTokens.selectedTint(
+                              theme.colorScheme.primary,
+                            ),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.receipt_long_outlined,
-                              size: 36, color: theme.colorScheme.primary),
+                          child: Icon(
+                            Icons.receipt_long_outlined,
+                            size: VeeTokens.iconXxl - 4,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Text('Vee',
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: theme.colorScheme.primary)),
-                        const SizedBox(height: 4),
-                        Text(l10n.smartBillAssistant,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[500])),
+                        const SizedBox(height: VeeTokens.spacingMd),
+                        Text(
+                          'Vee',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: VeeTokens.spacingXxs),
+                        Text(
+                          l10n.smartBillAssistant,
+                          style: context.veeText.caption.copyWith(
+                            color: Colors.grey[500],
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: VeeTokens.s40),
 
-                    // 错误提示
-                    if (auth.error != null) ...[
+                    // ── 错误提示 ───────────────────────────────────────
+                    if (auth.error != null)
                       VeeErrorBanner(message: auth.error!),
-                      const SizedBox(height: 16),
-                    ],
 
-                    // 用户名/邮箱
+                    // ── 用户名/邮箱 ────────────────────────────────────
                     VeeTextField(
                       controller: _identCtrl,
                       label: l10n.usernameOrEmail,
                       prefixIcon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      validator: (v) => v!.isEmpty ? l10n.enterUsernameOrEmail : null,
+                      validator: (v) =>
+                          v!.isEmpty ? l10n.enterUsernameOrEmail : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: VeeTokens.spacingMd),
 
-                    // 密码
+                    // ── 密码 ───────────────────────────────────────────
                     VeeTextField(
                       controller: _passwordCtrl,
                       label: l10n.password,
@@ -115,43 +129,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           v == null || v.isEmpty ? l10n.enterPassword : null,
                     ),
 
-                    // 忘记密码
+                    // ── 忘记密码 ───────────────────────────────────────
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordScreen()),
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
                         ),
-                        child: Text(l10n.forgotPassword, style: TextStyle(fontSize: 13)),
+                        child: Text(
+                          l10n.forgotPassword,
+                          style: context.veeText.chipLabel,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: VeeTokens.spacingXs),
 
-                    // 登录按钮
+                    // ── 登录按钮 ───────────────────────────────────────
                     VeeSubmitButton(
                       label: l10n.login,
                       onPressed: auth.loading ? null : _submit,
                       isLoading: auth.loading,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: VeeTokens.s24),
 
-                    // 注册入口
+                    // ── 注册入口 ───────────────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(l10n.dontHaveAccount,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                        Text(
+                          l10n.dontHaveAccount,
+                          style: context.veeText.caption.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const RegisterScreen()),
+                              builder: (_) => const RegisterScreen(),
+                            ),
                           ),
-                          child: Text(l10n.signUp,
-                              style: TextStyle(fontWeight: FontWeight.w600,
-                                               fontSize: 14)),
+                          child: Text(
+                            l10n.signUp,
+                            style: context.veeText.chipLabel.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -164,32 +190,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
-
-  InputDecoration _inputDeco({
-    required String label,
-    required IconData icon,
-    Widget? suffix,
-  }) =>
-      InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary, width: 1.5),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      );
 }
