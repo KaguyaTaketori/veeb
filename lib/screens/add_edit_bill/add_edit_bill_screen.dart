@@ -8,6 +8,8 @@ import '../../l10n/app_localizations.dart';
 import '../../models/bill.dart';
 import '../../providers/bills_provider.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
+import '../../widgets/ui_core/vee_card.dart';
 
 class AddEditBillScreen extends ConsumerStatefulWidget {
   final Bill? bill;
@@ -169,45 +171,35 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                VeeTextField(
                   controller: nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: '${l10n.productName} *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  label: '${l10n.productName} *',
+                  prefixIcon: Icons.shopping_bag_outlined,
+                  validator: (v) => v?.isEmpty ?? true ? l10n.enterProductName : null,
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children:[
                     Expanded(
                       flex: 2,
-                      child: TextField(
+                      child: VeeTextField(
                         controller: amountCtrl,
+                        label: '${l10n.amount} *',
+                        prefixIcon: Icons.payments_outlined,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true, signed: true),
-                        decoration: InputDecoration(
-                          labelText: '${l10n.amount} *',
-                          prefixText: '¥ ',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        validator: (v) => (v?.isEmpty ?? true) || double.tryParse(v!) == null ? l10n.invalidAmount : null,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: TextField(
+                      child: VeeTextField(
                         controller: qtyCtrl,
+                        label: l10n.quantity,
+                        prefixIcon: Icons.apps_outlined,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: InputDecoration(
-                          labelText: l10n.quantity,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        validator: (v) => (v?.isEmpty ?? true) ? '1' : null,
                       ),
                     ),
                   ],
@@ -546,13 +538,7 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
 
   // 构建类 iOS / 设置项风格的信息表单卡片
   Widget _buildBasicDetailsCard(AppLocalizations l10n) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-      ),
+    return VeeCard(
       child: Column(
         children:[
           // 类别
@@ -603,35 +589,25 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
           const Divider(height: 1, indent: 48),
 
           // 商家
-          _buildFormRow(
-            icon: Icons.store_outlined,
-            label: l10n.merchant,
-            child: TextFormField(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: VeeTextField(
               controller: _merchantCtrl,
-              decoration: InputDecoration(
-                hintText: l10n.notEntered,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
+              label: l10n.merchant,
+              prefixIcon: Icons.store_outlined,
+              hint: l10n.notEntered,
             ),
           ),
           const Divider(height: 1, indent: 48),
 
           // 备注
-          _buildFormRow(
-            icon: Icons.notes_outlined,
-            label: l10n.note,
-            child: TextFormField(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: VeeTextField(
               controller: _descCtrl,
-              maxLines: null, // 支持多行
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                hintText: l10n.additionalInfo,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
+              label: l10n.note,
+              prefixIcon: Icons.notes_outlined,
+              hint: l10n.additionalInfo,
             ),
           ),
         ],

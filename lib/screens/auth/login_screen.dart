@@ -8,8 +8,7 @@ import '../home/home_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
-import '../../widgets/ui_core/vee_text_field.dart';
-
+import '../../widgets/ui_core/vee_text_field.dart';import '../../widgets/ui_core/vee_submit_button.dart';
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -131,23 +130,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 8),
 
                     // 登录按钮
-                    SizedBox(
-                      height: 52,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        onPressed: auth.loading ? null : _submit,
-                        child: auth.loading
-                            ? const SizedBox(
-                                width: 20, height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : Text(l10n.login,
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
+                    VeeSubmitButton(
+                      label: l10n.login,
+                      onPressed: auth.loading ? null : _submit,
+                      isLoading: auth.loading,
                     ),
                     const SizedBox(height: 24),
 

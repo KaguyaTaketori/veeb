@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile user;
@@ -82,27 +83,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   VeeErrorBanner(message: _error!),
                   const SizedBox(height: 16),
                 ],
-                TextFormField(
+                VeeTextField(
                   controller: _nameCtrl,
-                  maxLength: 30,
-                  decoration: InputDecoration(
-                    labelText: l10n.fullName,
-                    prefixIcon: const Icon(Icons.person_outline, size: 20),
-                    filled: true, fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: Colors.grey.shade300)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 1.5)),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
-                  ),
+                  label: l10n.fullName,
+                  prefixIcon: Icons.person_outline,
+                  validator: (v) => (v?.trim().isEmpty ?? true) ? l10n.nicknameRequired : null,
                 ),
                 const SizedBox(height: 8),
                 Text(l10n.usernameEmailCannotChange,

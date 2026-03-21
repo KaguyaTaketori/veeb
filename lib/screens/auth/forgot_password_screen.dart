@@ -7,6 +7,7 @@ import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/ui_core/vee_submit_button.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
+import '../../widgets/ui_core/vee_text_field.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -22,7 +23,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   int  _step      = 0;   // 0=输邮箱, 1=输验证码+新密码
   bool _loading   = false;
-  bool _obscure   = true;
   int  _countdown = 0;
   Timer? _timer;
   String? _error;
@@ -123,10 +123,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   Text(l10n.willSendResetCode,
                       style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   const SizedBox(height: 24),
-                  TextFormField(
+                  VeeTextField(
                     controller: _emailCtrl,
+                    label: l10n.email,
+                    prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: _deco(l10n.email, Icons.email_outlined),
+                    validator: (v) => (v?.isEmpty ?? true) || !v!.contains('@') ? l10n.enterValidEmail : null,
                   ),
                   const SizedBox(height: 24),
                   VeeSubmitButton(
@@ -142,28 +144,28 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   const SizedBox(height: 24),
 
-                  TextFormField(
+                  VeeTextField(
                     controller: _codeCtrl,
+                    label: l10n.sixDigitCode,
+                    prefixIcon: Icons.pin_outlined,
                     keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: _deco(l10n.sixDigitCode, Icons.pin_outlined)
-                        .copyWith(counterText: ''),
+                    validator: (v) => (v?.isEmpty ?? true) || v!.length != 6 ? l10n.enterValidCode : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VeeTextField(
                     controller: _newPwCtrl,
-                    obscureText: _obscure,
-                    decoration: _deco(l10n.newPassword, Icons.lock_outline, suffix:
-                      IconButton(icon: Icon(_obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined, size: 20),
-                        onPressed: () => setState(() => _obscure = !_obscure))),
+                    label: l10n.newPassword,
+                    prefixIcon: Icons.lock_outline,
+                    isPassword: true,
+                    validator: (v) => (v?.isEmpty ?? true) ? l10n.enterPassword : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  VeeTextField(
                     controller: _confirmCtrl,
-                    obscureText: _obscure,
-                    decoration: _deco(l10n.confirmNewPassword, Icons.lock_outline),
+                    label: l10n.confirmNewPassword,
+                    prefixIcon: Icons.lock_outline,
+                    isPassword: true,
+                    validator: (v) => v != _newPwCtrl.text ? l10n.passwordsDoNotMatch : null,
                   ),
                   const SizedBox(height: 24),
                   VeeSubmitButton(
@@ -185,20 +187,4 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ),
     );
   }
-
-  InputDecoration _deco(String label, IconData icon, {Widget? suffix}) =>
-      InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
-        suffixIcon: suffix,
-        filled: true, fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade300)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary, width: 1.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      );
 }
