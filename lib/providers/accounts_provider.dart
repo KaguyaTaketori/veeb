@@ -30,19 +30,39 @@ class AccountsState {
 class AccountsNotifier extends Notifier<AccountsState> {
   @override
   AccountsState build() {
-    // 当 group 加载完后自动加载账户
     ref.listen(currentGroupIdProvider, (_, groupId) {
       if (groupId != null) load(groupId);
     });
     return const AccountsState();
   }
+
+  bool get _isLoggedIn =>
+      ref.read(authProvider).status == AuthStatus.authenticated;
  
   AccountsApi get _api => ref.read(accountsApiProvider);
  
   Future<void> load(int groupId) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final accounts = await _api.listAccounts(groupId: groupId);
+      List<Account> accounts;
+      if (_isLoggedIn) {
+        accounts = await ref.read(accountsApiProvider).listAccounts(groupId: groupId);
+      } else {
+        final db = ref.read(appDatabaseProvider);
+        final rows = await db.accountDao.watchByGroup(groupId).first;
+        accounts = rows.map((r) => Account(
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          currencyCode: r.currencyCode,
+          groupId: r.groupId,
+          balanceCache: r.balanceCache,
+          balanceUpdatedAt: r.balanceUpdatedAt?.toDouble(),
+          isActive: r.isActive,
+          createdAt: r.createdAt.toDouble(),
+          updatedAt: r.updatedAt.toDouble(),
+        )).toList();
+      }
       state = state.copyWith(accounts: accounts, loading: false);
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());

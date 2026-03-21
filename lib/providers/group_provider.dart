@@ -37,30 +37,43 @@ class GroupNotifier extends Notifier<GroupState> {
     return const GroupState(loading: true);
   }
 
-  Future<void> _loadOrCreateLocal() async {
-    final database = ref.read(appDatabaseProvider);
-    var   group = await database.groupDao.getDefault();
+Future<void> _loadOrCreateLocal() async {
+  final database = ref.read(appDatabaseProvider);
+  var group = await database.groupDao.getDefault();
 
-    if (group == null) {
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      await database.groupDao.insertGroup(
-        db.GroupsCompanion.insert(
-          name:         const Value('我的账本'),
-          ownerId:      0,
-          inviteCode:   const Value('local'),
-          baseCurrency: const Value('JPY'),
-          createdAt:    now,
-          updatedAt:    now,
-        ),
-      );
-      group = await database.groupDao.getDefault();
-    }
+  if (group == null) {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final groupId = await database.groupDao.insertGroup(
+      GroupsCompanion.insert(
+        name: const Value('我的账本'),
+        ownerId: 0,
+        inviteCode: const Value('local'),
+        baseCurrency: const Value('JPY'),
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: const Value('synced'),
+      ),
+    );
+    group = await database.groupDao.getById(groupId);
 
-    state = state.copyWith(
-      group:   group != null ? _driftGroupToModel(group) : null,
-      loading: false,
+    await database.accountDao.insertAccount(
+      AccountsCompanion.insert(
+        name: '现金',
+        type: const Value('cash'),
+        currencyCode: const Value('JPY'),
+        groupId: groupId,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: const Value('synced'),
+      ),
     );
   }
+
+  state = state.copyWith(
+    group: group != null ? _driftGroupToModel(group) : null,
+    loading: false,
+  );
+}
 
   GroupsApi get _api => ref.read(groupsApiProvider);
 
@@ -88,12 +101,17 @@ class GroupNotifier extends Notifier<GroupState> {
   }
 
   Future<void> createDefault() async {
-    state = state.copyWith(loading: true, clearError: true);
-    try {
-      final group = await _api.createGroup();
-      state = state.copyWith(group: group, loading: false);
-    } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+    final isLoggedIn = ref.read(authProvider).status == AuthStatus.authenticated;
+    if (isLoggedIn) {
+      state = state.copyWith(loading: true, clearError: true);
+      try {
+        final group = await _api.createGroup();
+        state = state.copyWith(group: group, loading: false);
+      } catch (e) {
+        state = state.copyWith(loading: false, error: e.toString());
+      }
+    } else {
+      await _loadOrCreateLocal(); // 复用本地创建逻辑
     }
   }
 

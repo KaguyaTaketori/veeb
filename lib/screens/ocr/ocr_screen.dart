@@ -22,136 +22,91 @@ class OcrScreen extends ConsumerStatefulWidget {
 }
 
 class _OcrScreenState extends ConsumerState<OcrScreen> {
-  final _picker = ImagePicker();
-  bool _loading = false;
+  final _picker        = ImagePicker();
+  final _mlKitService  = MlKitOcrService();
+  bool  _loading       = false;
+  bool  _useLocalOcr   = false;
   String? _error;
-  Bill? _result;
-  String? _uploadedReceiptUrl;
+  Bill?   _result;
 
-  int _getCategoryId(String? category) {
-    if (category == null) return 0;
-    final names = kCategoryEmoji.keys.toList();
-    final idx = names.indexOf(category);
-    return idx >= 0 ? idx + 1 : 0;
+  @override
+  void dispose() {
+    _mlKitService.dispose();
+    super.dispose();
   }
 
   Future<void> _pickAndOcr(ImageSource source) async {
     final xfile = await _picker.pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 1920,
-    );
+        source: source, imageQuality: 85, maxWidth: 1920);
     if (xfile == null) return;
 
-    setState(() {
-      _loading = true;
-      _error = null;
-      _result = null;
-    });
-    try {
-      final bytes = await File(xfile.path).readAsBytes();
-      final base64Str = base64Encode(bytes);
-      final mimeType = xfile.mimeType ?? 'image/jpeg';
-      final bill = await ref.read(billsProvider.notifier).ocrBill(base64Str, mimeType);
-      setState(() {
-        _result = bill;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
+    setState(() { _loading = true; _error = null; _result = null; });
 
-  Future<void> _confirm() async {
-    if (_result == null) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
     try {
-      final groupId = ref.read(currentGroupIdProvider);
-      final accounts = ref.read(accountsProvider).accounts;
-      if (groupId == null || accounts.isEmpty) {
-        // 提示用户先创建账本
-        return;
-      }
-      await ref.read(transactionsProvider.notifier).createTransaction(
-        type: 'expense',
-        amount: _result!.amount,
-        currencyCode: _result!.currency,
-        accountId: accounts.first.id,
-        categoryId: _getCategoryId(_result!.category),
-        groupId: groupId,
-        isPrivate: false,
-        note: _result!.description,
-        transactionDate: DateTime.now().millisecondsSinceEpoch / 1000.0,
-        receiptUrl: _uploadedReceiptUrl,
-        items: _result!.items.map((e) => e.toJson()).toList(),
-      );
-      setState(() {
-        _result = null;
-      });
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.recordCompleted),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+      if (_useLocalOcr) {
+        await _runLocalOcr(xfile.path);
+      } else {
+        await _runCloudOcr(File(xfile.path));
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
+      if (!_useLocalOcr) {
+        try {
+          await _runLocalOcr(xfile.path);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('云端识别失败，已切换至本地模式')),
+            );
+          }
+        } catch (e2) {
+          setState(() => _error = e2.toString());
+        }
+      } else {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50, // 统一的浅灰色背景
-      appBar: AppBar(
-        title: Text(l10n.scanReceipt, style: const TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680), // 宽屏保护
-          child: _buildBody(),
-        ),
-      ),
-    );
+  Future<void> _runLocalOcr(String imagePath) async {
+    final rawText = await _mlKitService.recognizeFromFile(imagePath);
+    final parsed  = LocalReceiptParser.parse(rawText);
+    setState(() => _result = Bill.fromJson({
+      ...parsed,
+      'id':         0,
+      'created_at': DateTime.now().millisecondsSinceEpoch / 1000,
+      'updated_at': DateTime.now().millisecondsSinceEpoch / 1000,
+      'receipt_url': '',
+      'source':     'local',
+    }));
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const _LoadingView();
-    }
-    if (_result != null) {
-      return _ConfirmView(
-        result: _result!,
-        onConfirm: _confirm,
-        onRetake: () => setState(() => _result = null),
-      );
-    }
-    return _PickerView(
-      error: _error,
-      onCamera: () => _pickAndOcr(ImageSource.camera),
-      onGallery: () => _pickAndOcr(ImageSource.gallery),
-    );
+  Future<void> _runCloudOcr(File file) async {
+    final bytes    = await file.readAsBytes();
+    final base64Str = base64Encode(bytes);
+    final bill = await ref
+        .read(billsProvider.notifier)
+        .ocrBill(base64Str, 'image/jpeg');
+    setState(() => _result = bill);
   }
+
+  Widget _buildModeToggle() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(
+        _useLocalOcr ? Icons.phone_android : Icons.cloud_outlined,
+        size: 16, color: Colors.grey,
+      ),
+      const SizedBox(width: 4),
+      Text(_useLocalOcr ? '本地' : '云端',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      Switch(
+        value: _useLocalOcr,
+        onChanged: (v) => setState(() => _useLocalOcr = v),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    ],
+  );
 }
 
 // ── 1. 初始上传引导页 ───────────────────────────────────────────────────

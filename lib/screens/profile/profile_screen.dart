@@ -266,6 +266,20 @@ class _GuestProfileView extends ConsumerWidget {
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     ),
+                    _SettingItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: '管理账户',
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ManageAccountsScreen())),
+                    ),
+                    _SettingItem(
+                      icon: Icons.category_outlined,
+                      label: '管理分类',
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ManageCategoriesScreen())),
+                    ),
                   ],
                 ),
               ),
@@ -435,6 +449,20 @@ class _LoggedInProfileView extends ConsumerWidget {
                           : _Badge(l10n.unbound, color: Colors.orange),
                       onTap: () =>
                           _showTgBindInfo(context, user, ref),
+                    ),
+                    _SettingItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: '管理账户',
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ManageAccountsScreen())),
+                    ),
+                    _SettingItem(
+                      icon: Icons.category_outlined,
+                      label: '管理分类',
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ManageCategoriesScreen())),
                     ),
                   ],
                 ),

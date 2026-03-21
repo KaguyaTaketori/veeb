@@ -8,10 +8,31 @@ final categoriesProvider =
   final api = ref.watch(categoriesApiProvider);
   return api.listCategories(groupId: groupId);
 });
- 
-/// 当前 group 的分类，在多处用到
+
+final categoriesProvider =
+    FutureProvider.family<List<Category>, int?>((ref, groupId) async {
+  final isLoggedIn =
+      ref.watch(authProvider).status == AuthStatus.authenticated;
+  
+  if (isLoggedIn) {
+    return ref.watch(categoriesApiProvider).listCategories(groupId: groupId);
+  } else {
+    final db = ref.watch(appDatabaseProvider);
+    final rows = await db.categoryDao.getAvailable(groupId);
+    return rows.map((r) => Category(
+      id: r.id,
+      name: r.name,
+      icon: r.icon ?? '📦',
+      color: r.color ?? '#95A5A6',
+      type: r.type,
+      isSystem: r.isSystem,
+      groupId: r.groupId,
+      sortOrder: r.sortOrder,
+    )).toList();
+  }
+});
+
 final currentCategoriesProvider = FutureProvider<List<Category>>((ref) async {
   final groupId = ref.watch(currentGroupIdProvider);
-  final api     = ref.watch(categoriesApiProvider);
-  return api.listCategories(groupId: groupId);
+  return ref.watch(categoriesProvider(groupId).future);
 });

@@ -149,7 +149,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     label: l10n.sixDigitCode,
                     prefixIcon: Icons.pin_outlined,
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v?.isEmpty ?? true) || v!.length != 6 ? l10n.enterValidCode : null,
+                    validator: (v) => (v?.isEmpty ?? true) || v!.length != 6 ? l10n.enter6DigitCode : null,
                   ),
                   const SizedBox(height: 12),
                   VeeTextField(
