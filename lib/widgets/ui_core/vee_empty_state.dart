@@ -1,5 +1,11 @@
+// lib/widgets/ui_core/vee_empty_state.dart
+//
+// VeeEmptyState — 空状态占位组件
+// Phase 2 更新：使用 VeeTokens 间距，TextTheme 文字样式
+
 import 'package:flutter/material.dart';
 import 'vee_tokens.dart';
+import 'vee_text_styles.dart';
 
 class VeeEmptyState extends StatelessWidget {
   final IconData icon;
@@ -8,6 +14,9 @@ class VeeEmptyState extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
+  /// 图标颜色，默认灰色
+  final Color? iconColor;
+
   const VeeEmptyState({
     super.key,
     required this.icon,
@@ -15,37 +24,47 @@ class VeeEmptyState extends StatelessWidget {
     this.subtitle,
     this.actionLabel,
     this.onAction,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(VeeTokens.s32),
+        padding: VeeTokens.formPadding,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children:[
-            Icon(icon, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: VeeTokens.s16),
+          children: [
+            Icon(
+              icon,
+              size:  VeeTokens.iconHero,
+              color: iconColor ?? Colors.grey.shade300,
+            ),
+            const SizedBox(height: VeeTokens.spacingMd),
             Text(
               title,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: VeeTokens.textSecondary),
+              style: context.veeText.cardTitle.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
+              textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: VeeTokens.s8),
+              const SizedBox(height: VeeTokens.spacingXs),
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: VeeTokens.textPlaceholder),
+                style: context.veeText.caption.copyWith(
+                  color: VeeTokens.textPlaceholderVal,
+                ),
               ),
             ],
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: VeeTokens.s24),
+              const SizedBox(height: VeeTokens.spacingLg),
               FilledButton.tonal(
                 onPressed: onAction,
                 child: Text(actionLabel!),
               ),
-            ]
+            ],
           ],
         ),
       ),

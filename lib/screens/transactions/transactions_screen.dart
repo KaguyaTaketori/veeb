@@ -1,5 +1,3 @@
-// lib/screens/transactions/transactions_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
@@ -9,9 +7,14 @@ import '../../providers/transactions_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../utils/currency.dart';
 import '../../widgets/ui_core/vee_card.dart';
+import '../../widgets/ui_core/vee_chip.dart';
+import '../../widgets/ui_core/vee_confirm_dialog.dart';
+import '../../widgets/ui_core/vee_empty_state.dart';
+import '../../widgets/ui_core/vee_month_selector.dart';
+import '../../widgets/ui_core/vee_amount_display.dart';
+import '../../widgets/ui_core/vee_tokens.dart';
+import '../../widgets/ui_core/vee_text_styles.dart';
 import 'add_edit_transaction_screen.dart';
-
-// TransactionDetailScreen は AddEditTransactionScreen(isReadOnly: true) に統合済み
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -27,12 +30,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   bool _showSearch = false;
   String? _typeFilter;
 
+  // 类型筛选选项
+  static const _filterValues = <String?>[null, 'expense', 'income', 'transfer'];
+
   @override
   void initState() {
     super.initState();
     selectedMonth = DateTime.now();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _load(refresh: true));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load(refresh: true));
   }
 
   @override
@@ -47,8 +52,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   void _load({bool refresh = false}) {
     ref.read(transactionsProvider.notifier).load(
           selectedMonth,
-          refresh: refresh,
-          keyword: _searchCtrl.text.trim(),
+          refresh:    refresh,
+          keyword:    _searchCtrl.text.trim(),
           typeFilter: _typeFilter,
         );
   }
@@ -67,46 +72,67 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(transactionsProvider);
+    final l10n    = AppLocalizations.of(context)!;
+    final state   = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
     if (groupId == null && !ref.watch(groupProvider).loading) {
       return _NoGroupPlaceholder(
-        onCreateGroup: () =>
-            ref.read(groupProvider.notifier).createDefault(),
+        onCreateGroup: () => ref.read(groupProvider.notifier).createDefault(),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, l10n),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: Column(
-            children: [
-              if (!_showSearch) _buildSummaryCard(context, state),
-              _buildTypeFilter(),
-              Expanded(
-                child: state.error != null
-                    ? _buildError(state.error!)
-                    : RefreshIndicator(
-                        onRefresh: () async => _load(refresh: true),
-                        child:
-                            state.transactions.isEmpty && !state.loading
-                                ? _buildEmpty()
-                                : _buildList(state),
-                      ),
+          constraints: const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
+          child: Column(children: [
+            // ── 月度汇总卡（仅非搜索状态显示）──────────────────────────
+            if (!_showSearch) _buildSummaryCard(context, state, l10n),
+
+            // ── 类型筛选 Chip 栏 ──────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s8,
               ),
-              if (state.loading && state.transactions.isEmpty)
-                const LinearProgressIndicator(),
-            ],
-          ),
+              child: VeeChipGroup<String?>(
+                items: _filterValues,
+                labelBuilder: (v) => switch (v) {
+                  'expense'  => l10n.expense,
+                  'income'   => l10n.income,
+                  'transfer' => l10n.transfer,
+                  _          => l10n.total,
+                },
+                selected:  _typeFilter,
+                onChanged: (v) {
+                  setState(() => _typeFilter = v);
+                  _load(refresh: true);
+                },
+              ),
+            ),
+
+            // ── 列表区域 ──────────────────────────────────────────────
+            Expanded(
+              child: state.error != null
+                  ? _buildError(context, state.error!, l10n)
+                  : RefreshIndicator(
+                      onRefresh: () async => _load(refresh: true),
+                      child: state.transactions.isEmpty && !state.loading
+                          ? VeeEmptyState(
+                              icon:  Icons.receipt_long_outlined,
+                              title: l10n.noTransactions,
+                            )
+                          : _buildList(context, state, l10n),
+                    ),
+            ),
+
+            if (state.loading && state.transactions.isEmpty)
+              const LinearProgressIndicator(),
+          ]),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () async {
           final created = await Navigator.push<bool>(
             context,
@@ -125,225 +151,94 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
   // ── AppBar ────────────────────────────────────────────────────────────────
 
-  AppBar _buildAppBar(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+  AppBar _buildAppBar(BuildContext context, AppLocalizations l10n) {
     return AppBar(
-      backgroundColor: Colors.transparent,
-      scrolledUnderElevation: 0,
-      centerTitle: true,
       title: _showSearch
           ? TextField(
               controller: _searchCtrl,
-              autofocus: true,
+              autofocus:  true,
               decoration: InputDecoration(
-                hintText:
-                    '${l10n.note}・${l10n.category}${l10n.search}',
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                prefixIcon: const Icon(Icons.search,
-                    size: 20, color: Colors.grey),
+                hintText: '${l10n.note}・${l10n.category}',
+                prefixIcon: const Icon(Icons.search, size: VeeTokens.iconMd),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.close, size: 18),
+                  icon:      const Icon(Icons.close, size: VeeTokens.iconMd),
                   onPressed: _toggleSearch,
                 ),
+                // border / fill 继承全局 InputDecorationTheme
               ),
               onChanged: (v) => ref
                   .read(transactionsProvider.notifier)
                   .search(selectedMonth, v.trim()),
             )
-          : Text(l10n.transactions,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          : Text(
+              l10n.transactions,
+              style: context.veeText.pageTitle,
+            ),
       actions: _showSearch
           ? []
           : [
               IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _toggleSearch),
+                icon:     const Icon(Icons.search),
+                onPressed: _toggleSearch,
+                tooltip:  l10n.search,
+              ),
               IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => _load(refresh: true)),
+                icon:     const Icon(Icons.refresh),
+                onPressed: () => _load(refresh: true),
+                tooltip:  l10n.retry,
+              ),
             ],
     );
   }
 
   // ── 月度汇总卡 ────────────────────────────────────────────────────────────
 
-  Widget _buildSummaryCard(BuildContext context, TransactionsState state) {
-    final l10n = AppLocalizations.of(context)!;
-    final expenseStr = formatAmount(state.monthExpense, 'JPY');
-    final incomeStr = formatAmount(state.monthIncome, 'JPY');
-    final netStr = formatAmount(
-        (state.monthIncome - state.monthExpense).abs(), 'JPY');
-    final isPositive = state.monthIncome >= state.monthExpense;
-
+  Widget _buildSummaryCard(
+    BuildContext context,
+    TransactionsState state,
+    AppLocalizations l10n,
+  ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: VeeCard(
-        padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s16, VeeTokens.s4, VeeTokens.s16, VeeTokens.s12,
+      ),
+      child: VeeMonthSelectorCard(
+        month:     selectedMonth,
+        canGoNext: !isCurrentMonth,
+        onPrev:    prevMonth,
+        onNext:    nextMonth,
         child: Column(children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: prevMonth,
-                icon: const Icon(Icons.chevron_left),
-                style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade100),
-              ),
-              Text(
-                l10n.yearMonthFormat(
-                    selectedMonth.year, selectedMonth.month),
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                onPressed: nextMonth,
-                icon: const Icon(Icons.chevron_right),
-                style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade100),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                  child: _SummaryCell(
-                      label: l10n.expense,
-                      value: '¥$expenseStr',
-                      color: Colors.red.shade400)),
-              Container(
-                  width: 1, height: 40, color: Colors.grey.shade200),
-              Expanded(
-                  child: _SummaryCell(
-                      label: l10n.income,
-                      value: '¥$incomeStr',
-                      color: Colors.green.shade600)),
-            ],
-          ),
-          const Divider(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('${l10n.balance} ',
-                  style:
-                      TextStyle(fontSize: 13, color: Colors.grey[600])),
-              Text(
-                '${isPositive ? "+" : "-"}¥$netStr',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: isPositive
-                      ? Colors.green.shade600
-                      : Colors.red.shade400,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${state.monthCount} ${l10n.recordCount}',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+          const SizedBox(height: VeeTokens.s12),
+          VeeSummaryRow(
+            expense:  state.monthExpense,
+            income:   state.monthIncome,
+            currency: 'JPY',
+            count:    state.monthCount,
           ),
         ]),
       ),
     );
   }
 
-  // ── 类型筛选条 ────────────────────────────────────────────────────────────
-
-  Widget _buildTypeFilter() {
-    final l10n = AppLocalizations.of(context)!;
-    final filters = [
-      (null, l10n.total),
-      ('expense', l10n.expense),
-      ('income', l10n.income),
-      ('transfer', l10n.transfer),
-    ];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: filters.map((f) {
-            final selected = _typeFilter == f.$1;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _typeFilter = f.$1);
-                  _load(refresh: true);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.12)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(f.$2,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey[700],
-                      )),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
   // ── 列表 ──────────────────────────────────────────────────────────────────
 
-  Widget _buildList(TransactionsState state) {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildList(
+    BuildContext context,
+    TransactionsState state,
+    AppLocalizations l10n,
+  ) {
     return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 80, top: 4),
+      padding: const EdgeInsets.only(
+        bottom: VeeTokens.s80,
+        top:    VeeTokens.s4,
+      ),
       itemCount:
           state.transactions.length + (state.hasNext ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: VeeTokens.spacingXs),
       itemBuilder: (ctx, i) {
         if (i == state.transactions.length) {
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: VeeTokens.cardPadding,
             child: FilledButton.tonal(
               onPressed: () => ref
                   .read(transactionsProvider.notifier)
@@ -358,50 +253,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 24),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.only(right: VeeTokens.s24),
+            margin: VeeTokens.pageHorizontal,
             decoration: BoxDecoration(
-              color: Colors.red.shade400,
-              borderRadius: BorderRadius.circular(16),
+              color:        VeeTokens.error,
+              borderRadius: VeeTokens.cardBorderRadius,
             ),
-            child: const Icon(Icons.delete_outline,
-                color: Colors.white, size: 28),
+            child: const Icon(
+              Icons.delete_outline,
+              color: Colors.white,
+              size:  VeeTokens.iconXl,
+            ),
           ),
-          confirmDismiss: (_) => showDialog<bool>(
+          // ── 使用 VeeConfirmDialog 替代内联 AlertDialog ────────────────
+          confirmDismiss: (_) => VeeConfirmDialog.showDelete(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(l10n.deleteConfirm),
-              content: Text(l10n.deleteThisRecord),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l10n.delete),
-                ),
-              ],
-            ),
+            content: l10n.deleteThisRecord,
           ),
           onDismissed: (_) => ref
               .read(transactionsProvider.notifier)
               .deleteTransaction(txn.id),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: VeeTokens.pageHorizontal,
             child: _TransactionTile(
               transaction: txn,
-              // ★ 直接打开 AddEditTransactionScreen 查看模式
               onTap: () async {
                 final updated = await Navigator.push<bool>(
                   context,
                   MaterialPageRoute(
                     builder: (_) => AddEditTransactionScreen(
-                      transaction: txn,
+                      transaction:   txn,
                       selectedMonth: selectedMonth,
-                      isReadOnly: true, // 以查看模式打开，用户可切换至编辑
+                      isReadOnly:    true,
                     ),
                   ),
                 );
@@ -414,161 +297,116 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── 空/错误状态 ───────────────────────────────────────────────────────────
+  // ── 错误状态 ──────────────────────────────────────────────────────────────
 
-  Widget _buildEmpty() {
-    final l10n = AppLocalizations.of(context)!;
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 60),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.receipt_long_outlined,
-                  size: 64, color: Colors.grey[300]),
-              const SizedBox(height: 16),
-              Text(l10n.noTransactions,
-                  style: TextStyle(color: Colors.grey[500])),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildError(String error) {
-    final l10n = AppLocalizations.of(context)!;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-          const SizedBox(height: 16),
-          Text(error, style: const TextStyle(color: Colors.red)),
-          const SizedBox(height: 16),
-          FilledButton.tonal(
-            onPressed: () => _load(refresh: true),
-            child: Text(l10n.retry),
-          ),
-        ],
-      ),
+  Widget _buildError(BuildContext context, String error, AppLocalizations l10n) {
+    return VeeEmptyState(
+      icon:        Icons.error_outline,
+      title:       error,
+      iconColor:   VeeTokens.error,
+      actionLabel: l10n.retry,
+      onAction:    () => _load(refresh: true),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 子组件（与原版一致）
+// 流水列表 Tile
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _SummaryCell extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  const _SummaryCell(
-      {required this.label, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Text(label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          const SizedBox(height: 4),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
-        ],
-      );
-}
 
 class _TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback onTap;
-  const _TransactionTile(
-      {required this.transaction, required this.onTap});
+  const _TransactionTile({required this.transaction, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final t = transaction;
-    final icon = t.categoryIcon ?? '📦';
+    final l10n  = AppLocalizations.of(context)!;
+    final t     = transaction;
+    final icon  = t.categoryIcon ?? '📦';
     final color = _parseColor(t.categoryColor);
-    final isExp = t.type == 'expense';
-    final isTrans = t.type == 'transfer';
-    final amtColor = isTrans
-        ? Colors.blue
+
+    final bool isExp   = t.type == 'expense';
+    final bool isTrans = t.type == 'transfer';
+
+    final Color amtColor = isTrans
+        ? VeeTokens.info
         : isExp
-            ? Colors.red.shade400
-            : Colors.green.shade600;
-    final prefix = isTrans ? '↔' : (isExp ? '-' : '+');
+            ? VeeTokens.error
+            : VeeTokens.success;
+
+    final String prefix = isTrans ? '↔' : (isExp ? '-' : '+');
 
     return VeeCard(
-      onTap: onTap,
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(icon, style: const TextStyle(fontSize: 20)),
+      onTap:   onTap,
+      padding: VeeTokens.tilePadding,
+      child: Row(children: [
+        // ── 分类图标 ──────────────────────────────────────────────────
+        Container(
+          width:  VeeTokens.touchMin,
+          height: VeeTokens.touchMin,
+          decoration: BoxDecoration(
+            color: VeeTokens.selectedTint(color),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t.categoryName ?? l10n.pleaseSelect,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-                if (t.note?.isNotEmpty == true) ...[
-                  const SizedBox(height: 2),
-                  Text(t.note!,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ],
-                const SizedBox(height: 2),
-                Text(
-                  l10n.monthDayJapaneseFormat(
-                      t.date.month, t.date.day),
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.grey[400]),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          alignment: Alignment.center,
+          child: Text(icon, style: const TextStyle(fontSize: VeeTokens.iconLg - 4)),
+        ),
+        const SizedBox(width: VeeTokens.spacingSm),
+
+        // ── 分类名 + 备注 + 日期 ──────────────────────────────────────
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$prefix ${t.currencyCode} ${t.formattedAmount}',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: amtColor),
+                t.categoryName ?? l10n.pleaseSelect,
+                style: context.veeText.cardTitle,
               ),
-              if (t.hasReceipt)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(Icons.image_outlined,
-                      size: 14, color: Colors.grey[400]),
+              if (t.note?.isNotEmpty == true) ...[
+                const SizedBox(height: VeeTokens.s2),
+                Text(
+                  t.note!,
+                  style: context.veeText.caption.copyWith(
+                    color: VeeTokens.textSecondaryVal,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ],
+              const SizedBox(height: VeeTokens.s2),
+              Text(
+                l10n.monthDayJapaneseFormat(t.date.month, t.date.day),
+                style: context.veeText.micro.copyWith(
+                  color: VeeTokens.textPlaceholderVal,
+                ),
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+
+        // ── 金额 + 凭证角标 ───────────────────────────────────────────
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            VeeAmountDisplay(
+              amount:   t.amount,
+              currency: t.currencyCode,
+              size:     VeeAmountSize.small,
+              prefix:   prefix,
+              color:    amtColor,
+            ),
+            if (t.hasReceipt) ...[
+              const SizedBox(height: VeeTokens.s2),
+              Icon(
+                Icons.image_outlined,
+                size:  VeeTokens.iconXs,
+                color: VeeTokens.textPlaceholderVal,
+              ),
+            ],
+          ],
+        ),
+      ]),
     );
   }
 
@@ -582,6 +420,10 @@ class _TransactionTile extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 无账本占位
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _NoGroupPlaceholder extends StatelessWidget {
   final VoidCallback onCreateGroup;
   const _NoGroupPlaceholder({required this.onCreateGroup});
@@ -590,37 +432,12 @@ class _NoGroupPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.book_outlined,
-                  size: 64, color: Colors.grey[300]),
-              const SizedBox(height: 20),
-              Text(l10n.noGroups,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(l10n.enterInviteCode,
-                  style: TextStyle(color: Colors.grey[500]),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: onCreateGroup,
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.createNewGroup,
-                      style: const TextStyle(fontSize: 15)),
-                ),
-              ),
-            ],
-          ),
-        ),
+      body: VeeEmptyState(
+        icon:        Icons.book_outlined,
+        title:       l10n.noGroups,
+        subtitle:    l10n.enterInviteCode,
+        actionLabel: l10n.createNewGroup,
+        onAction:    onCreateGroup,
       ),
     );
   }

@@ -1,13 +1,34 @@
+// lib/widgets/ui_core/vee_list_tile.dart
+//
+// VeeListTile — 通用列表行
+// Phase 2 更新：
+//   - 使用 VeeTokens 间距常量（替代硬编码 70/52/16 等数字）
+//   - leading 图标宽度对齐常量 dividerIndentStd
+//   - 文字样式通过 TextTheme 引用
+
 import 'package:flutter/material.dart';
 import 'vee_tokens.dart';
+import 'vee_text_styles.dart';
 
 class VeeListTile extends StatelessWidget {
   final IconData? leadingIcon;
   final String title;
-  final String? valueText; // 右侧文字（如："未设置"）
-  final Widget? customTrailing; // 自定义右侧控件（如 Switch, 箭头）
+
+  /// 右侧文字值（如 "未设置"）
+  final String? valueText;
+
+  /// 自定义右侧控件（如 Switch、箭头图标）
+  /// 若设置此参数，valueText 和 showArrow 均无效
+  final Widget? customTrailing;
+
   final VoidCallback? onTap;
-  final bool showArrow; // 是否显示右侧小箭头
+
+  /// 是否在右侧显示 chevron_right 箭头
+  /// 仅在 onTap != null 且 customTrailing == null 时生效
+  final bool showArrow;
+
+  /// 标签列宽（固定宽度保证多行对齐）
+  static const double _labelWidth = 72.0;
 
   const VeeListTile({
     super.key,
@@ -21,34 +42,45 @@ class VeeListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: VeeTokens.s16, vertical: 14),
+        padding: VeeTokens.tilePadding,
         child: Row(
-          children:[
+          children: [
             if (leadingIcon != null) ...[
-              Icon(leadingIcon, size: 20, color: VeeTokens.textPlaceholder),
-              const SizedBox(width: VeeTokens.s12),
+              Icon(
+                leadingIcon,
+                size:  VeeTokens.iconMd,
+                color: VeeTokens.textPlaceholderVal,
+              ),
+              const SizedBox(width: VeeTokens.spacingSm),
             ],
             SizedBox(
-              width: 70, // 保持与你原设计一致的对齐宽度
-              child: Text(title, style: TextStyle(color: VeeTokens.textSecondary, fontSize: 14)),
+              width: _labelWidth,
+              child: Text(
+                title,
+                style: context.veeText.bodyDefault.copyWith(
+                  color: VeeTokens.textSecondaryVal,
+                ),
+              ),
             ),
             Expanded(
               child: customTrailing ??
                   Text(
                     valueText ?? '',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87),
+                    style: context.veeText.cardTitle,
                     textAlign: TextAlign.right,
                     overflow: TextOverflow.ellipsis,
                   ),
             ),
             if (onTap != null && showArrow && customTrailing == null) ...[
-              const SizedBox(width: VeeTokens.s4),
-              Icon(Icons.chevron_right, color: VeeTokens.textPlaceholder, size: 20),
+              const SizedBox(width: VeeTokens.spacingXxs),
+              Icon(
+                Icons.chevron_right,
+                color: VeeTokens.textPlaceholderVal,
+                size:  VeeTokens.iconMd,
+              ),
             ],
           ],
         ),
