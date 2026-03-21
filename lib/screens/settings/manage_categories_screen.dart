@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../database/app_database.dart';
+import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/database_provider.dart';
