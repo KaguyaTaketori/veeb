@@ -13,6 +13,37 @@ import '../../providers/transactions_provider.dart';
 import '../../utils/currency.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 明细行草稿（编辑用内部 DTO）
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ItemDraft {
+  String name;
+  double amount;
+  double quantity;
+  String itemType; // item / discount / tax
+
+  _ItemDraft({
+    this.name = '',
+    this.amount = 0,
+    this.quantity = 1,
+    this.itemType = 'item',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name':       name,
+        'name_raw':   name,
+        'quantity':   quantity,
+        'amount':     amount,
+        'item_type':  itemType,
+        'sort_order': 0,
+      };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction; // null = 新建
   final DateTime selectedMonth;
@@ -51,6 +82,9 @@ class _AddEditTransactionScreenState
   bool _saving = false;
   String? _error;
 
+  // ── 明细 ──────────────────────────────────────────────────────────────────
+  final List<_ItemDraft> _items = [];
+
   // ── 查看 / 编辑切换 ──────────────────────────────────────────────────────
   late bool _isEditing;
 
@@ -73,6 +107,15 @@ class _AddEditTransactionScreenState
       _receiptUrl = t.receiptUrl;
       _amountCtrl.text = t.amount.toStringAsFixed(0);
       _noteCtrl.text = t.note ?? '';
+      // 从已有明细初始化草稿
+      for (final item in t.items) {
+        _items.add(_ItemDraft(
+          name:     item.name,
+          amount:   item.amount,
+          quantity: item.quantity,
+          itemType: item.itemType,
+        ));
+      }
     } else {
       _txnDate = DateTime(
           widget.selectedMonth.year,
@@ -92,7 +135,6 @@ class _AddEditTransactionScreenState
 
   AppBar _buildAppBar(AppLocalizations l10n) {
     if (!_isEditing) {
-      // 查看模式
       return AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
@@ -109,7 +151,6 @@ class _AddEditTransactionScreenState
       );
     }
 
-    // 编辑 / 新建模式
     return AppBar(
       backgroundColor: Colors.transparent,
       title: Text(_isEdit ? l10n.edit : l10n.addTransaction),
@@ -176,8 +217,7 @@ class _AddEditTransactionScreenState
               ),
               const SizedBox(height: 12),
               Container(
-                width: 64,
-                height: 64,
+                width: 64, height: 64,
                 decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
                     shape: BoxShape.circle),
@@ -349,6 +389,7 @@ class _AddEditTransactionScreenState
               _buildAmountHeader(),
               const SizedBox(height: 20),
 
+              // ── 基本信息卡片 ──────────────────────────────────────────
               Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surface,
@@ -425,6 +466,11 @@ class _AddEditTransactionScreenState
               ),
               const SizedBox(height: 16),
 
+              // ── 明细编辑区 ────────────────────────────────────────────
+              _buildItemsSection(l10n),
+              const SizedBox(height: 16),
+
+              // ── 凭证区 ────────────────────────────────────────────────
               _ReceiptSection(
                 pendingFile: _pendingImage,
                 receiptUrl: _receiptUrl,
@@ -442,6 +488,101 @@ class _AddEditTransactionScreenState
           ),
         ),
       ),
+    );
+  }
+
+  // ── 明细编辑区 ────────────────────────────────────────────────────────────
+
+  Widget _buildItemsSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.receipt_long_outlined, size: 16, color: Colors.grey),
+            const SizedBox(width: 6),
+            Text('商品明细',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const Spacer(),
+            Text('${_items.length} 项',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // 明细列表
+        if (_items.isNotEmpty)
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+            ),
+            child: Column(
+              children: _items.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                return Column(
+                  children: [
+                    if (idx > 0) const Divider(height: 1, indent: 16),
+                    _ItemEditRow(
+                      item: item,
+                      currency: _currencyCode,
+                      onChanged: () => setState(() {}),
+                      onDelete: () => setState(() => _items.removeAt(idx)),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+
+        const SizedBox(height: 8),
+
+        // 添加明细按钮
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () => setState(() => _items.add(_ItemDraft())),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('添加商品'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () => setState(
+                    () => _items.add(_ItemDraft(itemType: 'discount'))),
+                icon: const Icon(Icons.remove_circle_outline, size: 18),
+                label: const Text('添加折扣'),
+              ),
+            ),
+          ],
+        ),
+
+        // 自动求和提示
+        if (_items.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _ItemsSumBar(items: _items, currency: _currencyCode),
+        ],
+      ],
     );
   }
 
@@ -677,6 +818,12 @@ class _AddEditTransactionScreenState
           _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
       final notifier = ref.read(transactionsProvider.notifier);
 
+      // 过滤掉名称为空或金额为0的明细
+      final validItems = _items
+          .where((i) => i.name.trim().isNotEmpty && i.amount > 0)
+          .map((i) => i.toJson())
+          .toList();
+
       if (_isEdit) {
         await notifier.updateTransaction(
           id: widget.transaction!.id,
@@ -704,6 +851,7 @@ class _AddEditTransactionScreenState
           note: note,
           transactionDate: txnDate,
           receiptUrl: receiptUrl,
+          items: validItems,
         );
       }
 
@@ -776,6 +924,217 @@ class _AddEditTransactionScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 明细行编辑组件
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ItemEditRow extends StatefulWidget {
+  final _ItemDraft item;
+  final String currency;
+  final VoidCallback onChanged;
+  final VoidCallback onDelete;
+
+  const _ItemEditRow({
+    required this.item,
+    required this.currency,
+    required this.onChanged,
+    required this.onDelete,
+  });
+
+  @override
+  State<_ItemEditRow> createState() => _ItemEditRowState();
+}
+
+class _ItemEditRowState extends State<_ItemEditRow> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _amtCtrl;
+  late final TextEditingController _qtyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.item.name);
+    _amtCtrl  = TextEditingController(
+        text: widget.item.amount > 0 ? widget.item.amount.toStringAsFixed(0) : '');
+    _qtyCtrl  = TextEditingController(
+        text: widget.item.quantity == 1.0 ? '1' : widget.item.quantity.toStringAsFixed(1));
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _amtCtrl.dispose();
+    _qtyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDiscount = widget.item.itemType == 'discount';
+    final accentColor = isDiscount ? Colors.red : Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          // 类型图标
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                widget.item.itemType =
+                    widget.item.itemType == 'discount' ? 'item' : 'discount';
+              });
+              widget.onChanged();
+            },
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(isDiscount ? '➖' : '•',
+                  style: const TextStyle(fontSize: 14)),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // 商品名称
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                hintText: isDiscount ? '折扣/优惠' : '商品名称',
+                hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: const TextStyle(fontSize: 14),
+              onChanged: (v) {
+                widget.item.name = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          // 数量（仅 item 类型显示）
+          if (!isDiscount) ...[
+            SizedBox(
+              width: 36,
+              child: TextField(
+                controller: _qtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  hintText: '×1',
+                  hintStyle: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  prefix: Text('×', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 13),
+                textAlign: TextAlign.center,
+                onChanged: (v) {
+                  widget.item.quantity = double.tryParse(v) ?? 1.0;
+                  widget.onChanged();
+                },
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+
+          // 金额
+          SizedBox(
+            width: 72,
+            child: TextField(
+              controller: _amtCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDiscount ? Colors.red : null),
+              textAlign: TextAlign.right,
+              onChanged: (v) {
+                widget.item.amount = double.tryParse(v) ?? 0;
+                widget.onChanged();
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          // 删除
+          GestureDetector(
+            onTap: widget.onDelete,
+            child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 明细合计栏 ────────────────────────────────────────────────────────────────
+
+class _ItemsSumBar extends StatelessWidget {
+  final List<_ItemDraft> items;
+  final String currency;
+
+  const _ItemsSumBar({required this.items, required this.currency});
+
+  @override
+  Widget build(BuildContext context) {
+    double subtotal = 0;
+    double discount = 0;
+    for (final item in items) {
+      if (item.itemType == 'discount') {
+        discount += item.amount;
+      } else {
+        subtotal += item.amount * item.quantity;
+      }
+    }
+    final total = subtotal - discount;
+    final sym   = currency == 'JPY' ? '¥' : '$currency ';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (discount > 0) ...[
+            Text('小计 $sym${formatAmount(subtotal, currency)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            const SizedBox(width: 8),
+            Text('折扣 -$sym${formatAmount(discount, currency)}',
+                style: const TextStyle(fontSize: 12, color: Colors.red)),
+            const SizedBox(width: 8),
+          ],
+          Text('合计 ',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+          Text('$sym${formatAmount(total, currency)}',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 查看模式辅助组件
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -843,7 +1202,7 @@ class _ReceiptImage extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 编辑模式辅助组件（与原版保持一致）
+// 编辑模式辅助组件
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FormRow extends StatelessWidget {
@@ -918,8 +1277,7 @@ class _CategorySheet extends StatelessWidget {
                 onTap: () => onSelected(cat.id),
                 child: Column(children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 52, height: 52,
                     decoration: BoxDecoration(
                       color: selected
                           ? color.withOpacity(0.2)
@@ -987,11 +1345,17 @@ class _ReceiptSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.scanReceipt,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            const Icon(Icons.image_outlined, size: 16, color: Colors.grey),
+            const SizedBox(width: 6),
+            Text(l10n.scanReceipt,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
         const SizedBox(height: 8),
         if (_hasImage)
           Stack(children: [

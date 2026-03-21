@@ -1,21 +1,24 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/groups_api.dart';
 import '../models/account.dart';
+import '../database/tables.dart' as db_tables;
+import '../database/app_database.dart' show AccountsCompanion;
 import 'group_provider.dart';
 import 'auth_provider.dart';
 import 'database_provider.dart';
- 
+
 class AccountsState {
   final List<Account> accounts;
   final bool          loading;
   final String?       error;
- 
+
   const AccountsState({
     this.accounts = const [],
     this.loading  = false,
     this.error,
   });
- 
+
   AccountsState copyWith({
     List<Account>? accounts,
     bool?          loading,
@@ -28,7 +31,7 @@ class AccountsState {
         error:    clearError ? null : (error ?? this.error),
       );
 }
- 
+
 class AccountsNotifier extends Notifier<AccountsState> {
   @override
   AccountsState build() {
@@ -40,9 +43,9 @@ class AccountsNotifier extends Notifier<AccountsState> {
 
   bool get _isLoggedIn =>
       ref.read(authProvider).status == AuthStatus.authenticated;
- 
+
   AccountsApi get _api => ref.read(accountsApiProvider);
- 
+
   Future<void> load(int groupId) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
@@ -70,19 +73,37 @@ class AccountsNotifier extends Notifier<AccountsState> {
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
- 
+
   Future<void> createAccount({
     required String name,
     required String type,
     required String currencyCode,
     required int    groupId,
   }) async {
-    final account = await _api.createAccount(
-      name: name, type: type, currencyCode: currencyCode, groupId: groupId,
-    );
-    state = state.copyWith(accounts: [...state.accounts, account]);
+    if (_isLoggedIn) {
+      final account = await _api.createAccount(
+        name: name, type: type, currencyCode: currencyCode, groupId: groupId,
+      );
+      state = state.copyWith(accounts: [...state.accounts, account]);
+    } else {
+      final db  = ref.read(appDatabaseProvider);
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await db.accountDao.insertAccount(
+        AccountsCompanion.insert(
+          name:         name,
+          type:         Value(type),
+          currencyCode: Value(currencyCode),
+          groupId:      groupId,
+          createdAt:    now,
+          updatedAt:    now,
+          syncStatus:   const Value('pending_create'),
+        ),
+      );
+      // 刷新本地列表
+      await load(groupId);
+    }
   }
 }
- 
+
 final accountsProvider =
     NotifierProvider<AccountsNotifier, AccountsState>(AccountsNotifier.new);
