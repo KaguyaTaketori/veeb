@@ -6,6 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../providers/bills_provider.dart';
 import '../../widgets/bill_item_tile.dart';
+import '../../widgets/ui_core/vee_card.dart';
 import '../add_edit_bill/add_edit_bill_screen.dart';
 
 class BillsListScreen extends ConsumerStatefulWidget {
@@ -168,16 +169,9 @@ class _BillsListScreenState extends ConsumerState<BillsListScreen>
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Card(
-        elevation: 0,
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+      child: VeeCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
             children:[
               // 月份切换器
               Row(

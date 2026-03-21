@@ -8,6 +8,7 @@ import '../../models/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../utils/currency.dart';
+import '../../widgets/ui_core/vee_card.dart';
 import 'add_edit_transaction_screen.dart';
 import 'transaction_detail_screen.dart';
 
@@ -168,16 +169,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Card(
-        elevation: 0,
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+      child: VeeCard(
+        padding: const EdgeInsets.all(20),
+        child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -250,7 +244,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 ],
               ),
             ],
-          ),
         ),
       ),
     );
@@ -484,20 +477,10 @@ class _TransactionTile extends StatelessWidget {
             : Colors.green.shade600;
     final prefix  = isTrans ? '↔' : (isExp ? '-' : '+');
 
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
+    return VeeCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
             children: [
               Container(
                 width: 44,
@@ -558,10 +541,8 @@ class _TransactionTile extends StatelessWidget {
                 ],
               ),
             ],
-          ),
         ),
-      ),
-    );
+      );
   }
 
   Color _parseColor(String? hex) {

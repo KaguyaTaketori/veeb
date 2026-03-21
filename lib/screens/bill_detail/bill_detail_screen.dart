@@ -7,6 +7,7 @@ import '../../models/bill.dart';
 import '../../providers/bills_provider.dart';
 import '../../utils/currency.dart';
 import '../../widgets/bill_item_row.dart';
+import '../../widgets/ui_core/vee_card.dart';
 import '../add_edit_bill/add_edit_bill_screen.dart';
 
 class BillDetailScreen extends ConsumerWidget {
@@ -179,13 +180,7 @@ class BillDetailScreen extends ConsumerWidget {
   // ── 基本信息卡片 ─────────────────────────────────────────────────────
 
   Widget _buildInfoCard(BuildContext context, AppLocalizations l10n) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-      ),
+    return VeeCard(
       child: Column(
         children: [
           _buildInfoRow(
@@ -277,16 +272,9 @@ class BillDetailScreen extends ConsumerWidget {
         bill.items.fold(0.0, (sum, e) => sum + e.amount);
     final itemsTotalStr = formatAmount(itemsTotal, bill.currency);
 
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return VeeCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
           children: [
             ...bill.items.map((item) => BillItemRow.fromModel(item, currency: bill.currency)),
             const Padding(
@@ -310,7 +298,6 @@ class BillDetailScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
     );
   }
 
