@@ -525,5 +525,6 @@
   "noAiPermission": "AI認識の権限がありません",
   "contactAdminForOcr": "管理者に連絡して「App OCR」機能を有効にしてください",
   "noUploadPermission": "レシート画像をアップロードする権限がありません",
-  "myLedger": "マイ帳簿"
+  "myLedger": "マイ帳簿",
+  "payee": "支払先"
 }

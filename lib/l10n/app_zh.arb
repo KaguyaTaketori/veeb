@@ -525,5 +525,6 @@
   "noAiPermission": "暂无AI识别权限",
   "contactAdminForOcr": "请联系管理员开通「App OCR识别」功能",
   "noUploadPermission": "暂无上传凭证图片的权限",
-  "myLedger": "我的账本"
+  "myLedger": "我的账本",
+  "payee": "收款方"
 }

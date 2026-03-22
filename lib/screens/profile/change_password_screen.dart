@@ -5,7 +5,6 @@ import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
-import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_text_field.dart';
 import '../../widgets/ui_core/vee_submit_button.dart';

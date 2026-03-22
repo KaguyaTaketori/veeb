@@ -8,8 +8,6 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/transactions_api.dart';
-import '../database/app_database.dart';
-import '../models/transaction.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
 import '../providers/database_provider.dart';

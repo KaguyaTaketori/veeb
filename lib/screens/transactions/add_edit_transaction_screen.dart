@@ -1,15 +1,9 @@
 // lib/screens/transactions/add_edit_transaction_screen.dart
 //
-// 流水详情 / 编辑屏（全屏）
-//
-// 变更说明（Wizard → 单屏重构）：
-//   - 移除 3-step wizard、步骤指示器、步骤导航按钮
-//   - 新建流水由 new_transaction_sheet.dart（底部弹窗）承接
-//   - 本屏只处理两个场景：
-//       isReadOnly = true  → 查看模式（只读，含删除入口）
-//       isReadOnly = false → 编辑模式（单屏滚动表单）
-//   - 编辑模式布局：类型 + 金额（固定头部）+ 分类网格 + 详情卡 + 可选区（折叠）
-//   - VeeExpandableSection 替代原"保存跳过附件"按钮
+// 变更说明（Step 7）：
+//   - 编辑模式：账户卡片中新增 payee 输入行（transfer 时隐藏）
+//   - 查看模式：payee 有值时在详情卡中展示
+//   - _save() / updateTransaction 透传 payee
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -38,7 +32,7 @@ import '../../widgets/ui_core/vee_image_picker.dart';
 import '../../widgets/ui_core/vee_expandable_section.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行草稿（内部 DTO）
+// 明细行草稿
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemDraft {
@@ -69,7 +63,7 @@ class _ItemDraft {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
-  final Transaction transaction; // 必须传入，本屏只处理已有流水
+  final Transaction transaction;
   final bool isReadOnly;
 
   const AddEditTransactionScreen({
@@ -87,6 +81,7 @@ class _AddEditTransactionScreenState
     extends ConsumerState<AddEditTransactionScreen> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _payeeCtrl = TextEditingController(); // ✅ 新增
   final _picker = ImagePicker();
 
   late String _type;
@@ -123,6 +118,7 @@ class _AddEditTransactionScreenState
     _receiptUrl = t.receiptUrl;
     _amountCtrl.text = t.amount.toStringAsFixed(0);
     _noteCtrl.text = t.note ?? '';
+    _payeeCtrl.text = t.payee ?? ''; // ✅ 新增
     _items.clear();
     for (final item in t.items) {
       _items.add(
@@ -140,10 +136,9 @@ class _AddEditTransactionScreenState
   void dispose() {
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _payeeCtrl.dispose(); // ✅ 新增
     super.dispose();
   }
-
-  // ── 辅助 getters ─────────────────────────────────────────────────────────
 
   String get _dateLabel =>
       '${_txnDate.year}/'
@@ -156,8 +151,6 @@ class _AddEditTransactionScreenState
     _pendingImage != null || _receiptUrl.isNotEmpty,
     _items.isNotEmpty,
   ].where((b) => b).length;
-
-  // ── 操作 ─────────────────────────────────────────────────────────────────
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -228,6 +221,13 @@ class _AddEditTransactionScreenState
       final receiptUrl = await _uploadPendingImage();
       if (_pendingImage != null && receiptUrl == null) return;
 
+      // transfer 无外部对手方
+      final payeeValue = _type == 'transfer'
+          ? null
+          : _payeeCtrl.text.trim().isEmpty
+          ? null
+          : _payeeCtrl.text.trim();
+
       await ref
           .read(transactionsProvider.notifier)
           .updateTransaction(
@@ -240,6 +240,7 @@ class _AddEditTransactionScreenState
             categoryId: _categoryId,
             isPrivate: _isPrivate,
             note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+            payee: payeeValue, // ✅ 新增
             transactionDate: _txnDate.millisecondsSinceEpoch / 1000.0,
             receiptUrl: receiptUrl,
           );
@@ -266,12 +267,9 @@ class _AddEditTransactionScreenState
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-
     return Scaffold(
       appBar: _buildAppBar(l10n),
       body: _isEditing ? _buildEditBody(l10n) : _buildViewBody(l10n),
@@ -292,7 +290,6 @@ class _AddEditTransactionScreenState
         ],
       );
     }
-
     return AppBar(
       title: Text(l10n.edit),
       centerTitle: true,
@@ -313,7 +310,7 @@ class _AddEditTransactionScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 编辑模式：单屏滚动表单（无 wizard）
+  // 编辑模式
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildEditBody(AppLocalizations l10n) {
@@ -327,7 +324,6 @@ class _AddEditTransactionScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── 固定头部：类型选择 + 金额 ─────────────────────────────────
         Material(
           color: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
@@ -360,7 +356,6 @@ class _AddEditTransactionScreenState
           ),
         ),
 
-        // ── 可滚动区域 ────────────────────────────────────────────────
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -370,7 +365,6 @@ class _AddEditTransactionScreenState
               VeeTokens.s80,
             ),
             children: [
-              // 分类
               Text(
                 '分类',
                 style: context.veeText.caption.copyWith(
@@ -401,12 +395,22 @@ class _AddEditTransactionScreenState
               ),
               const SizedBox(height: VeeTokens.spacingMd),
 
-              // 账户 + 日期
+              // ── 账户 + payee + 日期 ──────────────────────────────────
               VeeCard(
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
                     _buildAccountDropdown(accounts, l10n),
+
+                    // ✅ payee 行：transfer 时隐藏
+                    if (_type != 'transfer') ...[
+                      const Divider(
+                        height: 1,
+                        indent: VeeTokens.dividerIndentStd,
+                      ),
+                      _buildPayeeFormRow(l10n),
+                    ],
+
                     if (_type == 'transfer') ...[
                       const Divider(
                         height: 1,
@@ -429,7 +433,6 @@ class _AddEditTransactionScreenState
               ),
               const SizedBox(height: VeeTokens.spacingXxs),
 
-              // 可选区：备注 + 隐私 + 附件 + 明细
               const Divider(height: 1),
               VeeExpandableSection(
                 label: '备注 / 附件 / 明细',
@@ -451,7 +454,7 @@ class _AddEditTransactionScreenState
                               controller: _noteCtrl,
                               maxLines: null,
                               onChanged: (_) => setState(() {}),
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 hintText: '添加备注…',
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.zero,
@@ -503,7 +506,6 @@ class _AddEditTransactionScreenState
               ),
               const SizedBox(height: VeeTokens.s32),
 
-              // 保存按钮
               SizedBox(
                 height: VeeTokens.buttonHeight,
                 child: FilledButton(
@@ -528,7 +530,7 @@ class _AddEditTransactionScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 查看模式（与原版一致）
+  // 查看模式
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildViewBody(AppLocalizations l10n) {
@@ -550,7 +552,6 @@ class _AddEditTransactionScreenState
             vertical: VeeTokens.s24,
           ),
           children: [
-            // 金额头部
             Column(
               children: [
                 Container(
@@ -603,11 +604,22 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: VeeTokens.s32),
 
-            // 详情卡
             VeeCard(
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
+                  // ✅ payee 行：有值且非 transfer 时展示
+                  if (t.displayPayee != null) ...[
+                    VeeDetailRow(
+                      icon: Icons.storefront_outlined,
+                      label: l10n.payee,
+                      value: t.displayPayee!,
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: VeeTokens.dividerIndentStd,
+                    ),
+                  ],
                   VeeDetailRow(
                     icon: Icons.calendar_today_outlined,
                     label: l10n.date,
@@ -640,7 +652,6 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: VeeTokens.spacingLg),
 
-            // 凭证图片
             if (t.hasReceipt) ...[
               Text(l10n.receiptImages, style: context.veeText.sectionTitle),
               const SizedBox(height: VeeTokens.s12),
@@ -656,7 +667,6 @@ class _AddEditTransactionScreenState
               const SizedBox(height: VeeTokens.spacingLg),
             ],
 
-            // 明细列表
             if (t.items.isNotEmpty) ...[
               Text(
                 l10n.itemsCount(t.items.length),
@@ -702,7 +712,6 @@ class _AddEditTransactionScreenState
               const SizedBox(height: VeeTokens.spacingLg),
             ],
 
-            // 删除按钮
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonal(
@@ -747,6 +756,7 @@ class _AddEditTransactionScreenState
             onTap: () => setState(() {
               _type = t.$1;
               _categoryId = null;
+              if (t.$1 == 'transfer') _payeeCtrl.clear();
             }),
             child: AnimatedContainer(
               duration: VeeTokens.durationFast,
@@ -827,6 +837,25 @@ class _AddEditTransactionScreenState
           ),
         ),
       ],
+    );
+  }
+
+  // ✅ 新增：payee 输入行（编辑模式）
+  Widget _buildPayeeFormRow(AppLocalizations l10n) {
+    return VeeFormRow(
+      icon: Icons.storefront_outlined,
+      label: l10n.payee,
+      child: TextFormField(
+        controller: _payeeCtrl,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          hintText: _type == 'income' ? '收款来源' : '商家或收款方名称',
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          isDense: true,
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
     );
   }
 
@@ -984,7 +1013,7 @@ class _AddEditTransactionScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 明细行编辑组件（与原版相同）
+// 明细行编辑组件
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ItemEditRow extends StatefulWidget {

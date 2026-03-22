@@ -1,5 +1,3 @@
-// lib/providers/transactions_provider.dart
-
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -177,8 +175,6 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
     if (mySeq != _seq) return;
 
-    // ✅ 修复：查询分类表建立映射，转换时补充 categoryName/Icon/Color
-    // 原版没有 join，categoryName 为 null，列表显示 l10n.pleaseSelect（"请选择"）
     final cats = await _db.categoryDao.getAvailable(groupId);
     final catMap = {for (final c in cats) c.id: c};
 
@@ -192,7 +188,9 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
           .where(
             (t) =>
                 (t.note?.toLowerCase().contains(kw) ?? false) ||
-                (t.categoryName?.toLowerCase().contains(kw) ?? false),
+                (t.categoryName?.toLowerCase().contains(kw) ?? false) ||
+                (t.payee?.toLowerCase().contains(kw) ??
+                    false), // ✅ 支持按 payee 搜索
           )
           .toList();
     }
@@ -259,6 +257,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     required int groupId,
     required bool isPrivate,
     String? note,
+    String? payee,
     required double transactionDate,
     String? receiptUrl,
     List<Map<String, dynamic>> items = const [],
@@ -274,6 +273,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       'group_id': groupId,
       'is_private': isPrivate,
       'note': note,
+      if (payee != null && payee.isNotEmpty) 'payee': payee, // ✅ 新增
       'transaction_date': transactionDate,
       'receipt_url': receiptUrl ?? '',
       'items': items,
@@ -315,6 +315,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     int? categoryId,
     bool? isPrivate,
     String? note,
+    String? payee,
     double? transactionDate,
     String? receiptUrl,
   }) async {
@@ -327,6 +328,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     if (categoryId != null) data['category_id'] = categoryId;
     if (isPrivate != null) data['is_private'] = isPrivate;
     if (note != null) data['note'] = note;
+    if (payee != null) data['payee'] = payee;
     if (transactionDate != null) data['transaction_date'] = transactionDate;
     if (receiptUrl != null) data['receipt_url'] = receiptUrl;
 
@@ -450,8 +452,6 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   // ── 内部工具 ──────────────────────────────────────────────────────────────
 
-  /// ✅ 修复：新增 catMap 参数，Guest 模式下补充 categoryName / categoryIcon / categoryColor
-  /// 原版不传分类信息，导致列表显示 pleaseSelect（"请选择"）
   models.Transaction _driftRowToTransaction(
     db.Transaction row, {
     Map<int, db.Category>? catMap,
@@ -478,11 +478,11 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       groupId: row.groupId,
       isPrivate: row.isPrivate,
       note: row.note,
+      payee: row.payee, // ✅ 新增
       transactionDate: row.transactionDate.toDouble(),
       createdAt: row.createdAt.toDouble(),
       updatedAt: row.updatedAt.toDouble(),
       isDeleted: row.isDeleted,
-      // ✅ 补充分类信息（catMap 为 null 时保持 null，不破坏已登录路径）
       categoryName: cat?.name,
       categoryIcon: cat?.icon,
       categoryColor: cat?.color,
@@ -515,6 +515,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       groupId: groupId,
       isPrivate: Value(data['is_private'] as bool? ?? false),
       note: Value(data['note'] as String?),
+      payee: Value(data['payee'] as String?), // ✅ 新增
       transactionDate: transactionDate,
       createdAt: now,
       updatedAt: now,
@@ -529,6 +530,9 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
           : const Value.absent(),
       isPrivate: data.containsKey('is_private')
           ? Value(data['is_private'] as bool)
+          : const Value.absent(),
+      payee: data.containsKey('payee')
+          ? Value(data['payee'] as String?)
           : const Value.absent(),
       syncStatus: const Value('pending_update'),
     );

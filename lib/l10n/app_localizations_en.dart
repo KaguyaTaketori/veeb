@@ -1275,4 +1275,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get myLedger => 'My Ledger';
+
+  @override
+  String get payee => 'Payee';
 }

@@ -581,5 +581,6 @@
   "noAiPermission": "No AI Recognition Permission",
   "contactAdminForOcr": "Please contact admin to enable \"App OCR\" feature",
   "noUploadPermission": "No permission to upload receipt images",
-  "myLedger": "My Ledger"
+  "myLedger": "My Ledger",
+  "payee": "Payee"
 }

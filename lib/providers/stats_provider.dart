@@ -7,7 +7,6 @@ import '../models/transaction.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
 import '../providers/database_provider.dart';
-import '../utils/currency.dart';
 
 class StatsState {
   final MonthlyStat? summary;

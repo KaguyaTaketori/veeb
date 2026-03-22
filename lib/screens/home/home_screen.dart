@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vee_app/widgets/ui_core/vee_tokens.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/permission_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../transactions/transactions_screen.dart';

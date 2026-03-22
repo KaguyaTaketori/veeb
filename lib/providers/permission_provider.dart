@@ -1,8 +1,12 @@
-// lib/providers/permission_provider.dart  （完整替换）
+// lib/providers/permission_provider.dart
+//
+// 变更说明（Step 8）：
+//   - 删除已废弃的旧版 WS 事件分支：new_bill / bill_updated / bill_deleted
+//   - 这三个事件是 Bill 时代的遗留，服务端已不再推送
+
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/user.dart';
 import 'auth_provider.dart';
 import '../services/ws_service.dart';
 import 'transactions_provider.dart';
@@ -17,7 +21,7 @@ final permissionsProvider = Provider<List<String>>((ref) {
 final hasPermissionProvider = Provider.family<bool, String>((ref, perm) {
   final user = ref.watch(authProvider).user;
   if (user == null) return false;
-  if (user.role == 'admin') return true;   // 管理员拥有全部权限
+  if (user.role == 'admin') return true;
   return user.permissions.contains(perm);
 });
 
@@ -26,13 +30,6 @@ final isAdminProvider = Provider<bool>((ref) {
 });
 
 // ── WS 生命周期管理 Provider ──────────────────────────────────────────────
-//
-// 修复点：之前用 Provider<void> 每次 rebuild 都创建新订阅，旧订阅不取消，
-// 导致 eventStream 有 N 个订阅，refreshProfile 被调用 N 次。
-//
-// 修复方案：改用 StreamProvider 监听 authProvider 状态变化，
-// WS 连接逻辑放在单独的 _WsLifecycleNotifier 中，
-// 确保订阅唯一且在 Notifier 销毁时正确取消。
 
 class _WsLifecycleNotifier extends Notifier<void> {
   StreamSubscription<WsEvent>? _eventSub;
@@ -40,11 +37,8 @@ class _WsLifecycleNotifier extends Notifier<void> {
 
   @override
   void build() {
-    // 监听 auth 状态变化
     final authState = ref.watch(authProvider);
     _onAuthChanged(authState);
-
-    // Provider 销毁时清理所有订阅
     ref.onDispose(_dispose);
   }
 
@@ -57,7 +51,6 @@ class _WsLifecycleNotifier extends Notifier<void> {
   }
 
   void _connect() {
-    // 先确保订阅只建立一次
     _ensureEventSubscription();
     WsService.instance.connect();
   }
@@ -67,7 +60,7 @@ class _WsLifecycleNotifier extends Notifier<void> {
   }
 
   void _ensureEventSubscription() {
-    if (_eventSub != null) return;   // ← 避免重复订阅
+    if (_eventSub != null) return;
 
     _eventSub = WsService.instance.eventStream.listen(
       _onEvent,
@@ -79,29 +72,23 @@ class _WsLifecycleNotifier extends Notifier<void> {
   void _onEvent(WsEvent event) {
     switch (event.type) {
       case 'new_transaction':
-        ref.read(transactionsProvider.notifier).insertFromWs(event.data);  
+        ref.read(transactionsProvider.notifier).insertFromWs(event.data);
 
       case 'transaction_updated':
         ref.read(transactionsProvider.notifier).updateFromWs(event.data);
- 
+
       case 'transaction_deleted':
         final id = event.data['id'] as int?;
         if (id != null) {
           ref.read(transactionsProvider.notifier).removeById(id);
         }
 
-      case 'new_bill':
-        // 旧版服务端推送，暂时忽略（新版用 new_transaction）
-        break;
- 
-      case 'bill_updated':
-        break;
- 
-      case 'bill_deleted':
-        break;
+      // ✅ 已删除旧版 Bill 事件分支：
+      //   case 'new_bill'      → 服务端已不推送，删除
+      //   case 'bill_updated'  → 服务端已不推送，删除
+      //   case 'bill_deleted'  → 服务端已不推送，删除
 
       case 'permissions_updated':
-        // 权限变更：刷新用户信息（只调用一次）
         ref.read(authProvider.notifier).refreshProfile();
 
       case 'system_notice':
@@ -118,9 +105,9 @@ class _WsLifecycleNotifier extends Notifier<void> {
   }
 }
 
-/// 在 AuthGate 中 ref.watch(wsLifecycleProvider) 即可启动 WS 生命周期管理
-final wsLifecycleProvider =
-    NotifierProvider<_WsLifecycleNotifier, void>(_WsLifecycleNotifier.new);
+final wsLifecycleProvider = NotifierProvider<_WsLifecycleNotifier, void>(
+  _WsLifecycleNotifier.new,
+);
 
-/// 向后兼容别名（原 wsListenerProvider 的使用方）
+/// 向后兼容别名
 final wsListenerProvider = wsLifecycleProvider;

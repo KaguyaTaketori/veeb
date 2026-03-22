@@ -1,13 +1,3 @@
-// lib/widgets/transaction_item_row.dart
-//
-// 流水明细行组件（替代已废弃的 BillItemRow）
-//
-// 变更说明：
-//   - 使用 TransactionItem（models/transaction.dart）而非旧版 BillItem
-//   - 所有间距使用 VeeTokens 常量
-//   - 支持 item / discount / tax 三种类型的视觉差异
-//   - 数量显示逻辑优化（整数不显示小数点）
-
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../utils/currency.dart';
@@ -16,7 +6,7 @@ import 'ui_core/vee_tokens.dart';
 class TransactionItemRow extends StatelessWidget {
   final String name;
   final double amount;
-  final String itemType;  // 'item' | 'discount' | 'tax'
+  final String itemType; // 'item' | 'discount' | 'tax'
   final double quantity;
   final String currency;
 
@@ -33,21 +23,20 @@ class TransactionItemRow extends StatelessWidget {
   factory TransactionItemRow.fromModel(
     TransactionItem item, {
     String currency = 'JPY',
-  }) =>
-      TransactionItemRow(
-        name:     item.name,
-        amount:   item.amount,
-        itemType: item.itemType,
-        quantity: item.quantity,
-        currency: currency,
-      );
+  }) => TransactionItemRow(
+    name: item.name,
+    amount: item.amount,
+    itemType: item.itemType,
+    quantity: item.quantity,
+    currency: currency,
+  );
 
   @override
   Widget build(BuildContext context) {
     final isDiscount = itemType == 'discount';
-    final isTax      = itemType == 'tax';
+    final isTax = itemType == 'tax';
 
-    final amountStr      = formatAmount(amount.abs(), currency);
+    final amountStr = formatAmount(amount.abs(), currency);
     final currencySymbol = currency == 'JPY' ? '¥' : '$currency ';
 
     final Color textColor;
@@ -76,7 +65,11 @@ class TransactionItemRow extends StatelessWidget {
           SizedBox(
             width: VeeTokens.s16,
             child: Text(
-              isDiscount ? '➖' : isTax ? '🧾' : '•',
+              isDiscount
+                  ? '➖'
+                  : isTax
+                  ? '🧾'
+                  : '•',
               style: const TextStyle(fontSize: 12),
             ),
           ),
@@ -86,11 +79,7 @@ class TransactionItemRow extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: TextStyle(
-                fontSize: 13,
-                color: textColor,
-                height: 1.4,
-              ),
+              style: TextStyle(fontSize: 13, color: textColor, height: 1.4),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -101,10 +90,7 @@ class TransactionItemRow extends StatelessWidget {
             const SizedBox(width: VeeTokens.s4),
             Text(
               '$qtyLabel  ',
-              style: TextStyle(
-                fontSize: 12,
-                color: VeeTokens.textSecondaryVal,
-              ),
+              style: TextStyle(fontSize: 12, color: VeeTokens.textSecondaryVal),
             ),
           ],
 

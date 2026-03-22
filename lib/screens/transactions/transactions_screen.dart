@@ -1,10 +1,4 @@
 // lib/screens/transactions/transactions_screen.dart
-//
-// 变更说明（Wizard → Bottom Sheet 重构调用侧）：
-//   - FAB onPressed：改为调用 showNewTransactionSheet()（底部弹窗）
-//   - 流水行 onTap：改为 Navigator.push AddEditTransactionScreen（仅查看/编辑）
-//   - AddEditTransactionScreen 构造函数不再接收 selectedMonth 参数（已移除新建逻辑）
-//   - 其余逻辑、样式与原版完全一致
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +18,7 @@ import '../../widgets/ui_core/vee_amount_display.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
 import 'add_edit_transaction_screen.dart';
-import 'new_transaction_sheet.dart'; // ← 新增
+import 'new_transaction_sheet.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -87,8 +81,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     });
   }
 
-  // ── FAB：打开底部弹窗新建流水（替代原先的 Navigator.push Wizard）─────────
-
   Future<void> _openNewTransactionSheet() async {
     final saved = await showNewTransactionSheet(
       context,
@@ -96,8 +88,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
     if (saved == true) _load(refresh: true);
   }
-
-  // ── 流水行点击：打开查看/编辑全屏 ─────────────────────────────────────────
 
   Future<void> _openTransactionDetail(Transaction txn) async {
     final updated = await Navigator.push<bool>(
@@ -109,8 +99,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
     if (updated == true) _load(refresh: true);
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +163,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           ),
         ),
       ),
-      // ── FAB 入口：底部弹窗（单屏记账） ──────────────────────────────────
       floatingActionButton: FloatingActionButton(
         onPressed: _openNewTransactionSheet,
         tooltip: '记一笔',
@@ -184,8 +171,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  // ── AppBar ────────────────────────────────────────────────────────────────
-
   AppBar _buildAppBar(BuildContext context, AppLocalizations l10n) {
     return AppBar(
       title: _showSearch
@@ -193,7 +178,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               controller: _searchCtrl,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '${l10n.note}・${l10n.category}',
+                hintText: '${l10n.note}・${l10n.category}・${l10n.payee}',
                 prefixIcon: const Icon(Icons.search, size: VeeTokens.iconMd),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.close, size: VeeTokens.iconMd),
@@ -221,8 +206,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
             ],
     );
   }
-
-  // ── 月度汇总卡 ────────────────────────────────────────────────────────────
 
   Widget _buildSummaryCard(
     BuildContext context,
@@ -256,8 +239,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       ),
     );
   }
-
-  // ── 流水列表 ──────────────────────────────────────────────────────────────
 
   Widget _buildList(
     BuildContext context,
@@ -323,7 +304,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Slidable row（与原版完全相同）
+// Slidable row
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SlidableRow extends StatefulWidget {
@@ -389,7 +370,7 @@ class _SlidableRowState extends State<_SlidableRow> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Transaction tile（与原版完全相同）
+// Transaction tile
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TransactionTile extends StatelessWidget {
@@ -404,6 +385,10 @@ class _TransactionTile extends StatelessWidget {
     final color = VeeColors.fromHex(t.categoryColor);
     final amtColor = VeeColors.forTransactionType(t.type);
     final prefix = VeeColors.prefixForTransactionType(t.type);
+
+    // ✅ 副标题优先级：payee > note > 无
+    final String? subtitle =
+        t.displayPayee ?? (t.note?.isNotEmpty == true ? t.note : null);
 
     return VeeCard.list(
       onTap: onTap,
@@ -434,10 +419,11 @@ class _TransactionTile extends StatelessWidget {
                     t.categoryName ?? l10n.pleaseSelect,
                     style: context.veeText.cardTitle,
                   ),
-                  if (t.note?.isNotEmpty == true) ...[
+                  // ✅ 副标题：payee 优先，fallback 到 note
+                  if (subtitle != null) ...[
                     const SizedBox(height: VeeTokens.s2),
                     Text(
-                      t.note!,
+                      subtitle,
                       style: context.veeText.caption.copyWith(
                         color: VeeTokens.textSecondaryVal,
                       ),

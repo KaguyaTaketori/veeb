@@ -1,3 +1,4 @@
+// lib/api/transactions_api.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../exceptions/app_exception.dart';
@@ -63,6 +64,9 @@ class TransactionsApi {
         .then((r) => Transaction.fromJson(r.data as Map<String, dynamic>)),
   );
 
+  /// 创建流水。
+  /// [data] 中的 payee 字段会直接透传到服务端。
+  /// 服务端若尚未支持 payee 字段，会静默忽略，不会报错。
   Future<Transaction> createTransaction(Map<String, dynamic> data) => _guard(
     () => _dio
         .post('/transactions', data: data)
@@ -112,6 +116,8 @@ class TransactionsApi {
   });
 
   /// OCR 识别（不入库，返回解析结果）
+  /// 服务端返回的 payee 字段由 Transaction.fromJson 的
+  /// `j['payee'] ?? j['merchant']` 兼容逻辑处理。
   Future<Map<String, dynamic>> ocrTransaction(
     String imageBase64,
     String mimeType,

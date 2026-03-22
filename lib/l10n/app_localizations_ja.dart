@@ -1225,4 +1225,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get myLedger => 'マイ帳簿';
+
+  @override
+  String get payee => '支払先';
 }

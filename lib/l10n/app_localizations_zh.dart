@@ -1225,4 +1225,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get myLedger => '我的账本';
+
+  @override
+  String get payee => '收款方';
 }

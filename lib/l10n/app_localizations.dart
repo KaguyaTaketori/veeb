@@ -2427,6 +2427,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My Ledger'**
   String get myLedger;
+
+  /// No description provided for @payee.
+  ///
+  /// In en, this message translates to:
+  /// **'Payee'**
+  String get payee;
 }
 
 class _AppLocalizationsDelegate

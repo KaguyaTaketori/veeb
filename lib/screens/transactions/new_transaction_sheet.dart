@@ -2,15 +2,10 @@
 //
 // 新建流水底部弹窗（单屏记账）
 //
-// 设计原则：
-//   - 90% 的记账场景（简单支出）1 次点击完成
-//   - 核心区（金额 + 分类 + 账户 + 日期）常驻展示
-//   - 可选区（备注 + 隐私 + 附件 + 明细）通过 VeeExpandableSection 折叠
-//   - 编辑态（edit existing）使用 AddEditTransactionScreen（全屏）
-//
-// 公共入口：
-//   final saved = await showNewTransactionSheet(context, selectedMonth: month);
-//   if (saved == true) { /* refresh list */ }
+// 变更说明（Step 7）：
+//   - 核心区新增 payee 输入行（位于账户行与日期行之间）
+//   - transfer 类型时 payee 行自动隐藏（内部转账无外部对手方）
+//   - _save() 透传 payee 到 createTransaction
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -37,8 +32,6 @@ import '../../widgets/ui_core/vee_account_picker_sheet.dart';
 // 公共入口函数
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// 显示新建流水底部弹窗。
-/// 返回 true 表示已保存，false/null 表示用户取消。
 Future<bool?> showNewTransactionSheet(
   BuildContext context, {
   DateTime? selectedMonth,
@@ -97,6 +90,7 @@ class _NewTransactionSheet extends ConsumerStatefulWidget {
 class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _payeeCtrl = TextEditingController(); // ✅ 新增
   final _picker = ImagePicker();
 
   String _type = 'expense';
@@ -133,6 +127,7 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
   void dispose() {
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _payeeCtrl.dispose(); // ✅ 新增
     super.dispose();
   }
 
@@ -148,7 +143,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
       '${_txnDate.month.toString().padLeft(2, '0')}/'
       '${_txnDate.day.toString().padLeft(2, '0')}';
 
-  /// 可选区已填字段数量（用于折叠时角标显示）
   int get _optionalFilledCount => [
     _noteCtrl.text.isNotEmpty,
     _isPrivate,
@@ -235,6 +229,13 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
           .map((i) => i.toJson())
           .toList();
 
+      // transfer 无外部对手方，payee 传 null
+      final payeeValue = _type == 'transfer'
+          ? null
+          : _payeeCtrl.text.trim().isEmpty
+          ? null
+          : _payeeCtrl.text.trim();
+
       await ref
           .read(transactionsProvider.notifier)
           .createTransaction(
@@ -247,6 +248,7 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
             groupId: groupId,
             isPrivate: _isPrivate,
             note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+            payee: payeeValue, // ✅ 新增
             transactionDate: _txnDate.millisecondsSinceEpoch / 1000.0,
             receiptUrl: receiptUrl ?? '',
             items: validItems,
@@ -268,7 +270,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
     final accounts = ref.watch(accountsProvider).accounts;
     final categoriesAsync = ref.watch(currentCategoriesProvider);
 
-    // 自动选中第一个账户
     if (_accountId == null && accounts.isNotEmpty) {
       Future.microtask(() => setState(() => _accountId = accounts.first.id));
     }
@@ -278,7 +279,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: VeeTokens.sheetBorderRadius,
       ),
-      // 限制最大高度为屏幕 90%，允许内部滚动
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.92,
       ),
@@ -330,21 +330,18 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 错误提示
                   if (_error != null) ...[
                     VeeErrorBanner(message: _error!),
                     const SizedBox(height: VeeTokens.spacingXs),
                   ],
 
-                  // 收支类型选择
                   _buildTypeSelector(l10n),
                   const SizedBox(height: VeeTokens.spacingMd),
 
-                  // 大号金额输入
                   _buildAmountInput(),
                   const SizedBox(height: VeeTokens.spacingMd),
 
-                  // 分类选择
+                  // 分类
                   Text(
                     '分类',
                     style: context.veeText.caption.copyWith(
@@ -377,12 +374,22 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                   ),
                   const SizedBox(height: VeeTokens.spacingMd),
 
-                  // 账户 + 日期（核心区）
+                  // ── 核心区：账户 + payee + 日期 ──────────────────────
                   VeeCard(
                     padding: EdgeInsets.zero,
                     child: Column(
                       children: [
                         _buildAccountRow(accounts, l10n),
+
+                        // ✅ payee 行：transfer 时隐藏
+                        if (_type != 'transfer') ...[
+                          const Divider(
+                            height: 1,
+                            indent: VeeTokens.dividerIndentStd,
+                          ),
+                          _buildPayeeRow(l10n),
+                        ],
+
                         if (_type == 'transfer') ...[
                           const Divider(
                             height: 1,
@@ -416,7 +423,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                       children: [
                         const SizedBox(height: VeeTokens.spacingXs),
 
-                        // 备注 + 隐私
                         VeeCard(
                           padding: EdgeInsets.zero,
                           child: Column(
@@ -428,7 +434,7 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                                   controller: _noteCtrl,
                                   maxLines: null,
                                   onChanged: (_) => setState(() {}),
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     hintText: '添加备注…',
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.zero,
@@ -461,7 +467,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                         ),
                         const SizedBox(height: VeeTokens.spacingXs),
 
-                        // 凭证图片
                         Text(
                           '凭证图片',
                           style: context.veeText.caption.copyWith(
@@ -483,7 +488,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                         ),
                         const SizedBox(height: VeeTokens.spacingXs),
 
-                        // 明细行
                         _buildItemsSection(),
                         const SizedBox(height: VeeTokens.spacingXs),
                       ],
@@ -535,6 +539,8 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
             onTap: () => setState(() {
               _type = t.$1;
               _categoryId = null;
+              // transfer 时清空 payee（无外部对手方）
+              if (t.$1 == 'transfer') _payeeCtrl.clear();
             }),
             child: AnimatedContainer(
               duration: VeeTokens.durationFast,
@@ -616,6 +622,25 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
           ),
         ),
       ],
+    );
+  }
+
+  // ✅ 新增：payee 输入行
+  Widget _buildPayeeRow(AppLocalizations l10n) {
+    return VeeFormRow(
+      icon: Icons.storefront_outlined,
+      label: l10n.payee,
+      child: TextFormField(
+        controller: _payeeCtrl,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          hintText: _type == 'income' ? '收款来源（如公司名）' : '商家或收款方名称',
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          isDense: true,
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
     );
   }
 
@@ -712,7 +737,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题行
         Row(
           children: [
             Icon(
@@ -738,7 +762,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
           ],
         ),
 
-        // 明细列表
         if (_items.isNotEmpty) ...[
           const SizedBox(height: VeeTokens.spacingXxs),
           VeeCard(
@@ -837,7 +860,6 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
           ),
         ],
 
-        // 添加按钮行
         const SizedBox(height: VeeTokens.spacingXxs),
         Row(
           children: [
