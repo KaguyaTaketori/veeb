@@ -1,49 +1,4 @@
 // lib/widgets/ui_core/vee_category_grid.dart
-//
-// VeeCategoryGrid — 通用分类网格组件
-//
-// 替代以下各自实现的分类网格：
-//
-//   1. lib/screens/transactions/add_edit_transaction_screen.dart
-//      → _CategorySheet 内的 GridView（分类选择弹窗）
-//
-//   3. lib/screens/settings/manage_categories_screen.dart
-//      → _AddCategorySheet 内的 emoji 选择网格
-//      （此场景传入 isEmojiPicker=true）
-//
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// 设计规范：
-//   - 4 列网格，childAspectRatio 0.9（宽略大于高，emoji 下方留字体空间）
-//   - 圆形图标容器：52×52，选中态加深色边框
-//   - 图标 emoji：24sp（保持可读性）
-//   - 名称标签：micro (11sp)，超长截断 maxLines:1
-//   - 选中态：pressedTint 背景 + 品牌色边框 2px
-//   - 删除角标（canDelete=true）：右上角 20×20 红色圆形叉
-//   - 最小触控区域：整个 Column 包在 GestureDetector 内，实际高度约 76px > 44px ✓
-//
-// 用法示例：
-//
-//   // 分类选择（可选中，不可删除）
-//   VeeCategoryGrid(
-//     categories: filteredCats,
-//     selectedId: _categoryId,
-//     onSelected: (id) => setState(() => _categoryId = id),
-//   )
-//
-//   // 分类管理（不可选中，可删除）
-//   VeeCategoryGrid(
-//     categories: customCats,
-//     canDelete: true,
-//     onDelete: (cat) => _confirmDelete(context, ref, cat),
-//   )
-//
-//   // Emoji 选择器（单纯选 emoji，传 id 为 hashCode）
-//   VeeCategoryGrid.emoji(
-//     emojis: _emojis,
-//     selectedEmoji: _icon,
-//     onEmojiSelected: (e) => setState(() => _icon = e),
-//   )
 
 import 'package:flutter/material.dart';
 import '../../models/transaction.dart';
@@ -56,23 +11,11 @@ import 'vee_text_styles.dart';
 
 class VeeCategoryGrid extends StatelessWidget {
   final List<Category> categories;
-
-  /// 当前选中的分类 id（null 表示无选中）
   final int? selectedId;
-
-  /// 选中回调（canDelete=false 时使用）
   final ValueChanged<int>? onSelected;
-
-  /// 是否显示删除角标（分类管理页使用）
   final bool canDelete;
-
-  /// 删除回调（canDelete=true 时使用）
   final void Function(Category cat)? onDelete;
-
-  /// 每列数量，默认 4
   final int crossAxisCount;
-
-  /// 是否 shrinkWrap（嵌套在 ScrollView 内时设为 true）
   final bool shrinkWrap;
 
   const VeeCategoryGrid({
@@ -129,7 +72,7 @@ class VeeCategoryGrid extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VeeCategoryGrid.emoji — 工厂构造（纯 emoji 选择器模式）
+// VeeEmojiGrid
 // ─────────────────────────────────────────────────────────────────────────────
 
 class VeeEmojiGrid extends StatelessWidget {
@@ -231,47 +174,61 @@ class _CategoryCell extends StatelessWidget {
 
     return Stack(
       clipBehavior: Clip.none,
+      // ✅ 修复：原默认 Alignment.topLeft，Column 在格子内靠左，图标视觉偏移。
+      // 改为 Alignment.center 后，Column 在格子水平居中，图标和名称对齐格子中线。
+      alignment: Alignment.center,
       children: [
         // ── 主体 Cell ──────────────────────────────────────────────────
         GestureDetector(
           onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 圆形图标容器
-              AnimatedContainer(
-                duration: VeeTokens.durationFast,
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? VeeTokens.pressedTint(color)
-                      : VeeTokens.hoverTint(color),
-                  shape: BoxShape.circle,
-                  border: isSelected
-                      ? Border.all(color: color, width: 2.0)
-                      : null,
+          child: SizedBox(
+            width: double.infinity,
+            height: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 圆形图标容器
+                AnimatedContainer(
+                  duration: VeeTokens.durationFast,
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? VeeTokens.pressedTint(color)
+                        : VeeTokens.hoverTint(color),
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: color, width: 2.0)
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    category.icon,
+                    style: const TextStyle(fontSize: 24),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  category.icon,
-                  style: const TextStyle(fontSize: 24),
-                ),
-              ),
-              const SizedBox(height: VeeTokens.spacingXxs),
+                const SizedBox(height: VeeTokens.spacingXxs),
 
-              // 分类名称
-              Text(
-                category.name,
-                style: context.veeText.micro.copyWith(
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? color : VeeTokens.textSecondaryVal,
+                // 分类名称
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Text(
+                    category.name,
+                    style: context.veeText.micro.copyWith(
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected ? color : VeeTokens.textSecondaryVal,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
 
@@ -282,7 +239,6 @@ class _CategoryCell extends StatelessWidget {
             right: -2,
             child: GestureDetector(
               onTap: onDelete,
-              // 保证触控区域至少 20×20（WCAG 非关键操作最低标准）
               behavior: HitTestBehavior.opaque,
               child: Container(
                 width: 20,
@@ -301,7 +257,7 @@ class _CategoryCell extends StatelessWidget {
             ),
           ),
 
-        // ── 选中勾（选择模式下叠加在图标右下角）────────────────────────
+        // ── 选中勾 ──────────────────────────────────────────────────────
         if (isSelected && !canDelete)
           Positioned(
             bottom: 14,

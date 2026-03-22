@@ -2,7 +2,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/groups_api.dart';
 import '../models/account.dart';
-import '../database/tables.dart' as db_tables;
 import '../database/app_database.dart' show AccountsCompanion;
 import 'group_provider.dart';
 import 'auth_provider.dart';
@@ -34,9 +33,10 @@ class AccountsState {
 class AccountsNotifier extends Notifier<AccountsState> {
   @override
   AccountsState build() {
-    // ✅ Fix: 使用 watch 而非 listen，确保初始值也能触发加载。
-    // ref.listen 只响应【变化】，app 重启时 group 已有初始值但不会触发，
-    // 导致账户列表始终为空，直到 group 发生变化才显示。
+    // ✅ 修复：改用 ref.watch 替代 ref.listen
+    // ref.listen 只响应「变化」，app 重启时 currentGroupIdProvider 已有初始值
+    // 但 listen 回调不触发，导致账户列表永远为空，直到 group 发生新的变化。
+    // ref.watch 会在 Provider 首次构建时就拿到当前值并触发加载。
     final groupId = ref.watch(currentGroupIdProvider);
     if (groupId != null) {
       Future.microtask(() => load(groupId));
@@ -111,7 +111,6 @@ class AccountsNotifier extends Notifier<AccountsState> {
           syncStatus: const Value('pending_create'),
         ),
       );
-      // 刷新本地列表
       await load(groupId);
     }
   }

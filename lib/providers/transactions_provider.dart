@@ -1,6 +1,4 @@
 // lib/providers/transactions_provider.dart
-// Fix 1: _driftRowToTransaction 接受 catMap 参数，在 Guest 模式下填充 categoryName/Icon/Color
-// Fix 2: _buildAmountHeader 的 hintStyle 设为 48px，与输入文字大小一致
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
@@ -179,8 +177,8 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
     if (mySeq != _seq) return;
 
-    // ✅ Fix: 获取分类映射，补充 categoryName / categoryIcon / categoryColor
-    // 原版 _driftRowToTransaction 没有 join，导致 Guest 模式下列表显示"请选择"
+    // ✅ 修复：查询分类表建立映射，转换时补充 categoryName/Icon/Color
+    // 原版没有 join，categoryName 为 null，列表显示 l10n.pleaseSelect（"请选择"）
     final cats = await _db.categoryDao.getAvailable(groupId);
     final catMap = {for (final c in cats) c.id: c};
 
@@ -358,8 +356,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
         _mapToPatchCompanion(data),
       );
       final t = state.transactions.firstWhere((t) => t.id == id);
-      final month = t.date;
-      await load(month, refresh: true);
+      await load(t.date, refresh: true);
     }
   }
 
@@ -453,8 +450,8 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
 
   // ── 内部工具 ──────────────────────────────────────────────────────────────
 
-  /// ✅ Fix: 新增可选 catMap 参数，Guest 模式下补充 categoryName/Icon/Color，
-  /// 解决列表显示"请选择"的问题。
+  /// ✅ 修复：新增 catMap 参数，Guest 模式下补充 categoryName / categoryIcon / categoryColor
+  /// 原版不传分类信息，导致列表显示 pleaseSelect（"请选择"）
   models.Transaction _driftRowToTransaction(
     db.Transaction row, {
     Map<int, db.Category>? catMap,
@@ -485,7 +482,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       createdAt: row.createdAt.toDouble(),
       updatedAt: row.updatedAt.toDouble(),
       isDeleted: row.isDeleted,
-      // 补充分类信息
+      // ✅ 补充分类信息（catMap 为 null 时保持 null，不破坏已登录路径）
       categoryName: cat?.name,
       categoryIcon: cat?.icon,
       categoryColor: cat?.color,
