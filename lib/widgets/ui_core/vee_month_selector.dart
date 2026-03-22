@@ -76,14 +76,12 @@ class VeeMonthSelector extends StatelessWidget {
                 letterSpacing: 0.2,
                 // 当可点击时，用主色给用户一个微妙的视觉提示
                 color: onMonthSelected != null
-                    ? Theme.of(context).colorScheme.primary
+                    ? VeeTokens.brandPrimaryDark
                     : null,
                 decoration: onMonthSelected != null
                     ? TextDecoration.underline
                     : TextDecoration.none,
-                decorationColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withOpacity(0.4),
+                decorationColor: VeeTokens.brandPrimaryDark.withOpacity(0.35),
               ),
             ),
           ),

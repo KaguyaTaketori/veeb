@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../api/auth_api.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
@@ -32,7 +33,26 @@ class ProfileScreen extends ConsumerWidget {
     if (auth.isGuest) return const _GuestProfileView();
 
     if (auth.status == AuthStatus.checking || auth.user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: ListView(
+          padding: const EdgeInsets.symmetric(
+              horizontal: VeeTokens.s24, vertical: VeeTokens.s32),
+          children: [
+            // 头像 + 用户名卡
+            VeeSkeletonCard.card(),
+            const SizedBox(height: VeeTokens.spacingLg),
+            // AI 额度卡
+            VeeSkeletonCard.card(),
+            const SizedBox(height: VeeTokens.spacingLg),
+            // 设置列表项 × 5
+            ...List.generate(5, (_) => Padding(
+              padding: const EdgeInsets.only(
+                  bottom: VeeTokens.spacingXs),
+              child: VeeSkeletonCard.list(),
+            )),
+          ],
+        ),
+      );
     }
 
     return _LoggedInProfileView(user: auth.user!);
@@ -70,13 +90,13 @@ class _GuestProfileView extends ConsumerWidget {
                   width: VeeTokens.s80,
                   height: VeeTokens.s80,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: VeeTokens.surfaceSunken,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.person_outline,
                     size: VeeTokens.iconXxl,
-                    color: Colors.grey,
+                    color: VeeTokens.textPlaceholderVal,
                   ),
                 ),
               ),
@@ -92,7 +112,7 @@ class _GuestProfileView extends ConsumerWidget {
                 child: Text(
                   l10n.dataStoredLocally,
                   style: context.veeText.caption.copyWith(
-                    color: Colors.grey[500],
+                    color: VeeTokens.textPlaceholderVal,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -108,7 +128,7 @@ class _GuestProfileView extends ConsumerWidget {
                     Text(
                       l10n.localData,
                       style: context.veeText.micro.copyWith(
-                        color: Colors.grey[500],
+                        color: VeeTokens.textPlaceholderVal,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -278,20 +298,24 @@ class _StatItem extends StatelessWidget {
     children: [
       Row(
         children: [
-          Icon(icon, size: VeeTokens.iconSm, color: Colors.grey[500]),
+          Icon(
+            icon,
+            size: VeeTokens.iconSm,
+            color: VeeTokens.textPlaceholderVal,
+          ),
           const SizedBox(width: VeeTokens.spacingXxs),
           Text(
             label,
-            style: context.veeText.micro.copyWith(color: Colors.grey[500]),
+            style: context.veeText.micro.copyWith(
+              color: VeeTokens.textPlaceholderVal,
+            ),
           ),
         ],
       ),
       const SizedBox(height: VeeTokens.spacingXxs),
       Text(
         value,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+        style: context.veeText.pageTitle.copyWith(
           color: valueColor ?? Theme.of(context).colorScheme.onSurface,
         ),
       ),
@@ -522,7 +546,7 @@ class _LanguageSelectorSheet extends ConsumerWidget {
                 isSelected ? Icons.check_circle : Icons.circle_outlined,
                 color: isSelected
                     ? Theme.of(context).colorScheme.primary
-                    : Colors.grey,
+                    : VeeTokens.textPlaceholderVal,
               ),
               title: Text(LocaleNotifier.getLanguageName(locale.languageCode)),
               onTap: () {
@@ -561,14 +585,14 @@ class _UserHeaderCard extends StatelessWidget {
                 Text(
                   '@${user.username}',
                   style: context.veeText.caption.copyWith(
-                    color: Colors.grey[500],
+                    color: VeeTokens.textPlaceholderVal,
                   ),
                 ),
                 const SizedBox(height: VeeTokens.spacingXxs),
                 Text(
                   user.email,
                   style: context.veeText.caption.copyWith(
-                    color: Colors.grey[600],
+                    color: VeeTokens.textSecondaryVal,
                   ),
                 ),
               ],
@@ -606,11 +630,7 @@ class _Avatar extends StatelessWidget {
           ? Center(
               child: Text(
                 initials,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+                style: context.veeText.amountMedium.copyWith(color: color),
               ),
             )
           : null,
@@ -660,7 +680,7 @@ class _QuotaCard extends StatelessWidget {
                 Text(
                   l10n.quotaResetsOn(resetDate),
                   style: context.veeText.micro.copyWith(
-                    color: Colors.grey[500],
+                    color: VeeTokens.textPlaceholderVal,
                   ),
                 ),
             ],
@@ -673,11 +693,7 @@ class _QuotaCard extends StatelessWidget {
                 const SizedBox(width: VeeTokens.spacingXs),
                 Text(
                   l10n.unlimited,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
+                  style: context.veeText.amountSmall.copyWith(color: color),
                 ),
               ],
             )
@@ -688,13 +704,13 @@ class _QuotaCard extends StatelessWidget {
                 Text(
                   l10n.used(user.aiQuotaUsed),
                   style: context.veeText.caption.copyWith(
-                    color: Colors.grey[600],
+                    color: VeeTokens.textSecondaryVal,
                   ),
                 ),
                 Text(
                   l10n.totalQuota(user.aiQuotaMonthly),
                   style: context.veeText.caption.copyWith(
-                    color: Colors.grey[600],
+                    color: VeeTokens.textSecondaryVal,
                   ),
                 ),
               ],
@@ -705,7 +721,6 @@ class _QuotaCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percent,
                 minHeight: 10,
-                backgroundColor: Colors.grey.shade200,
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
@@ -751,7 +766,7 @@ class _SettingItem extends StatelessWidget {
         trailing ??
         Icon(
           Icons.chevron_right,
-          color: Colors.grey[400],
+          color: VeeTokens.textPlaceholderVal,
           size: VeeTokens.iconMd,
         ),
     onTap: onTap,
@@ -836,21 +851,21 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
             Container(
               padding: VeeTokens.tilePadding,
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: VeeTokens.successSurface,
                 borderRadius: BorderRadius.circular(VeeTokens.rMd),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.check_circle,
-                    color: Colors.green.shade600,
+                    color: VeeTokens.success,
                     size: VeeTokens.iconMd,
                   ),
                   const SizedBox(width: VeeTokens.spacingXs),
                   Text(
                     l10n.boundWithTelegram('${widget.user.tgUserId}'),
                     style: context.veeText.cardTitle.copyWith(
-                      color: Colors.green.shade700,
+                      color: VeeTokens.success,
                     ),
                   ),
                 ],
@@ -859,7 +874,9 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
             const SizedBox(height: VeeTokens.spacingXs),
             Text(
               l10n.quotaSharedAfterBind,
-              style: context.veeText.caption.copyWith(color: Colors.grey[600]),
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
             ),
             const SizedBox(height: VeeTokens.spacingLg),
             OutlinedButton(
@@ -884,7 +901,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
             Text(
               l10n.bindTelegramDesc,
               style: context.veeText.caption.copyWith(
-                color: Colors.grey[600],
+                color: VeeTokens.textSecondaryVal,
                 height: 1.5,
               ),
             ),
@@ -907,15 +924,13 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                     Text(
                       l10n.verificationCode,
                       style: context.veeText.caption.copyWith(
-                        color: Colors.grey[600],
+                        color: VeeTokens.textSecondaryVal,
                       ),
                     ),
                     const SizedBox(height: VeeTokens.spacingXs),
                     Text(
                       _code!,
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
+                      style: context.veeText.amountHero.copyWith(
                         letterSpacing: 12,
                         color: theme.colorScheme.primary,
                       ),
@@ -924,7 +939,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                     Text(
                       l10n.validFor10Minutes,
                       style: context.veeText.micro.copyWith(
-                        color: Colors.grey[500],
+                        color: VeeTokens.textPlaceholderVal,
                       ),
                     ),
                   ],

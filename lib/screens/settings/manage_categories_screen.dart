@@ -11,9 +11,11 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/exceptions/app_exception.dart';
 import 'package:vee_app/utils/vee_colors.dart';
 import 'package:vee_app/widgets/ui_core/vee_category_grid.dart';
 import 'package:vee_app/widgets/ui_core/vee_color_grid.dart'; // ← 新增
+import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
@@ -38,7 +40,27 @@ class ManageCategoriesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('管理分类'), centerTitle: true),
       body: catsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView(
+          padding: VeeTokens.cardPadding,
+          children: [
+            // 系统分类区块
+            VeeSkeletonCard.card(),
+            const SizedBox(height: VeeTokens.spacingXs),
+            GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: VeeTokens.s12,
+              crossAxisSpacing: VeeTokens.s12,
+              childAspectRatio: 0.9,
+              children: List.generate(
+                8, (_) => VeeSkeletonCard.stat()),
+            ),
+            const SizedBox(height: VeeTokens.spacingLg),
+            // 自定义分类区块
+            VeeSkeletonCard.card(),
+          ],
+        ),
         error: (e, _) => VeeEmptyState(
           icon: Icons.error_outline,
           title: e.toString(),
@@ -62,12 +84,16 @@ class ManageCategoriesScreen extends ConsumerWidget {
                   child: Center(
                     child: Text(
                       '暂无自定义分类',
-                      style: TextStyle(color: Colors.grey[400]),
+                      style: TextStyle(color: VeeTokens.textPlaceholderVal),
                     ),
                   ),
                 )
               else
-                VeeCategoryGrid(categories: custom, canDelete: true),
+                VeeCategoryGrid(
+                  categories: custom,
+                  canDelete: true,
+                  onDelete: (cat) => _confirmDeleteCategory(context, ref, cat),
+                ),
             ],
           );
         },
@@ -80,6 +106,35 @@ class ManageCategoriesScreen extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteCategory(
+    BuildContext context,
+    WidgetRef ref,
+    Category cat,
+  ) async {
+    final ok = await VeeConfirmDialog.showDelete(
+      context: context,
+      content: '删除「${cat.name}」后，关联流水将归类为「其他」。',
+    );
+    if (ok != true) return;
+
+    final isLoggedIn =
+        ref.read(authProvider).status == AuthStatus.authenticated;
+    final db = ref.read(appDatabaseProvider);
+    final groupId = ref.read(currentGroupIdProvider);
+
+    if (isLoggedIn && cat.id != 0) {
+      try {
+        await ref.read(categoriesApiProvider).deleteCategory(cat.id);
+      } on AppException catch (e) {
+        if (e.statusCode != 404) rethrow;
+      }
+    }
+
+    await (db.delete(db.categories)..where((c) => c.id.equals(cat.id))).go();
+
+    ref.invalidate(categoriesProvider(groupId));
   }
 
   void _showAddSheet(BuildContext context, WidgetRef ref, int? groupId) {
@@ -115,12 +170,14 @@ class _SectionHeader extends StatelessWidget {
           vertical: VeeTokens.s2,
         ),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: VeeTokens.surfaceSunken,
           borderRadius: BorderRadius.circular(VeeTokens.rFull),
         ),
         child: Text(
           '$count',
-          style: context.veeText.micro.copyWith(color: Colors.grey[600]),
+          style: context.veeText.micro.copyWith(
+            color: VeeTokens.textSecondaryVal,
+          ),
         ),
       ),
     ],
@@ -284,7 +341,9 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             // 收支类型
             Text(
               '类型',
-              style: context.veeText.caption.copyWith(color: Colors.grey),
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
             ),
             const SizedBox(height: VeeTokens.spacingXs),
             SegmentedButton<String>(
@@ -301,7 +360,9 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             // ── emoji 选择器（迁移 #2：Wrap × 24 → VeeEmojiGrid）────────────
             Text(
               '图标',
-              style: context.veeText.caption.copyWith(color: Colors.grey),
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
             ),
             const SizedBox(height: VeeTokens.spacingXs),
             VeeEmojiGrid(
@@ -315,7 +376,9 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             // ── 颜色选择器（迁移 #2：Wrap × 12 → VeeColorGrid）──────────────
             Text(
               '颜色',
-              style: context.veeText.caption.copyWith(color: Colors.grey),
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
             ),
             const SizedBox(height: VeeTokens.spacingXs),
             VeeColorGrid(

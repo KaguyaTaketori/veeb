@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vee_app/widgets/transaction_item_row.dart';
 import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
 import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/transaction.dart';
 import '../../providers/accounts_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/categories_provider.dart';
@@ -488,7 +490,9 @@ class _LoadingView extends StatelessWidget {
           const SizedBox(height: VeeTokens.spacingXs),
           Text(
             l10n.loading,
-            style: context.veeText.caption.copyWith(color: Colors.grey[500]),
+            style: context.veeText.caption.copyWith(
+              color: VeeTokens.textPlaceholderVal,
+            ),
           ),
         ],
       ),
@@ -531,7 +535,7 @@ class _ConfirmView extends StatelessWidget {
                   Text(
                     l10n.ocrSuccess,
                     style: context.veeText.caption.copyWith(
-                      color: Colors.grey[500],
+                      color: VeeTokens.textPlaceholderVal,
                     ),
                   ),
                   const SizedBox(height: VeeTokens.spacingXs),
@@ -546,8 +550,7 @@ class _ConfirmView extends StatelessWidget {
               const SizedBox(height: VeeTokens.s32),
 
               // ── 基本信息卡 ──────────────────────────────────────────────
-              VeeCard(
-                padding: EdgeInsets.zero,
+              VeeCard.list(
                 child: Column(
                   children: [
                     VeeDetailRow(
@@ -607,58 +610,11 @@ class _ConfirmView extends StatelessWidget {
                   padding: VeeTokens.cardPadding,
                   child: Column(
                     children: result.items.map((item) {
-                      final isDisc = item['item_type'] == 'discount';
-                      final isTax = item['item_type'] == 'tax';
-                      final amt = (item['amount'] as num?)?.toDouble() ?? 0;
-                      final name = item['name'] as String? ?? '';
-                      final qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
-                      final itemColor = isDisc
-                          ? VeeTokens.error
-                          : isTax
-                          ? Colors.grey
-                          : Theme.of(context).colorScheme.onSurface;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: VeeTokens.s2 + 1,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              isDisc
-                                  ? '➖'
-                                  : isTax
-                                  ? '🧾'
-                                  : '•',
-                              style: const TextStyle(
-                                fontSize: VeeTokens.iconXs,
-                              ),
-                            ),
-                            const SizedBox(width: VeeTokens.spacingXs),
-                            Expanded(
-                              child: Text(
-                                name,
-                                style: context.veeText.caption.copyWith(
-                                  color: itemColor,
-                                ),
-                              ),
-                            ),
-                            if (qty != 1.0)
-                              Text(
-                                'x${qty.toInt()}  ',
-                                style: context.veeText.micro.copyWith(
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            Text(
-                              '${isDisc ? '-' : ''}${formatAmount(amt.abs(), result.currency)}',
-                              style: context.veeText.caption.copyWith(
-                                color: itemColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                      // Map → TransactionItem 轻量转换（无需 id）
+                      final txItem = TransactionItem.fromJson(item);
+                      return TransactionItemRow.fromModel(
+                        txItem,
+                        currency: result.currency,
                       );
                     }).toList(),
                   ),
@@ -680,10 +636,8 @@ class _ConfirmView extends StatelessWidget {
             bottom: MediaQuery.of(context).padding.bottom + VeeTokens.spacingMd,
           ),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            border: Border(
-              top: BorderSide(color: Colors.grey.withOpacity(0.2)),
-            ),
+            color: VeeTokens.surfaceDefault,
+            border: Border(top: BorderSide(color: VeeTokens.borderColor)),
           ),
           child: Row(
             children: [
@@ -692,10 +646,7 @@ class _ConfirmView extends StatelessWidget {
                   height: VeeTokens.touchStandard + VeeTokens.spacingXxs,
                   child: OutlinedButton(
                     onPressed: onRetake,
-                    child: Text(
-                      l10n.retake,
-                      style: const TextStyle(color: Colors.black87),
-                    ),
+                    child: Text(l10n.retake),
                   ),
                 ),
               ),

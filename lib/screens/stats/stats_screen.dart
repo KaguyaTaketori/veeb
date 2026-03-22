@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:vee_app/widgets/ui_core/vee_card.dart';
+import 'package:vee_app/widgets/ui_core/vee_monthly_trend_card.dart';
+import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
@@ -86,7 +89,25 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     AppLocalizations l10n,
   ) {
     if (state.loading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: VeeTokens.s16,
+          vertical: VeeTokens.s8,
+        ),
+        children: [
+          VeeSkeletonCard.card(),
+          const SizedBox(height: VeeTokens.spacingMd),
+          VeeSkeletonCard.card(),
+          const SizedBox(height: VeeTokens.spacingMd),
+          ...List.generate(
+            4,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: VeeTokens.spacingXs),
+              child: VeeSkeletonCard.list(),
+            ),
+          ),
+        ],
+      );
     }
     if (state.error != null) {
       return VeeEmptyState(
@@ -110,6 +131,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
       ),
       children: [
         _buildSummaryCard(context, summary, l10n),
+        const SizedBox(height: VeeTokens.spacingMd),
+
+        VeeMonthlyTrendCard(anchor: selectedMonth),
         const SizedBox(height: VeeTokens.spacingMd),
 
         if (summary.byCategory.isNotEmpty) ...[
@@ -246,7 +270,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen>
     MonthlyStat summary,
     AppLocalizations l10n,
   ) {
-    return Card(
+    return VeeCard.list(
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -326,7 +350,7 @@ class _CategoryRow extends StatelessWidget {
       borderRadius: inkRadius,
       child: AnimatedContainer(
         duration: VeeTokens.durationFast,
-        color: isTouched ? VeeTokens.hoverTint(color) : Colors.transparent,
+        color: isTouched ? VeeTokens.hoverTint(color) : null,
         padding: const EdgeInsets.symmetric(
           horizontal: VeeTokens.s16,
           vertical: VeeTokens.s16,

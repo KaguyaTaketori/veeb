@@ -1,6 +1,7 @@
 // lib/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/widgets/ui_core/vee_tokens.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/permission_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -105,14 +106,40 @@ class _HomeScreenContentState extends ConsumerState<_HomeScreenContent> {
                     thickness: 1,
                     width: 1,
                     color: Colors.grey.withValues(alpha: 0.2)),
-                Expanded(child: widget.screens[_currentIndex]),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: VeeTokens.durationNormal,
+                    switchInCurve:  Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                    child: KeyedSubtree(
+                      key: ValueKey(_currentIndex),
+                      child: widget.screens[_currentIndex],
+                    ),
+                  ),
+                ),
               ],
             ),
           );
         }
 
         return Scaffold(
-          body: widget.screens[_currentIndex],
+          body: AnimatedSwitcher(
+            duration: VeeTokens.durationNormal,
+            switchInCurve:  Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_currentIndex),
+              child: widget.screens[_currentIndex],
+            ),
+          ),
           bottomNavigationBar: NavigationBar(
             backgroundColor: Theme.of(context).colorScheme.surface,
             selectedIndex: _currentIndex,

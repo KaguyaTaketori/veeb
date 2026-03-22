@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
+import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../api/admin_api.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
@@ -115,7 +116,28 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return ListView(
+        padding: VeeTokens.cardPadding,
+        children: [
+          Wrap(
+            spacing: VeeTokens.s12,
+            runSpacing: VeeTokens.s12,
+            children: List.generate(
+              8,
+              (_) => SizedBox(
+                width: (MediaQuery.of(context).size.width -
+                        VeeTokens.s32 * 2 -
+                        VeeTokens.s12) /
+                    2,
+                height: 88,
+                child: VeeSkeletonCard.stat(),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     if (_error != null) {
       return VeeEmptyState(
         icon: Icons.error_outline,
@@ -208,15 +230,20 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: VeeTokens.s12,
-      mainAxisSpacing: VeeTokens.s12,
-      childAspectRatio: 1.6,
-      children: items,
-    );
+    return Wrap(
+        spacing: VeeTokens.s12,
+        runSpacing: VeeTokens.s12,
+        children: items
+            .map((item) => SizedBox(
+                  width: (MediaQuery.of(context).size.width -
+                          VeeTokens.s32 * 2 -
+                          VeeTokens.s12) /
+                      2,
+                  height: 88,
+                  child: item,
+                ))
+            .toList(),
+      );
   }
 }
 
@@ -248,8 +275,7 @@ class _StatCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: TextStyle(
-                  fontSize: 22,
+                style: context.veeText.amountMedium.copyWith(
                   fontWeight: FontWeight.w900,
                   color: color,
                 ),
@@ -421,10 +447,8 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
               ),
               title: Text(
                 key,
-                style: context.veeText.micro.copyWith(
-                  fontFamily: 'monospace',
+                style: context.veeText.monoLabel.copyWith(
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
                 ),
               ),
               subtitle: Column(
@@ -434,7 +458,9 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                   Text(
                     val.isEmpty ? l10n.empty : val,
                     style: context.veeText.bodyDefault.copyWith(
-                      color: val.isEmpty ? Colors.grey[400] : Colors.black87,
+                      color: val.isEmpty
+                          ? VeeTokens.textPlaceholderVal
+                          : VeeTokens.textPrimaryVal,
                     ),
                   ),
                   if (desc.isNotEmpty) ...[
@@ -442,7 +468,7 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
                     Text(
                       desc,
                       style: context.veeText.micro.copyWith(
-                        color: Colors.grey[500],
+                        color: VeeTokens.textPlaceholderVal,
                       ),
                     ),
                   ],
@@ -537,7 +563,16 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
             ),
           )
         else if (_loading && _users.isEmpty)
-          const Expanded(child: Center(child: CircularProgressIndicator()))
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: VeeTokens.s16, vertical: VeeTokens.spacingXs),
+              children: List.generate(5, (_) => Padding(
+                padding: const EdgeInsets.only(bottom: VeeTokens.spacingXs),
+                child: VeeSkeletonCard.card(),
+              )),
+            ),
+          )
         else
           Expanded(
             child: RefreshIndicator(
@@ -723,7 +758,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
     final roleColor = role == 'admin' ? Colors.orange : Colors.grey;
 
     return VeeCard(
-      borderColor: isActive ? null : VeeTokens.error.withOpacity(0.3),
+      borderColor: isActive ? null : VeeTokens.strongTint(VeeTokens.error),
       padding: VeeTokens.cardPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,7 +787,7 @@ class _UserCardState extends ConsumerState<_UserCard> {
                     Text(
                       u['email'] as String? ?? '',
                       style: context.veeText.micro.copyWith(
-                        color: Colors.grey[500],
+                        color: VeeTokens.textPlaceholderVal,
                       ),
                     ),
                   ],
@@ -1001,7 +1036,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                           ? VeeTokens.pressedTint(
                               Theme.of(context).colorScheme.primary,
                             )
-                          : VeeTokens.borderColor.withOpacity(0.5),
+                          : VeeTokens.borderColor,
                       width: 1.5,
                     ),
                   ),
@@ -1018,7 +1053,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                             ? VeeTokens.selectedTint(
                                 Theme.of(context).colorScheme.primary,
                               )
-                            : Colors.grey.shade100,
+                            : VeeTokens.surfaceSunken,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1026,7 +1061,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                         size: VeeTokens.iconSm,
                         color: checked
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.grey[500],
+                            : VeeTokens.textPlaceholderVal,
                       ),
                     ),
                     title: Text(

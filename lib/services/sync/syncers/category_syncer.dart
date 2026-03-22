@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 
 import '../../../database/app_database.dart';
 import '../../../api/transactions_api.dart';
-import '../../../models/category.dart';
+
 import '../../../exceptions/app_exception.dart';
 import '../../../providers/database_provider.dart';
 import '../syncer_interface.dart';
@@ -13,8 +13,8 @@ class CategorySyncer implements EntitySyncer {
   final Ref _ref;
   CategorySyncer(this._ref);
 
-  AppDatabase      get _db          => _ref.read(appDatabaseProvider);
-  CategoriesApi    get _categoryApi => _ref.read(categoriesApiProvider);
+  AppDatabase get _db => _ref.read(appDatabaseProvider);
+  CategoriesApi get _categoryApi => _ref.read(categoriesApiProvider);
 
   @override
   Future<void> pushPending() async {
@@ -42,37 +42,32 @@ class CategorySyncer implements EntitySyncer {
     if (groupRemoteId == null) return; // group 未同步，跳过
 
     final remote = await _categoryApi.createCategory({
-      'name':       cat.name,
-      'icon':       cat.icon ?? '📦',
-      'color':      cat.color ?? '#95A5A6',
-      'type':       cat.type,
-      'group_id':   groupRemoteId,
+      'name': cat.name,
+      'icon': cat.icon ?? '📦',
+      'color': cat.color ?? '#95A5A6',
+      'type': cat.type,
+      'group_id': groupRemoteId,
       'sort_order': cat.sortOrder,
     });
-    await (_db.update(_db.categories)
-          ..where((c) => c.id.equals(cat.id)))
-        .write(CategoriesCompanion(
-          remoteId:   Value(remote.id),
-          syncStatus: const Value('synced'),
-        ));
+    await (_db.update(_db.categories)..where((c) => c.id.equals(cat.id))).write(
+      CategoriesCompanion(
+        remoteId: Value(remote.id),
+        syncStatus: const Value('synced'),
+      ),
+    );
   }
 
   Future<void> _pushUpdate(Category cat) async {
     if (cat.remoteId == null) return;
-    await _categoryApi.patchCategory(
-      cat.remoteId!,
-      {
-        if (cat.icon != null) 'icon': cat.icon,
-        if (cat.color != null) 'color': cat.color,
-        'name': cat.name,
-        'sort_order': cat.sortOrder,
-      },
+    await _categoryApi.patchCategory(cat.remoteId!, {
+      if (cat.icon != null) 'icon': cat.icon,
+      if (cat.color != null) 'color': cat.color,
+      'name': cat.name,
+      'sort_order': cat.sortOrder,
+    });
+    await (_db.update(_db.categories)..where((c) => c.id.equals(cat.id))).write(
+      const CategoriesCompanion(syncStatus: Value('synced')),
     );
-    await (_db.update(_db.categories)
-          ..where((c) => c.id.equals(cat.id)))
-        .write(const CategoriesCompanion(
-          syncStatus: Value('synced'),
-        ));
   }
 
   Future<void> _pushDelete(Category cat) async {
@@ -84,9 +79,7 @@ class CategorySyncer implements EntitySyncer {
         if (e is! AppException || e.statusCode != 404) rethrow;
       }
     }
-    await (_db.delete(_db.categories)
-          ..where((c) => c.id.equals(cat.id)))
-        .go();
+    await (_db.delete(_db.categories)..where((c) => c.id.equals(cat.id))).go();
   }
 
   @override
@@ -99,48 +92,55 @@ class CategorySyncer implements EntitySyncer {
     );
 
     for (final remote in remotes) {
-      final local = await (_db.select(_db.categories)
-            ..where((c) => c.remoteId.equals(remote.id)))
-          .getSingleOrNull();
+      final local = await (_db.select(
+        _db.categories,
+      )..where((c) => c.remoteId.equals(remote.id))).getSingleOrNull();
 
       if (local != null) {
         // 已存在：更新
-        await (_db.update(_db.categories)
-              ..where((c) => c.id.equals(local.id)))
-            .write(CategoriesCompanion(
-              name:      Value(remote.name),
-              icon:      Value(remote.icon),
-              color:     Value(remote.color),
-              syncStatus: const Value('synced'),
-            ));
+        await (_db.update(
+          _db.categories,
+        )..where((c) => c.id.equals(local.id))).write(
+          CategoriesCompanion(
+            name: Value(remote.name),
+            icon: Value(remote.icon),
+            color: Value(remote.color),
+            syncStatus: const Value('synced'),
+          ),
+        );
       } else {
         // 不存在：按名称匹配（防止系统分类重复插入）
-        final byName = await (_db.select(_db.categories)
-              ..where((c) =>
-                  c.name.equals(remote.name) & c.remoteId.isNull()))
-            .getSingleOrNull();
+        final byName =
+            await (_db.select(_db.categories)..where(
+                  (c) => c.name.equals(remote.name) & c.remoteId.isNull(),
+                ))
+                .getSingleOrNull();
 
         if (byName != null) {
-          await (_db.update(_db.categories)
-                ..where((c) => c.id.equals(byName.id)))
-              .write(CategoriesCompanion(
-                remoteId:   Value(remote.id),
-                syncStatus: const Value('synced'),
-              ));
-        } else {
-          await _db.into(_db.categories).insert(
-            CategoriesCompanion.insert(
-              remoteId:   Value(remote.id),
-              name:       remote.name,
-              icon:       Value(remote.icon),
-              color:      Value(remote.color),
-              type:       Value(remote.type),
-              isSystem:   Value(remote.isSystem),
-              groupId:    Value(remote.groupId ?? localGroup.id),
-              sortOrder:  Value(remote.sortOrder),
+          await (_db.update(
+            _db.categories,
+          )..where((c) => c.id.equals(byName.id))).write(
+            CategoriesCompanion(
+              remoteId: Value(remote.id),
               syncStatus: const Value('synced'),
             ),
           );
+        } else {
+          await _db
+              .into(_db.categories)
+              .insert(
+                CategoriesCompanion.insert(
+                  remoteId: Value(remote.id),
+                  name: remote.name,
+                  icon: Value(remote.icon),
+                  color: Value(remote.color),
+                  type: Value(remote.type),
+                  isSystem: Value(remote.isSystem),
+                  groupId: Value(remote.groupId ?? localGroup.id),
+                  sortOrder: Value(remote.sortOrder),
+                  syncStatus: const Value('synced'),
+                ),
+              );
         }
       }
     }
@@ -148,9 +148,9 @@ class CategorySyncer implements EntitySyncer {
 
   Future<int?> _resolveGroupRemoteId(int? localGroupId) async {
     if (localGroupId == null) return null;
-    final row = await (_db.select(_db.groups)
-          ..where((g) => g.id.equals(localGroupId)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.groups,
+    )..where((g) => g.id.equals(localGroupId))).getSingleOrNull();
     return row?.remoteId;
   }
 }

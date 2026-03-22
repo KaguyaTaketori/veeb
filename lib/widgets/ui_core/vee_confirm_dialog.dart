@@ -80,60 +80,57 @@ class VeeConfirmDialog extends StatelessWidget {
     required String title,
     required String content,
     String confirmLabel = '确认',
-    String cancelLabel  = '取消',
-    bool isDangerous    = false,
+    String cancelLabel = '取消',
+    bool isDangerous = false,
     IconData? icon,
     Color? iconColor,
-  }) =>
-      showDialog<bool>(
-        context: context,
-        barrierDismissible: true,
-        builder: (_) => VeeConfirmDialog._(
-          title:        title,
-          content:      content,
-          confirmLabel: confirmLabel,
-          cancelLabel:  cancelLabel,
-          isDangerous:  isDangerous,
-          icon:         icon,
-          iconColor:    iconColor,
-        ),
-      );
+  }) => showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) => VeeConfirmDialog._(
+      title: title,
+      content: content,
+      confirmLabel: confirmLabel,
+      cancelLabel: cancelLabel,
+      isDangerous: isDangerous,
+      icon: icon,
+      iconColor: iconColor,
+    ),
+  );
 
   /// 快捷方法：删除确认（isDangerous = true，图标 delete_outline）
   static Future<bool?> showDelete({
     required BuildContext context,
     required String content,
-    String title         = '确认删除',
-    String confirmLabel  = '删除',
-    String cancelLabel   = '取消',
-  }) =>
-      show(
-        context:      context,
-        title:        title,
-        content:      content,
-        confirmLabel: confirmLabel,
-        cancelLabel:  cancelLabel,
-        isDangerous:  true,
-        icon:         Icons.delete_outline,
-        iconColor:    VeeTokens.error,
-      );
+    String title = '确认删除',
+    String confirmLabel = '删除',
+    String cancelLabel = '取消',
+  }) => show(
+    context: context,
+    title: title,
+    content: content,
+    confirmLabel: confirmLabel,
+    cancelLabel: cancelLabel,
+    isDangerous: true,
+    icon: Icons.delete_outline,
+    iconColor: VeeTokens.error,
+  );
 
   /// 快捷方法：登出确认
   static Future<bool?> showLogout({
     required BuildContext context,
-    String title   = '退出登录',
+    String title = '退出登录',
     String content = '退出后本地数据将保留，可随时重新登录。',
-  }) =>
-      show(
-        context:      context,
-        title:        title,
-        content:      content,
-        confirmLabel: '退出登录',
-        cancelLabel:  '取消',
-        isDangerous:  true,
-        icon:         Icons.logout,
-        iconColor:    VeeTokens.error,
-      );
+  }) => show(
+    context: context,
+    title: title,
+    content: content,
+    confirmLabel: '退出登录',
+    cancelLabel: '取消',
+    isDangerous: true,
+    icon: Icons.logout,
+    iconColor: VeeTokens.error,
+  );
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -146,14 +143,20 @@ class VeeConfirmDialog extends StatelessWidget {
     return AlertDialog(
       // 内边距通过 contentPadding 精确控制
       contentPadding: EdgeInsets.zero,
-      titlePadding:   EdgeInsets.zero,
+      titlePadding: EdgeInsets.zero,
       actionsPadding: const EdgeInsets.fromLTRB(
-        VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s16,
+        VeeTokens.s16,
+        0,
+        VeeTokens.s16,
+        VeeTokens.s16,
       ),
 
       content: Padding(
         padding: const EdgeInsets.fromLTRB(
-          VeeTokens.s24, VeeTokens.s24, VeeTokens.s24, VeeTokens.s16,
+          VeeTokens.s24,
+          VeeTokens.s24,
+          VeeTokens.s24,
+          VeeTokens.s16,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -161,16 +164,12 @@ class VeeConfirmDialog extends StatelessWidget {
             // ── 图标（可选）──────────────────────────────────────────────
             if (icon != null) ...[
               Container(
-                width:  VeeTokens.touchStandard + VeeTokens.s8,
+                width: VeeTokens.touchStandard + VeeTokens.s8,
                 height: VeeTokens.touchStandard + VeeTokens.s8,
-                decoration: BoxDecoration(
-                  color: VeeTokens.selectedTint(
-                      iconColor ?? Theme.of(context).colorScheme.primary),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(shape: BoxShape.circle),
                 child: Icon(
                   icon,
-                  size:  VeeTokens.iconXl,
+                  size: VeeTokens.iconXl,
                   color: iconColor ?? Theme.of(context).colorScheme.primary,
                 ),
               ),
@@ -200,27 +199,29 @@ class VeeConfirmDialog extends StatelessWidget {
 
       actions: [
         // ── 取消按钮（占满一半宽度）──────────────────────────────────────
-        Row(children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(cancelLabel),
-            ),
-          ),
-          const SizedBox(width: VeeTokens.spacingXs),
-
-          // ── 确认按钮 ──────────────────────────────────────────────────
-          Expanded(
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: confirmColor,
-                foregroundColor: Colors.white,
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(cancelLabel),
               ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(confirmLabel),
             ),
-          ),
-        ]),
+            const SizedBox(width: VeeTokens.spacingXs),
+
+            // ── 确认按钮 ──────────────────────────────────────────────────
+            Expanded(
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: confirmColor,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(confirmLabel),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -252,29 +253,34 @@ class VeeInfoDialog extends StatelessWidget {
     String closeLabel = '知道了',
     IconData? icon,
     Color? iconColor,
-  }) =>
-      showDialog<void>(
-        context: context,
-        builder: (_) => VeeInfoDialog._(
-          title:      title,
-          content:    content,
-          closeLabel: closeLabel,
-          icon:       icon,
-          iconColor:  iconColor,
-        ),
-      );
+  }) => showDialog<void>(
+    context: context,
+    builder: (_) => VeeInfoDialog._(
+      title: title,
+      content: content,
+      closeLabel: closeLabel,
+      icon: icon,
+      iconColor: iconColor,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       contentPadding: EdgeInsets.zero,
-      titlePadding:   EdgeInsets.zero,
+      titlePadding: EdgeInsets.zero,
       actionsPadding: const EdgeInsets.fromLTRB(
-        VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s16,
+        VeeTokens.s16,
+        0,
+        VeeTokens.s16,
+        VeeTokens.s16,
       ),
       content: Padding(
         padding: const EdgeInsets.fromLTRB(
-          VeeTokens.s24, VeeTokens.s24, VeeTokens.s24, VeeTokens.s16,
+          VeeTokens.s24,
+          VeeTokens.s24,
+          VeeTokens.s24,
+          VeeTokens.s16,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -282,7 +288,7 @@ class VeeInfoDialog extends StatelessWidget {
             if (icon != null) ...[
               Icon(
                 icon,
-                size:  VeeTokens.iconXl,
+                size: VeeTokens.iconXl,
                 color: iconColor ?? Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: VeeTokens.spacingMd),

@@ -33,6 +33,7 @@
 //   )
 
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../../utils/currency.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
@@ -75,12 +76,18 @@ class VeeAmountDisplay extends StatelessWidget {
   /// 货币符号展示逻辑：JPY/KRW/VND 用符号，其他用 3 字母代码
   String get _currencyLabel {
     switch (currency.toUpperCase()) {
-      case 'JPY': return '¥';
-      case 'CNY': return '¥';
-      case 'USD': return '\$';
-      case 'EUR': return '€';
-      case 'HKD': return 'HK\$';
-      default:    return currency;
+      case 'JPY':
+        return '¥';
+      case 'CNY':
+        return '¥';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'HKD':
+        return 'HK\$';
+      default:
+        return currency;
     }
   }
 
@@ -93,27 +100,39 @@ class VeeAmountDisplay extends StatelessWidget {
     switch (size) {
       case VeeAmountSize.hero:
         return const _AmountSizeConfig(
-          currencySize: 20, amountSize: 40,
-          currencyWeight: FontWeight.w700, amountWeight: FontWeight.w900,
-          spacing: VeeTokens.s8, height: 1.0,
+          currencySize: 20,
+          amountSize: 40,
+          currencyWeight: FontWeight.w700,
+          amountWeight: FontWeight.w900,
+          spacing: VeeTokens.s8,
+          height: 1.0,
         );
       case VeeAmountSize.large:
         return const _AmountSizeConfig(
-          currencySize: 18, amountSize: 32,
-          currencyWeight: FontWeight.w600, amountWeight: FontWeight.w800,
-          spacing: VeeTokens.s6, height: 1.0,
+          currencySize: 18,
+          amountSize: 32,
+          currencyWeight: FontWeight.w600,
+          amountWeight: FontWeight.w800,
+          spacing: VeeTokens.s6,
+          height: 1.0,
         );
       case VeeAmountSize.medium:
         return const _AmountSizeConfig(
-          currencySize: 14, amountSize: 20,
-          currencyWeight: FontWeight.w600, amountWeight: FontWeight.w700,
-          spacing: VeeTokens.s4, height: 1.2,
+          currencySize: 14,
+          amountSize: 20,
+          currencyWeight: FontWeight.w600,
+          amountWeight: FontWeight.w700,
+          spacing: VeeTokens.s4,
+          height: 1.2,
         );
       case VeeAmountSize.small:
         return const _AmountSizeConfig(
-          currencySize: 12, amountSize: 16,
-          currencyWeight: FontWeight.w500, amountWeight: FontWeight.w600,
-          spacing: VeeTokens.s4, height: 1.3,
+          currencySize: 12,
+          amountSize: 16,
+          currencyWeight: FontWeight.w500,
+          amountWeight: FontWeight.w600,
+          spacing: VeeTokens.s4,
+          height: 1.3,
         );
     }
   }
@@ -228,67 +247,75 @@ class VeeSummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final net        = income - expense;
+    final net = income - expense;
     final isPositive = net >= 0;
-    final primary    = Theme.of(context).colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
 
-    return Column(children: [
-      // ── 支出/收入并排 ────────────────────────────────────────────────────
-      Row(children: [
-        Expanded(
-          child: _SummaryCell(
-            label: _labelOf(context, 'expense'),
-            amount: expense,
-            currency: currency,
-            color: const Color(0xFFE53935), // red.shade600
-          ),
-        ),
-        Container(width: 1, height: VeeTokens.s40, color: VeeTokens.borderColor),
-        Expanded(
-          child: _SummaryCell(
-            label: _labelOf(context, 'income'),
-            amount: income,
-            currency: currency,
-            color: const Color(0xFF43A047), // green.shade600
-          ),
-        ),
-      ]),
-
-      const Divider(height: VeeTokens.s20),
-
-      // ── 净额行 ────────────────────────────────────────────────────────────
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${_labelOf(context, 'balance')} ',
-            style: context.veeText.caption.copyWith(
-              color: VeeTokens.textSecondaryVal,
+    return Column(
+      children: [
+        // ── 支出/收入并排 ────────────────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryCell(
+                label: _labelOf(context, 'expense'),
+                amount: expense,
+                currency: currency,
+                color: const Color(0xFFE53935), // red.shade600
+              ),
             ),
-          ),
-          VeeAmountDisplay(
-            amount: net.abs(),
-            currency: currency,
-            size: VeeAmountSize.medium,
-            prefix: isPositive ? '+' : '-',
-            color: isPositive
-                ? const Color(0xFF43A047)
-                : const Color(0xFFE53935),
-          ),
-          const SizedBox(width: VeeTokens.spacingXs),
-          _CountBadge(count: count, primary: primary),
-        ],
-      ),
-    ]);
+            Container(
+              width: 1,
+              height: VeeTokens.s40,
+              color: VeeTokens.borderColor,
+            ),
+            Expanded(
+              child: _SummaryCell(
+                label: _labelOf(context, 'income'),
+                amount: income,
+                currency: currency,
+                color: const Color(0xFF43A047), // green.shade600
+              ),
+            ),
+          ],
+        ),
+
+        const Divider(height: VeeTokens.s20),
+
+        // ── 净额行 ────────────────────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${_labelOf(context, 'balance')} ',
+              style: context.veeText.caption.copyWith(
+                color: VeeTokens.textSecondaryVal,
+              ),
+            ),
+            VeeAmountDisplay(
+              amount: net.abs(),
+              currency: currency,
+              size: VeeAmountSize.medium,
+              prefix: isPositive ? '+' : '-',
+              color: isPositive
+                  ? const Color(0xFF43A047)
+                  : const Color(0xFFE53935),
+            ),
+            const SizedBox(width: VeeTokens.spacingXs),
+            _CountBadge(count: count, primary: primary),
+          ],
+        ),
+      ],
+    );
   }
 
   String _labelOf(BuildContext context, String key) {
-    // 这里直接用汉字字面量，若需 l10n 请在调用方传入
+    final l10n = AppLocalizations.of(context)!;
     return switch (key) {
-      'expense' => '支出',
-      'income'  => '收入',
-      'balance' => '结余',
-      _         => '',
+      'expense' => l10n.expense,
+      'income' => l10n.income,
+      'balance' => l10n.balance,
+      _ => '',
     };
   }
 }
@@ -307,21 +334,23 @@ class _SummaryCell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-        Text(
-          label,
-          style: context.veeText.caption.copyWith(
-            color: VeeTokens.textSecondaryVal,
-          ),
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(
+        label,
+        style: context.veeText.caption.copyWith(
+          color: VeeTokens.textSecondaryVal,
         ),
-        const SizedBox(height: VeeTokens.spacingXxs),
-        VeeAmountDisplay(
-          amount: amount,
-          currency: currency,
-          size: VeeAmountSize.medium,
-          color: color,
-        ),
-      ]);
+      ),
+      const SizedBox(height: VeeTokens.spacingXxs),
+      VeeAmountDisplay(
+        amount: amount,
+        currency: currency,
+        size: VeeAmountSize.medium,
+        color: color,
+      ),
+    ],
+  );
 }
 
 class _CountBadge extends StatelessWidget {
@@ -331,20 +360,20 @@ class _CountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: VeeTokens.s8,
-          vertical:   VeeTokens.s2,
-        ),
-        decoration: BoxDecoration(
-          color: VeeTokens.selectedTint(primary),
-          borderRadius: BorderRadius.circular(VeeTokens.rFull),
-        ),
-        child: Text(
-          '$count 笔',
-          style: context.veeText.micro.copyWith(
-            color: primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(
+      horizontal: VeeTokens.s8,
+      vertical: VeeTokens.s2,
+    ),
+    decoration: BoxDecoration(
+      color: VeeTokens.selectedTint(primary),
+      borderRadius: BorderRadius.circular(VeeTokens.rFull),
+    ),
+    child: Text(
+      '$count 笔',
+      style: context.veeText.micro.copyWith(
+        color: primary,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }

@@ -1,8 +1,9 @@
 // lib/screens/transactions/transactions_screen.dart
 //
-// 变更说明（Bug Fix #1 调用侧）：
-//   - VeeMonthSelectorCard 新增 onMonthSelected 参数
-//   - 用户通过弹窗选择月份后，正确更新 selectedMonth 并触发数据加载
+// 变更说明（Wizard → Bottom Sheet 重构调用侧）：
+//   - FAB onPressed：改为调用 showNewTransactionSheet()（底部弹窗）
+//   - 流水行 onTap：改为 Navigator.push AddEditTransactionScreen（仅查看/编辑）
+//   - AddEditTransactionScreen 构造函数不再接收 selectedMonth 参数（已移除新建逻辑）
 //   - 其余逻辑、样式与原版完全一致
 
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ import '../../widgets/ui_core/vee_amount_display.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
 import 'add_edit_transaction_screen.dart';
+import 'new_transaction_sheet.dart'; // ← 新增
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -66,8 +68,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         );
   }
 
-  // ── Bug Fix #1：弹窗选月的处理 ──────────────────────────────────────────
-
   void _onMonthSelected(DateTime picked) {
     if (picked.year == selectedMonth.year &&
         picked.month == selectedMonth.month) {
@@ -85,6 +85,29 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         _load(refresh: true);
       }
     });
+  }
+
+  // ── FAB：打开底部弹窗新建流水（替代原先的 Navigator.push Wizard）─────────
+
+  Future<void> _openNewTransactionSheet() async {
+    final saved = await showNewTransactionSheet(
+      context,
+      selectedMonth: selectedMonth,
+    );
+    if (saved == true) _load(refresh: true);
+  }
+
+  // ── 流水行点击：打开查看/编辑全屏 ─────────────────────────────────────────
+
+  Future<void> _openTransactionDetail(Transaction txn) async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            AddEditTransactionScreen(transaction: txn, isReadOnly: true),
+      ),
+    );
+    if (updated == true) _load(refresh: true);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -152,17 +175,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           ),
         ),
       ),
+      // ── FAB 入口：底部弹窗（单屏记账） ──────────────────────────────────
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final created = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  AddEditTransactionScreen(selectedMonth: selectedMonth),
-            ),
-          );
-          if (created == true) _load(refresh: true);
-        },
+        onPressed: _openNewTransactionSheet,
+        tooltip: '记一笔',
         child: const Icon(Icons.add),
       ),
     );
@@ -206,6 +222,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
+  // ── 月度汇总卡 ────────────────────────────────────────────────────────────
+
   Widget _buildSummaryCard(
     BuildContext context,
     TransactionsState state,
@@ -223,7 +241,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         canGoNext: !isCurrentMonth,
         onPrev: prevMonth,
         onNext: nextMonth,
-        // ↓ Bug Fix #1：接入弹窗选月回调
         onMonthSelected: _onMonthSelected,
         child: Column(
           children: [
@@ -239,6 +256,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       ),
     );
   }
+
+  // ── 流水列表 ──────────────────────────────────────────────────────────────
 
   Widget _buildList(
     BuildContext context,
@@ -280,19 +299,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 .deleteTransaction(txn.id),
             child: _TransactionTile(
               transaction: txn,
-              onTap: () async {
-                final updated = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddEditTransactionScreen(
-                      transaction: txn,
-                      selectedMonth: selectedMonth,
-                      isReadOnly: true,
-                    ),
-                  ),
-                );
-                if (updated == true) _load(refresh: true);
-              },
+              onTap: () => _openTransactionDetail(txn),
             ),
           ),
         );
@@ -361,15 +368,18 @@ class _SlidableRowState extends State<_SlidableRow> {
           ),
           borderRadius: VeeTokens.cardBorderRadius,
         ),
-        child: AnimatedScale(
-          scale: (_dragProgress / 0.40).clamp(0.4, 1.0),
-          duration: VeeTokens.durationFast,
-          child: Icon(
-            Icons.delete_outline,
-            color: Colors.white.withOpacity(
-              (_dragProgress / 0.40).clamp(0.0, 1.0),
+        child: Semantics(
+          label: '删除',
+          child: AnimatedScale(
+            scale: (_dragProgress / 0.40).clamp(0.4, 1.0),
+            duration: VeeTokens.durationFast,
+            child: Icon(
+              Icons.delete_outline,
+              color: Colors.white.withOpacity(
+                (_dragProgress / 0.40).clamp(0.0, 1.0),
+              ),
+              size: VeeTokens.iconXl,
             ),
-            size: VeeTokens.iconXl,
           ),
         ),
       ),

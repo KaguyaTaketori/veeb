@@ -225,9 +225,6 @@ class VeeTokens {
 
   // ── 动态 getter（向后兼容） ────────────────────────────────────────────────
   static Color get background => surfaceDefault;
-  static Color get border => borderColor;
-  static Color get textSecondary => textSecondaryVal;
-  static Color get textPlaceholder => textPlaceholderVal;
 
   // ─────────────────────────────────────────────────────────────────────────
   // SEMANTIC OPACITY TINTS
@@ -239,6 +236,47 @@ class VeeTokens {
   static Color pressedTint(Color base) => base.withOpacity(0.16);
   static Color strongTint(Color base) => base.withOpacity(0.20);
   static Color overlayTint(Color base) => base.withOpacity(0.45);
+
+  // ── Dark mode surface tokens ───────────────────────────────────────────────
+  static const Color surfaceDefaultDark = Color(0xFF121212);
+  static const Color surfaceCardDark = Color(0xFF1E1E1E);
+  static const Color surfaceSunkenDark = Color(0xFF2A2A2A);
+  static const Color borderColorDark = Color(0xFF2E2E2E);
+
+  // ── Dark mode text tokens ──────────────────────────────────────────────────
+  static const Color textPrimaryDark = Color(0xFFE8E6E1);
+  static const Color textSecondaryDark = Color(0xFF9C9A92);
+  static const Color textPlaceholderDark = Color(0xFF6B6B6B);
+  static const Color textDisabledDark = Color(0xFF4A4A4A);
+
+  static Color adaptive(
+    BuildContext context, {
+    required Color light,
+    required Color dark,
+  }) => Theme.of(context).brightness == Brightness.dark ? dark : light;
+
+  // ── 语义化 adaptive 快捷方法 ───────────────────────────────────────────────
+
+  static Color surface(BuildContext ctx) =>
+      adaptive(ctx, light: surfaceCard, dark: surfaceCardDark);
+
+  static Color surfaceSubtle(BuildContext ctx) =>
+      adaptive(ctx, light: surfaceSunken, dark: surfaceSunkenDark);
+
+  static Color pageBg(BuildContext ctx) =>
+      adaptive(ctx, light: surfaceDefault, dark: surfaceDefaultDark);
+
+  static Color border(BuildContext ctx) =>
+      adaptive(ctx, light: borderColor, dark: borderColorDark);
+
+  static Color textPrimary(BuildContext ctx) =>
+      adaptive(ctx, light: textPrimaryVal, dark: textPrimaryDark);
+
+  static Color textSecondary(BuildContext ctx) =>
+      adaptive(ctx, light: textSecondaryVal, dark: textSecondaryDark);
+
+  static Color textPlaceholder(BuildContext ctx) =>
+      adaptive(ctx, light: textPlaceholderVal, dark: textPlaceholderDark);
 
   // ─────────────────────────────────────────────────────────────────────────
   // BORDER SIDES

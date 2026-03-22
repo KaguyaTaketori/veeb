@@ -21,16 +21,19 @@ class VeeApp extends ConsumerWidget {
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      theme: _buildTheme(),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }
 
-  static ThemeData _buildTheme() {
+  static ThemeData _buildTheme(Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: _seedColor,
-      brightness: Brightness.light,
+      brightness: brightness,
     );
+    final isDark = brightness == Brightness.dark;
     final textTheme = VeeTextStyles.buildTextTheme();
 
     return ThemeData(
@@ -39,7 +42,9 @@ class VeeApp extends ConsumerWidget {
       textTheme: textTheme,
 
       // ── Scaffold ──────────────────────────────────────────────────────────
-      scaffoldBackgroundColor: VeeTokens.surfaceDefault,
+      scaffoldBackgroundColor: isDark
+          ? VeeTokens.surfaceDefaultDark
+          : VeeTokens.surfaceDefault,
 
       // ── AppBar ────────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
@@ -65,7 +70,7 @@ class VeeApp extends ConsumerWidget {
       cardTheme: CardThemeData(
         elevation: VeeTokens.elevationNone,
         margin: EdgeInsets.zero,
-        color: VeeTokens.surfaceCard,
+        color: isDark ? VeeTokens.surfaceCardDark : VeeTokens.surfaceCard,
         shape: VeeTokens.cardShape,
         clipBehavior: Clip.antiAlias,
       ),
@@ -85,7 +90,7 @@ class VeeApp extends ConsumerWidget {
       // ── Input Decoration ──────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: VeeTokens.surfaceCard,
+        fillColor: isDark ? VeeTokens.surfaceCardDark : VeeTokens.surfaceCard,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: VeeTokens.s16,
           vertical: VeeTokens.s16,
@@ -190,7 +195,9 @@ class VeeApp extends ConsumerWidget {
 
       // ── NavigationBar ─────────────────────────────────────────────────────
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: VeeTokens.surfaceCard,
+        backgroundColor: isDark
+            ? VeeTokens.surfaceCardDark
+            : VeeTokens.surfaceCard,
         surfaceTintColor: Colors.transparent,
 
         // [Fix 8] 선택 인디케이터: 타원 → 둥근 사각형 (rMd=12px)
@@ -231,7 +238,9 @@ class VeeApp extends ConsumerWidget {
       // ── NavigationRail ────────────────────────────────────────────────────
       // [Fix 8 연동] Rail도 동일한 둥근 사각형 인디케이터 적용
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: VeeTokens.surfaceCard,
+        backgroundColor: isDark
+            ? VeeTokens.surfaceCardDark
+            : VeeTokens.surfaceCard,
         selectedIconTheme: IconThemeData(color: colorScheme.primary),
         unselectedIconTheme: const IconThemeData(
           color: VeeTokens.textSecondaryVal,
@@ -244,8 +253,10 @@ class VeeApp extends ConsumerWidget {
       ),
 
       // ── BottomSheet ───────────────────────────────────────────────────────
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: VeeTokens.surfaceCard,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark
+            ? VeeTokens.surfaceCardDark
+            : VeeTokens.surfaceCard,
         shape: RoundedRectangleBorder(
           borderRadius: VeeTokens.sheetBorderRadius,
         ),
@@ -260,7 +271,9 @@ class VeeApp extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VeeTokens.rXl),
         ),
-        backgroundColor: VeeTokens.surfaceCard,
+        backgroundColor: isDark
+            ? VeeTokens.surfaceCardDark
+            : VeeTokens.surfaceCard,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: VeeTokens.textPrimaryVal,
         ),
@@ -270,9 +283,9 @@ class VeeApp extends ConsumerWidget {
       ),
 
       // ── Divider ───────────────────────────────────────────────────────────
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         thickness: 1.0,
-        color: VeeTokens.borderColor,
+        color: isDark ? VeeTokens.borderColorDark : VeeTokens.borderColor,
         space: 1.0,
       ),
 
@@ -294,12 +307,14 @@ class VeeApp extends ConsumerWidget {
       // ── SnackBar ──────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF2D2D2D),
+        backgroundColor: colorScheme.inverseSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VeeTokens.rMd),
         ),
-        contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
-        actionTextColor: colorScheme.primary.withOpacity(0.9),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onInverseSurface,
+        ),
+        actionTextColor: colorScheme.inversePrimary,
       ),
 
       // ── FloatingActionButton ──────────────────────────────────────────────

@@ -68,16 +68,16 @@ class VeeChip extends StatelessWidget {
     final Color borderColor;
 
     if (!effectiveEnabled) {
-      bgColor     = VeeTokens.surfaceSunken;
-      labelColor  = VeeTokens.textDisabledVal;
+      bgColor = VeeTokens.surfaceSunken;
+      labelColor = VeeTokens.textDisabledVal;
       borderColor = Colors.transparent;
     } else if (selected) {
-      bgColor     = VeeTokens.selectedTint(primary);
-      labelColor  = primary;
+      bgColor = VeeTokens.selectedTint(primary);
+      labelColor = accentColor != null ? primary : VeeTokens.brandPrimaryDark;
       borderColor = primary;
     } else {
-      bgColor     = VeeTokens.surfaceSunken;
-      labelColor  = unselectedLabelColor ?? VeeTokens.textSecondaryVal;
+      bgColor = VeeTokens.surfaceSunken;
+      labelColor = unselectedLabelColor ?? VeeTokens.textSecondaryVal;
       borderColor = Colors.transparent;
     }
 
@@ -159,16 +159,20 @@ class VeeChipGroup<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chips = items.map((item) => Padding(
-      padding: const EdgeInsets.only(right: VeeTokens.spacingXs),
-      child: VeeChip(
-        label:       labelBuilder(item),
-        selected:    item == selected,
-        accentColor: accentColorBuilder?.call(item),
-        icon:        iconBuilder?.call(item),
-        onTap:       () => onChanged(item),
-      ),
-    )).toList();
+    final chips = items
+        .map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(right: VeeTokens.spacingXs),
+            child: VeeChip(
+              label: labelBuilder(item),
+              selected: item == selected,
+              accentColor: accentColorBuilder?.call(item),
+              icon: iconBuilder?.call(item),
+              onTap: () => onChanged(item),
+            ),
+          ),
+        )
+        .toList();
 
     final row = Row(
       mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
@@ -183,9 +187,6 @@ class VeeChipGroup<T> extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: padding ?? EdgeInsets.zero,
-      child: row,
-    );
+    return Padding(padding: padding ?? EdgeInsets.zero, child: row);
   }
 }
