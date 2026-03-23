@@ -497,7 +497,7 @@ class _NewTransactionSheetState extends ConsumerState<_NewTransactionSheet> {
                           pendingFile: _pendingImage,
                           remoteUrl: _receiptUrl,
                           uploading: _uploadingImg,
-                          emptyHeight: 80,
+                          emptyHeight: 100,
                           onCamera: () => _pickImage(ImageSource.camera),
                           onGallery: () => _pickImage(ImageSource.gallery),
                           onRemove: () => setState(() {

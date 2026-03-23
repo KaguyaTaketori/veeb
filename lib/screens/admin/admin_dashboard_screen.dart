@@ -132,7 +132,7 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
                         VeeTokens.s32 * 2 -
                         VeeTokens.s12) /
                     2,
-                height: 88,
+                height: 104,
                 child: VeeSkeletonCard.stat(),
               ),
             ),

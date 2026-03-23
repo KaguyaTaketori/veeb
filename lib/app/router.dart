@@ -22,7 +22,6 @@ import '../screens/settings/manage_categories_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // authProvider の変化を go_router に通知するための ValueNotifier
   final notifier = ValueNotifier<AuthState>(ref.read(authProvider));
   ref.listen(authProvider, (_, next) => notifier.value = next);
   ref.onDispose(notifier.dispose);
@@ -49,8 +48,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         (r) => state.matchedLocation.startsWith(r),
       );
 
-      // 未認証でアプリ内ページ → /login へ
-      if (!isAuth && !isOnAuthRoute) return '/login';
+      // ✅ Guest モード対応：未認証でもアプリ内ページへのアクセスを許可。
+      // ログインページへのリダイレクトは行わない。
+      // ユーザーが明示的に /login へ遷移した場合のみ認証フローを表示する。
 
       // 認証済みで認証ページ → /transactions へ
       if (isAuth && isOnAuthRoute) return '/transactions';
