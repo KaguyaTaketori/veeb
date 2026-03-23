@@ -1,12 +1,5 @@
-// lib/providers/monthly_trend_provider.dart
-//
-// 月度趋势数据 Provider
-//
-// 加载最近 N 个月的收支汇总，供 VeeMonthlyTrendCard 使用。
-// 已登录：并发请求 API（getMonthlySummary × N）
-// Guest  ：从本地 DB 按月聚合
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/utils/currency.dart';
 import '../api/transactions_api.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
@@ -108,7 +101,6 @@ Future<List<MonthPoint>> _loadFromLocal(
   List<DateTime> months,
 ) async {
   final db = ref.read(appDatabaseProvider);
-  const noDecimal = {'JPY', 'KRW', 'VND'};
 
   final results = await Future.wait(
     months.map((m) async {
@@ -120,10 +112,7 @@ Future<List<MonthPoint>> _loadFromLocal(
       double income = 0;
 
       for (final row in rows) {
-        final currency = row.currencyCode;
-        final amount = noDecimal.contains(currency)
-            ? row.baseAmount.toDouble()
-            : row.baseAmount / 100.0;
+        final amount = intToFloat(row.baseAmount, row.currencyCode);
 
         if (row.type == 'expense') expense += amount;
         if (row.type == 'income') income += amount;

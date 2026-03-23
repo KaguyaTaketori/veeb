@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
+import 'package:vee_app/services/sync/sync_resolver.dart';
 
 import '../../../database/app_database.dart';
 import '../../../api/transactions_api.dart';
@@ -11,7 +12,8 @@ import '../syncer_interface.dart';
 
 class CategorySyncer implements EntitySyncer {
   final Ref _ref;
-  CategorySyncer(this._ref);
+  late final SyncResolver _resolver;
+  CategorySyncer(this._ref) : _resolver = SyncResolver.fromRef(_ref);
 
   AppDatabase get _db => _ref.read(appDatabaseProvider);
   CategoriesApi get _categoryApi => _ref.read(categoriesApiProvider);
@@ -38,8 +40,8 @@ class CategorySyncer implements EntitySyncer {
   }
 
   Future<void> _pushCreate(Category cat) async {
-    final groupRemoteId = await _resolveGroupRemoteId(cat.groupId);
-    if (groupRemoteId == null) return; // group 未同步，跳过
+    final groupRemoteId = await _resolver.groupRemoteId(cat.groupId!);
+    if (groupRemoteId == null) return;
 
     final remote = await _categoryApi.createCategory({
       'name': cat.name,
@@ -144,13 +146,5 @@ class CategorySyncer implements EntitySyncer {
         }
       }
     }
-  }
-
-  Future<int?> _resolveGroupRemoteId(int? localGroupId) async {
-    if (localGroupId == null) return null;
-    final row = await (_db.select(
-      _db.groups,
-    )..where((g) => g.id.equals(localGroupId))).getSingleOrNull();
-    return row?.remoteId;
   }
 }

@@ -22,6 +22,17 @@ import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:vee_app/widgets/ui_core/vee_badge.dart';
 
+void _showLanguageSheet(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(VeeTokens.rXl)),
+    ),
+    builder: (_) =>
+        _LanguageSelectorSheet(currentLocale: ref.read(localeProvider)),
+  );
+}
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -226,7 +237,7 @@ class _GuestProfileView extends ConsumerWidget {
                   _SettingItem(
                     icon: Icons.language,
                     label: l10n.languageSettings,
-                    onTap: () => _showLanguageSelector(context, ref),
+                    onTap: () => _showLanguageSheet(context, ref),
                   ),
                   _SettingItem(
                     icon: Icons.info_outline,
@@ -265,19 +276,6 @@ class _GuestProfileView extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
-    final currentLocale = ref.read(localeProvider);
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(VeeTokens.rXl),
-        ),
-      ),
-      builder: (ctx) => _LanguageSelectorSheet(currentLocale: currentLocale),
     );
   }
 }
@@ -429,7 +427,7 @@ class _LoggedInProfileView extends ConsumerWidget {
                     _SettingItem(
                       icon: Icons.language,
                       label: l10n.languageSettings,
-                      onTap: () => _showLanguageSelector(context, ref),
+                      onTap: () => _showLanguageSheet(context, ref),
                     ),
                     _SettingItem(
                       icon: Icons.info_outline,
@@ -501,19 +499,6 @@ class _LoggedInProfileView extends ConsumerWidget {
     if (ok == true) {
       await ref.read(authProvider.notifier).logout();
     }
-  }
-
-  void _showLanguageSelector(BuildContext context, WidgetRef ref) {
-    final currentLocale = ref.read(localeProvider);
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(VeeTokens.rXl),
-        ),
-      ),
-      builder: (ctx) => _LanguageSelectorSheet(currentLocale: currentLocale),
-    );
   }
 }
 

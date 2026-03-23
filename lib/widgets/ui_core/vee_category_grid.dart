@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vee_app/utils/vee_colors.dart';
 import '../../models/transaction.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
@@ -80,26 +81,10 @@ class _CategoryCell extends StatelessWidget {
     this.onDelete,
   });
 
-  Color _parseColor(String? hex) {
-    if (hex == null || hex.isEmpty) return const Color(0xFF9E9E9E);
-    var clean = hex.trim().toUpperCase();
-    if (clean.startsWith('#')) clean = clean.substring(1);
-    if (clean.length == 3) {
-      clean =
-          '${clean[0]}${clean[0]}${clean[1]}${clean[1]}${clean[2]}${clean[2]}';
-    }
-    if (clean.length != 6) return const Color(0xFF9E9E9E);
-    try {
-      return Color(int.parse('FF$clean', radix: 16));
-    } catch (_) {
-      return const Color(0xFF9E9E9E);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    final color = _parseColor(category.color);
+    final color = VeeColors.fromHex(category.color);
 
     return Stack(
       clipBehavior: Clip.none,

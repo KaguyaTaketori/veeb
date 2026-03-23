@@ -86,12 +86,6 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 8) {
-        // v008: Transactions 新增 payee 字段
-        // 记录交易对手方：expense=商家名，income=收款来源，transfer=null
-        //
-        // ⚠️ 用 try-catch 防止重复执行：
-        // 若上次迁移在添加列后崩溃（schema version 未写入），
-        // 下次启动仍会进入此分支，直接 ADD COLUMN 会报 "duplicate column" 错误。
         try {
           await m.addColumn(transactions, transactions.payee);
         } catch (_) {

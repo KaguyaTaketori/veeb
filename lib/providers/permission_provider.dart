@@ -52,20 +52,23 @@ class _WsLifecycleNotifier extends Notifier<void> {
 
   void _connect() {
     _ensureEventSubscription();
-    WsService.instance.connect();
+    ref.read(wsServiceProvider).connect();
   }
 
   void _disconnect() {
-    WsService.instance.disconnect();
+    ref.read(wsServiceProvider).disconnect();
   }
 
   void _ensureEventSubscription() {
     if (_eventSub != null) return;
 
-    _eventSub = WsService.instance.eventStream.listen(
-      _onEvent,
-      onError: (e) => debugPrint('[WS] eventStream error: $e'),
-    );
+    _eventSub = ref
+        .read(wsServiceProvider)
+        .eventStream
+        .listen(
+          _onEvent,
+          onError: (e) => debugPrint('[WS] eventStream error: $e'),
+        );
     debugPrint('[WS] eventStream 订阅已建立');
   }
 

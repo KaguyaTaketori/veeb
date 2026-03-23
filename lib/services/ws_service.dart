@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/app_config.dart';
 import '../services/auth_service.dart';
@@ -16,10 +17,10 @@ class WsEvent {
   const WsEvent({required this.type, required this.data, required this.ts});
 
   factory WsEvent.fromJson(Map<String, dynamic> json) => WsEvent(
-        type: json['type'] as String? ?? '',
-        data: json['data'] as Map<String, dynamic>? ?? {},
-        ts:   json['ts']   as int?    ?? 0,
-      );
+    type: json['type'] as String? ?? '',
+    data: json['data'] as Map<String, dynamic>? ?? {},
+    ts: json['ts'] as int? ?? 0,
+  );
 }
 
 class WsService {
@@ -33,24 +34,24 @@ class WsService {
     return base.endsWith('/v1') ? '$base/ws' : '$base/v1/ws';
   }
 
-  WebSocketChannel?            _channel;
+  WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _sub;
-  Timer?                       _reconnectTimer;
-  Timer?                       _pingTimer;
+  Timer? _reconnectTimer;
+  Timer? _pingTimer;
 
   final _statusCtrl = StreamController<WsStatus>.broadcast();
-  final _eventCtrl  = StreamController<WsEvent>.broadcast();
+  final _eventCtrl = StreamController<WsEvent>.broadcast();
 
   Stream<WsStatus> get statusStream => _statusCtrl.stream;
-  Stream<WsEvent>  get eventStream  => _eventCtrl.stream;
+  Stream<WsEvent> get eventStream => _eventCtrl.stream;
 
   WsStatus _status = WsStatus.disconnected;
   WsStatus get status => _status;
   bool get isConnected => _status == WsStatus.connected;
 
   int _retryCount = 0;
-  static const _maxRetry     = 8;
-  static const _baseDelay    = Duration(seconds: 2);
+  static const _maxRetry = 8;
+  static const _baseDelay = Duration(seconds: 2);
   static const _pingInterval = Duration(seconds: 25);
 
   // ── 连接 ──────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ class WsService {
 
     _sub = _channel!.stream.listen(
       _onMessage,
-      onDone:  _onDone,
+      onDone: _onDone,
       onError: _onError,
       cancelOnError: false,
     );
@@ -123,7 +124,7 @@ class WsService {
         _send({'type': 'pong'});
 
       case 'pong':
-        // 心跳回应，无需处理
+      // 心跳回应，无需处理
 
       case 'force_logout':
         final reason = msg['reason'] as String?;
@@ -219,3 +220,10 @@ class WsService {
     _eventCtrl.close();
   }
 }
+
+final wsServiceProvider = Provider<WsService>((ref) {
+  ref.onDispose(() {
+    debugPrint('[WS] wsServiceProvider disposed');
+  });
+  return WsService.instance;
+});

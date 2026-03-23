@@ -5,7 +5,7 @@ import '../api/groups_api.dart';
 import '../models/user.dart';
 import '../models/group.dart';
 import '../services/auth_service.dart';
-import '../services/sync_service.dart';
+import 'package:vee_app/services/sync/sync_coordinator.dart';
 import '../exceptions/app_exception.dart';
 import 'database_provider.dart';
 
@@ -30,17 +30,16 @@ class AuthState {
     String? error,
     bool? loading,
     bool clearError = false,
-    bool clearUser  = false,
-  }) =>
-      AuthState(
-        status:  status  ?? this.status,
-        user:    clearUser  ? null : (user  ?? this.user),
-        error:   clearError ? null : (error ?? this.error),
-        loading: loading ?? this.loading,
-      );
+    bool clearUser = false,
+  }) => AuthState(
+    status: status ?? this.status,
+    user: clearUser ? null : (user ?? this.user),
+    error: clearError ? null : (error ?? this.error),
+    loading: loading ?? this.loading,
+  );
 
   bool get isLoggedIn => status == AuthStatus.authenticated;
-  bool get isGuest    => status == AuthStatus.unauthenticated;
+  bool get isGuest => status == AuthStatus.unauthenticated;
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -50,8 +49,8 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  AuthApi get _api   => ref.read(authApiProvider);
-  MeApi  get _meApi  => ref.read(meApiProvider);
+  AuthApi get _api => ref.read(authApiProvider);
+  MeApi get _meApi => ref.read(meApiProvider);
 
   // ── 启动初始化 ────────────────────────────────────────────────────────────
 
@@ -70,14 +69,14 @@ class AuthNotifier extends Notifier<AuthState> {
       final user = await _meApi.getMe();
       state = state.copyWith(
         status: AuthStatus.authenticated,
-        user:   user,
+        user: user,
         clearError: true,
       );
     } catch (e) {
       // token 已失效，清除后进入 Guest 模式（而非强制跳 Login）
       await AuthService.instance.clearTokens();
       state = state.copyWith(
-        status:    AuthStatus.unauthenticated,
+        status: AuthStatus.unauthenticated,
         clearUser: true,
         clearError: true,
       );
@@ -89,12 +88,9 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<bool> login(String identifier, String password) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final data = await _api.login(
-        identifier: identifier,
-        password:   password,
-      );
+      final data = await _api.login(identifier: identifier, password: password);
       await AuthService.instance.saveTokens(
-        accessToken:  data['access_token']  as String,
+        accessToken: data['access_token'] as String,
         refreshToken: data['refresh_token'] as String,
       );
       await _loadMe();
@@ -104,7 +100,6 @@ class AuthNotifier extends Notifier<AuthState> {
 
       state = state.copyWith(loading: false);
       return true;
-
     } on AppException catch (e) {
       state = state.copyWith(loading: false, error: e.message);
       return false;
@@ -119,7 +114,9 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     final refreshToken = await AuthService.instance.getRefreshToken();
     if (refreshToken != null) {
-      try { await _api.logout(refreshToken); } catch (_) {}
+      try {
+        await _api.logout(refreshToken);
+      } catch (_) {}
     }
     await AuthService.instance.clearTokens();
     // 退出后回到 Guest 模式，保留本地数据
@@ -167,31 +164,26 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> _mergeLocalDataToCloud() async {
     try {
-      // 1. 拉取或创建云端 group
       final groupsApi = ref.read(groupsApiProvider);
       Group? cloudGroup;
       try {
         cloudGroup = await groupsApi.getMyGroup();
       } catch (_) {
-        // 云端没有 group，用本地 group 信息创建
         cloudGroup = await groupsApi.createGroup();
       }
 
-      // 2. 把本地 DB 里 remoteId == null 的记录标记为 pending_create
       final db = ref.read(appDatabaseProvider);
       await db.markAllLocalAsPending();
 
-      // 3. 触发同步
-      final syncService = ref.read(syncServiceProvider);
-      await syncService.syncNow();
-
+      // ✅ 统一使用 SyncCoordinator，彻底删除 SyncService 的调用
+      final coordinator = ref.read(syncCoordinatorProvider);
+      await coordinator.syncNow();
     } catch (e) {
-      // 合并失败不影响登录本身，只记录日志
-      // ignore: avoid_print
       print('[Auth] 本地数据合并失败（非致命）: $e');
     }
   }
 }
 
-final authProvider =
-    NotifierProvider<AuthNotifier, AuthState>(() => AuthNotifier());
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  () => AuthNotifier(),
+);

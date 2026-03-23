@@ -11,6 +11,7 @@ import '../../widgets/ui_core/vee_card.dart';
 import '../../widgets/ui_core/vee_empty_state.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_amount_display.dart';
+import '../../widgets/ui_core/vee_chip.dart';
 
 class ManageAccountsScreen extends ConsumerWidget {
   const ManageAccountsScreen({super.key});
@@ -228,42 +229,11 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
             style: context.veeText.caption.copyWith(color: Colors.grey),
           ),
           const SizedBox(height: VeeTokens.spacingXs),
-          Wrap(
-            spacing: VeeTokens.spacingXs,
-            children: _currencies.map((c) {
-              final selected = _currency == c;
-              return GestureDetector(
-                onTap: () => setState(() => _currency = c),
-                child: Container(
-                  padding: VeeTokens.chipPadding,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? VeeTokens.selectedTint(
-                            Theme.of(context).colorScheme.primary,
-                          )
-                        : VeeTokens.surfaceSunken,
-                    borderRadius: BorderRadius.circular(VeeTokens.rFull),
-                    border: Border.all(
-                      color: selected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(
-                    c,
-                    style: context.veeText.chipLabel.copyWith(
-                      fontWeight: selected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: selected
-                          ? Theme.of(context).colorScheme.primary
-                          : VeeTokens.textSecondaryVal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+          VeeChipGroup<String>(
+            items: _currencies,
+            labelBuilder: (c) => c,
+            selected: _currency,
+            onChanged: (c) => setState(() => _currency = c),
           ),
           const SizedBox(height: VeeTokens.spacingLg),
 

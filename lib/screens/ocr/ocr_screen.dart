@@ -107,9 +107,9 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
   // ── categoryId 解決 ──────────────────────────────────────────────────────
 
   Future<int> _getCategoryId(String? categoryName) async {
-    final groupId = ref.read(currentGroupIdProvider);
     try {
-      final categories = await ref.read(categoriesProvider(groupId).future);
+      // currentCategoriesProvider 内部已缓存，不会重复请求
+      final categories = await ref.read(currentCategoriesProvider.future);
       if (categories.isEmpty) return 1;
       return categories
           .firstWhere(

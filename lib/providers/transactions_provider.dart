@@ -7,6 +7,7 @@ import '../models/transaction.dart' as models;
 import 'auth_provider.dart';
 import 'group_provider.dart';
 import 'database_provider.dart';
+import '../database/mappers/transaction_mapper.dart';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     final catMap = {for (final c in cats) c.id: c};
 
     final allTxns = rawList
-        .map((row) => _driftRowToTransaction(row, catMap: catMap))
+        .map((row) => driftRowToTransaction(row, catMap: catMap))
         .toList();
 
     // 合计：全月数据（筛选前）
@@ -529,44 +530,6 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
   }
 
   // ── 内部工具 ──────────────────────────────────────────────────────────────
-
-  models.Transaction _driftRowToTransaction(
-    db.Transaction row, {
-    Map<int, db.Category>? catMap,
-  }) {
-    const noDecimal = {'JPY', 'KRW', 'VND'};
-    final currency = row.currencyCode;
-    double toFloat(int v) =>
-        noDecimal.contains(currency) ? v.toDouble() : v / 100.0;
-
-    final cat = catMap?[row.categoryId];
-
-    return models.Transaction(
-      id: row.id,
-      type: row.type,
-      amount: toFloat(row.amount),
-      currencyCode: currency,
-      baseAmount: toFloat(row.baseAmount),
-      exchangeRate: row.exchangeRate / 1_000_000,
-      accountId: row.accountId,
-      toAccountId: row.toAccountId,
-      transferPeerId: row.transferPeerId,
-      categoryId: row.categoryId,
-      userId: row.userId,
-      groupId: row.groupId,
-      isPrivate: row.isPrivate,
-      note: row.note,
-      payee: row.payee,
-      transactionDate: row.transactionDate.toDouble(),
-      createdAt: row.createdAt.toDouble(),
-      updatedAt: row.updatedAt.toDouble(),
-      isDeleted: row.isDeleted,
-      categoryName: cat?.name,
-      categoryIcon: cat?.icon,
-      categoryColor: cat?.color,
-    );
-  }
-
   db.TransactionsCompanion _mapToCompanion(
     Map<String, dynamic> data,
     int groupId,

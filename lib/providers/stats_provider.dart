@@ -1,6 +1,7 @@
 // lib/providers/stats_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/utils/currency.dart';
 import '../api/transactions_api.dart';
 import '../database/app_database.dart';
 import '../models/transaction.dart';
@@ -10,22 +11,21 @@ import '../providers/database_provider.dart';
 
 class StatsState {
   final MonthlyStat? summary;
-  final bool         loading;
-  final String?      error;
+  final bool loading;
+  final String? error;
 
   const StatsState({this.summary, this.loading = false, this.error});
 
   StatsState copyWith({
     MonthlyStat? summary,
-    bool?        loading,
-    String?      error,
-    bool         clearError = false,
-  }) =>
-      StatsState(
-        summary: summary ?? this.summary,
-        loading: loading ?? this.loading,
-        error:   clearError ? null : (error ?? this.error),
-      );
+    bool? loading,
+    String? error,
+    bool clearError = false,
+  }) => StatsState(
+    summary: summary ?? this.summary,
+    loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+  );
 }
 
 class StatsNotifier extends Notifier<StatsState> {
@@ -36,7 +36,7 @@ class StatsNotifier extends Notifier<StatsState> {
       ref.read(authProvider).status == AuthStatus.authenticated;
 
   TransactionsApi get _api => ref.read(transactionsApiProvider);
-  AppDatabase     get _db  => ref.read(appDatabaseProvider);
+  AppDatabase get _db => ref.read(appDatabaseProvider);
 
   Future<void> load(DateTime month) async {
     final groupId = ref.read(currentGroupIdProvider);
@@ -60,8 +60,8 @@ class StatsNotifier extends Notifier<StatsState> {
   Future<void> _loadFromApi(int groupId, DateTime month) async {
     final summary = await _api.getMonthlySummary(
       groupId: groupId,
-      year:    month.year,
-      month:   month.month,
+      year: month.year,
+      month: month.month,
     );
     state = state.copyWith(summary: summary, loading: false);
   }
@@ -77,9 +77,14 @@ class StatsNotifier extends Notifier<StatsState> {
     if (rawList.isEmpty) {
       state = state.copyWith(
         summary: MonthlyStat(
-          year: month.year, month: month.month,
-          totalExpense: 0, totalIncome: 0, net: 0, count: 0,
-          byCategory: [], byCurrency: [],
+          year: month.year,
+          month: month.month,
+          totalExpense: 0,
+          totalIncome: 0,
+          net: 0,
+          count: 0,
+          byCategory: [],
+          byCurrency: [],
         ),
         loading: false,
       );
@@ -88,21 +93,18 @@ class StatsNotifier extends Notifier<StatsState> {
 
     // 计算汇总
     const noDecimal = {'JPY', 'KRW', 'VND'};
-    double toFloat(int v, String currency) =>
-        noDecimal.contains(currency) ? v.toDouble() : v / 100.0;
-
     double totalExpense = 0;
-    double totalIncome  = 0;
+    double totalIncome = 0;
 
     // 按分类聚合
     final Map<int, _CategoryAgg> byCategory = {};
 
     for (final row in rawList) {
-      final amount   = toFloat(row.amount, row.currencyCode);
-      final baseAmt  = toFloat(row.baseAmount, row.currencyCode);
+      final amount = intToFloat(row.amount, row.currencyCode);
+      final baseAmt = intToFloat(row.baseAmount, row.currencyCode);
 
       if (row.type == 'expense') totalExpense += baseAmt;
-      if (row.type == 'income')  totalIncome  += baseAmt;
+      if (row.type == 'income') totalIncome += baseAmt;
 
       if (row.type == 'expense') {
         final agg = byCategory.putIfAbsent(
@@ -122,22 +124,24 @@ class StatsNotifier extends Notifier<StatsState> {
       final cat = catMap[agg.categoryId];
       return CategoryStat(
         categoryId: agg.categoryId,
-        name:  cat?.name  ?? '未知',
-        icon:  cat?.icon  ?? '📦',
+        name: cat?.name ?? '未知',
+        icon: cat?.icon ?? '📦',
         color: cat?.color ?? '#95A5A6',
-        total:   agg.total,
-        count:   agg.count,
+        total: agg.total,
+        count: agg.count,
         percent: totalExpense > 0 ? agg.total / totalExpense * 100 : 0,
       );
-    }).toList()
-      ..sort((a, b) => b.total.compareTo(a.total));
+    }).toList()..sort((a, b) => b.total.compareTo(a.total));
 
     // 按货币聚合（简化：只取第一种货币）
     final currencies = <String, double>{};
     for (final row in rawList) {
-      final amount = toFloat(row.amount, row.currencyCode);
-      currencies.update(row.currencyCode, (v) => v + amount,
-          ifAbsent: () => amount);
+      final amount = intToFloat(row.amount, row.currencyCode);
+      currencies.update(
+        row.currencyCode,
+        (v) => v + amount,
+        ifAbsent: () => amount,
+      );
     }
     final byCurrencyOut = currencies.entries
         .map((e) => {'currency': e.key, 'total': e.value})
@@ -146,14 +150,14 @@ class StatsNotifier extends Notifier<StatsState> {
     state = state.copyWith(
       loading: false,
       summary: MonthlyStat(
-        year:         month.year,
-        month:        month.month,
+        year: month.year,
+        month: month.month,
         totalExpense: totalExpense,
-        totalIncome:  totalIncome,
-        net:          totalIncome - totalExpense,
-        count:        rawList.length,
-        byCategory:   byCategoryOut,
-        byCurrency:   byCurrencyOut,
+        totalIncome: totalIncome,
+        net: totalIncome - totalExpense,
+        count: rawList.length,
+        byCategory: byCategoryOut,
+        byCurrency: byCurrencyOut,
       ),
     );
   }
@@ -163,9 +167,10 @@ class StatsNotifier extends Notifier<StatsState> {
 class _CategoryAgg {
   final int categoryId;
   double total = 0;
-  int    count = 0;
+  int count = 0;
   _CategoryAgg({required this.categoryId});
 }
 
-final statsProvider =
-    NotifierProvider<StatsNotifier, StatsState>(StatsNotifier.new);
+final statsProvider = NotifierProvider<StatsNotifier, StatsState>(
+  StatsNotifier.new,
+);
