@@ -145,7 +145,7 @@ class _VeeMonthlyTrendCardState extends ConsumerState<VeeMonthlyTrendCard> {
         handleBuiltInTouches: true,
         touchTooltipData: LineTouchTooltipData(
           getTooltipColor: (_) => Colors.transparent,
-          tooltipRoundedRadius: 0,
+          tooltipBorderRadius: BorderRadius.zero,
           getTooltipItems: (spots) => List.filled(spots.length, null),
         ),
         touchCallback: (event, response) {

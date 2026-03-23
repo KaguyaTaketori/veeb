@@ -149,14 +149,16 @@ class TransactionSyncer implements EntitySyncer {
     int month, {
     DateTime? updatedAfter,
   }) async {
-    final data = await _txnApi.listTransactions(
-      groupId: remoteGroupId,
-      year: year,
-      month: month,
-      updatedAfter: updatedAfter?.millisecondsSinceEpoch != null
-          ? updatedAfter!.millisecondsSinceEpoch / 1000
-          : null,
-    );
+    final data =
+        await _txnApi.listTransactions(
+              remoteGroupId,
+              year: year,
+              month: month,
+              updatedAfter: updatedAfter?.millisecondsSinceEpoch != null
+                  ? updatedAfter!.millisecondsSinceEpoch / 1000
+                  : null,
+            )
+            as Map<String, dynamic>;
 
     final transactions = (data['transactions'] as List? ?? [])
         .map((e) => models.Transaction.fromJson(e as Map<String, dynamic>))
@@ -213,10 +215,10 @@ class TransactionSyncer implements EntitySyncer {
       final file = File(localPath);
       final bytes = await file.readAsBytes();
       final name = localPath.split('/').last;
-      final mime = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
-      return await _ref
+      final resp = await _ref
           .read(transactionsApiProvider)
-          .uploadReceipt(fileBytes: bytes, filename: name, mimeType: mime);
+          .uploadReceiptRaw(bytes, filename: name);
+      return (resp as Map<String, dynamic>)['receipt_url'] as String;
     } catch (e) {
       debugPrint('[TransactionSyncer] 图片上传失败: $e');
       return '';

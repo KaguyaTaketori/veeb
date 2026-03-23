@@ -325,7 +325,8 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
       _error = null;
     });
     try {
-      final data = await ref.read(adminApiProvider).listConfigs();
+      final data =
+          await ref.read(adminApiProvider).listConfigs as Map<String, dynamic>;
       final list = data['configs'] as List? ?? [];
       setState(() => _configs = list.cast<Map<String, dynamic>>());
     } catch (e) {
@@ -394,7 +395,11 @@ class _ConfigTabState extends ConsumerState<_ConfigTab> {
     if (saved != true) return;
 
     try {
-      await ref.read(adminApiProvider).upsertConfig(key, textToSave); // ← 用局部变量
+      await ref.read(adminApiProvider).upsertConfig(key, {
+        'config_value': textToSave,
+        if (desc.isNotEmpty) 'description': desc, // 'description' ではなく desc を使う
+      });
+
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -531,14 +536,16 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
       _error = null;
     });
     try {
-      final data = await ref
-          .read(adminApiProvider)
-          .listUsers(
-            page: _page,
-            keyword: _searchCtrl.text.trim(),
-            role: _roleFilter.isEmpty ? null : _roleFilter,
-            isActive: _activeFilter,
-          );
+      final data =
+          await ref
+                  .read(adminApiProvider)
+                  .listUsers(
+                    page: _page,
+                    keyword: _searchCtrl.text.trim(),
+                    role: _roleFilter.isEmpty ? null : _roleFilter,
+                    isActive: _activeFilter,
+                  )
+              as Map<String, dynamic>;
       final list = (data['users'] as List? ?? []).cast<Map<String, dynamic>>();
       setState(() {
         _users = refresh ? list : [..._users, ...list];
@@ -726,9 +733,9 @@ class _UserCardState extends ConsumerState<_UserCard> {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _toggling = true);
     try {
-      await ref
-          .read(adminApiProvider)
-          .setUserActive(userId, isActive: !isActive);
+      await ref.read(adminApiProvider).setUserActive(userId, {
+        'is_active': !isActive,
+      });
       widget.onRefresh();
     } catch (e) {
       if (mounted) {
@@ -931,9 +938,10 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
       _error = null;
     });
     try {
-      await ref
-          .read(adminApiProvider)
-          .setUserPermissions(widget.userId, _selected.toList());
+      await ref.read(adminApiProvider).setUserPermissions(
+        widget.userId, // widget. が必要
+        {'permissions': _selected.toList()},
+      );
       widget.onSaved();
       if (mounted) Navigator.pop(context);
       if (mounted) {

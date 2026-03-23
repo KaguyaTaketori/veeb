@@ -44,13 +44,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      final data = await ref
-          .read(authApiProvider)
-          .register(
-            username: _usernameCtrl.text.trim(),
-            email: _emailCtrl.text.trim(),
-            password: _passwordCtrl.text,
-          );
+      final data =
+          await ref.read(authApiProvider).register({
+                'username': _usernameCtrl.text.trim(),
+                'email': _emailCtrl.text.trim(),
+                'password': _passwordCtrl.text,
+              })
+              as Map<String, dynamic>;
 
       if (!mounted) return;
 

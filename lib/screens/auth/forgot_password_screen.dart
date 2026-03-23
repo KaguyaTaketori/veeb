@@ -19,8 +19,7 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
       _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState
-    extends ConsumerState<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _emailCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _newPwCtrl = TextEditingController();
@@ -65,9 +64,9 @@ class _ForgotPasswordScreenState
       _error = null;
     });
     try {
-      await ref
-          .read(authApiProvider)
-          .forgotPassword(_emailCtrl.text.trim());
+      await ref.read(authApiProvider).forgotPassword({
+        'email': _emailCtrl.text.trim(),
+      });
       setState(() => _step = 1);
       _startCountdown();
     } catch (_) {
@@ -96,15 +95,18 @@ class _ForgotPasswordScreenState
       _error = null;
     });
     try {
-      await ref.read(authApiProvider).resetPassword(
-            email: _emailCtrl.text.trim(),
-            code: _codeCtrl.text.trim(),
-            newPassword: _newPwCtrl.text,
-          );
+      await ref.read(authApiProvider).resetPassword({
+        'email': _emailCtrl.text.trim(),
+        'code': _codeCtrl.text.trim(),
+        'new_password': _newPwCtrl.text,
+      });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(l10n.resetPasswordSuccess),
-          behavior: SnackBarBehavior.floating));
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       Navigator.pop(context);
     } on AppException catch (e) {
       setState(() => _error = e.message);
@@ -119,14 +121,10 @@ class _ForgotPasswordScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.resetPasswordTitle),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(l10n.resetPasswordTitle), centerTitle: true),
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              const BoxConstraints(maxWidth: VeeTokens.maxFormWidth),
+          constraints: const BoxConstraints(maxWidth: VeeTokens.maxFormWidth),
           child: SingleChildScrollView(
             padding: VeeTokens.formPadding.copyWith(
               top: VeeTokens.s24,
@@ -140,12 +138,17 @@ class _ForgotPasswordScreenState
 
                 if (_step == 0) ...[
                   // ── Step 0：输入邮箱 ─────────────────────────────
-                  Text(l10n.enterRegisteredEmail,
-                      style: context.veeText.sectionTitle),
+                  Text(
+                    l10n.enterRegisteredEmail,
+                    style: context.veeText.sectionTitle,
+                  ),
                   const SizedBox(height: VeeTokens.spacingXs),
-                  Text(l10n.willSendResetCode,
-                      style: context.veeText.caption
-                          .copyWith(color: Colors.grey[600])),
+                  Text(
+                    l10n.willSendResetCode,
+                    style: context.veeText.caption.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
                   const SizedBox(height: VeeTokens.s24),
 
                   VeeTextField(
@@ -153,10 +156,9 @@ class _ForgotPasswordScreenState
                     label: l10n.email,
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) =>
-                        (v?.isEmpty ?? true) || !v!.contains('@')
-                            ? l10n.enterValidEmail
-                            : null,
+                    validator: (v) => (v?.isEmpty ?? true) || !v!.contains('@')
+                        ? l10n.enterValidEmail
+                        : null,
                   ),
                   const SizedBox(height: VeeTokens.s24),
 
@@ -167,13 +169,16 @@ class _ForgotPasswordScreenState
                   ),
                 ] else ...[
                   // ── Step 1：输入验证码 + 新密码 ──────────────────
-                  Text(l10n.setNewPassword,
-                      style: context.veeText.sectionTitle),
+                  Text(
+                    l10n.setNewPassword,
+                    style: context.veeText.sectionTitle,
+                  ),
                   const SizedBox(height: VeeTokens.spacingXs),
                   Text(
                     l10n.verificationSentTo(_emailCtrl.text),
-                    style: context.veeText.caption
-                        .copyWith(color: Colors.grey[600]),
+                    style: context.veeText.caption.copyWith(
+                      color: Colors.grey[600],
+                    ),
                   ),
                   const SizedBox(height: VeeTokens.s24),
 
@@ -182,10 +187,9 @@ class _ForgotPasswordScreenState
                     label: l10n.sixDigitCode,
                     prefixIcon: Icons.pin_outlined,
                     keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v?.isEmpty ?? true) || v!.length != 6
-                            ? l10n.enter6DigitCode
-                            : null,
+                    validator: (v) => (v?.isEmpty ?? true) || v!.length != 6
+                        ? l10n.enter6DigitCode
+                        : null,
                   ),
                   const SizedBox(height: VeeTokens.s12),
 
@@ -204,9 +208,8 @@ class _ForgotPasswordScreenState
                     label: l10n.confirmNewPassword,
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
-                    validator: (v) => v != _newPwCtrl.text
-                        ? l10n.passwordsDoNotMatch
-                        : null,
+                    validator: (v) =>
+                        v != _newPwCtrl.text ? l10n.passwordsDoNotMatch : null,
                   ),
                   const SizedBox(height: VeeTokens.s24),
 

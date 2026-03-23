@@ -6,28 +6,16 @@ import '../database/app_database.dart' show AccountsCompanion;
 import 'group_provider.dart';
 import 'auth_provider.dart';
 import 'database_provider.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+part 'accounts_provider.freezed.dart';
 
-class AccountsState {
-  final List<Account> accounts;
-  final bool loading;
-  final String? error;
-
-  const AccountsState({
-    this.accounts = const [],
-    this.loading = false,
-    this.error,
-  });
-
-  AccountsState copyWith({
-    List<Account>? accounts,
-    bool? loading,
+@freezed
+abstract class AccountsState with _$AccountsState {
+  const factory AccountsState({
+    @Default([]) List<Account> accounts,
+    @Default(false) bool loading,
     String? error,
-    bool clearError = false,
-  }) => AccountsState(
-    accounts: accounts ?? this.accounts,
-    loading: loading ?? this.loading,
-    error: clearError ? null : (error ?? this.error),
-  );
+  }) = _AccountsState;
 }
 
 class AccountsNotifier extends Notifier<AccountsState> {
@@ -50,13 +38,11 @@ class AccountsNotifier extends Notifier<AccountsState> {
   AccountsApi get _api => ref.read(accountsApiProvider);
 
   Future<void> load(int groupId) async {
-    state = state.copyWith(loading: true, clearError: true);
+    state = state.copyWith(loading: true, error: null);
     try {
       List<Account> accounts;
       if (_isLoggedIn) {
-        accounts = await ref
-            .read(accountsApiProvider)
-            .listAccounts(groupId: groupId);
+        accounts = await ref.read(accountsApiProvider).listAccounts(groupId);
       } else {
         final db = ref.read(appDatabaseProvider);
         final rows = await db.accountDao.watchByGroup(groupId).first;
@@ -90,12 +76,12 @@ class AccountsNotifier extends Notifier<AccountsState> {
     required int groupId,
   }) async {
     if (_isLoggedIn) {
-      final account = await _api.createAccount(
-        name: name,
-        type: type,
-        currencyCode: currencyCode,
-        groupId: groupId,
-      );
+      final account = await _api.createAccount({
+        'name': name,
+        'type': type,
+        'currency_code': currencyCode,
+        'group_id': groupId,
+      });
       state = state.copyWith(accounts: [...state.accounts, account]);
     } else {
       final db = ref.read(appDatabaseProvider);

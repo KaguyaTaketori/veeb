@@ -1,111 +1,78 @@
-// lib/api/admin_api.dart
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../exceptions/app_exception.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:retrofit/retrofit.dart';
 import 'client.dart';
-import 'dio_error_mapper.dart';
+
+part 'admin_api.g.dart';
 
 final adminApiProvider = Provider<AdminApi>(
   (ref) => AdminApi(ref.watch(apiClientProvider)),
 );
 
-class AdminApi {
-  final Dio _dio;
-  const AdminApi(this._dio);
+@RestApi()
+abstract class AdminApi {
+  factory AdminApi(Dio dio, {String? baseUrl}) = _AdminApi;
 
-  Future<T> _guard<T>(Future<T> Function() fn) async {
-    try {
-      return await fn();
-    } on AppException {
-      rethrow;
-    } on DioException catch (e) {
-      throw mapDioError(e);
-    } catch (e) {
-      throw AppException(message: e.toString(), type: AppExceptionType.unknown);
-    }
-  }
+  @GET('/admin/users')
+  Future<dynamic> listUsers({
+    @Query('page') int page = 1,
+    @Query('page_size') int pageSize = 50,
+    @Query('keyword') String? keyword,
+    @Query('role') String? role,
+    @Query('is_active') int? isActive,
+  });
 
-  // ── 用户管理 ─────────────────────────────────────────────────────────
+  @GET('/admin/users/{id}')
+  Future<dynamic> getUser(@Path('id') int userId);
 
-  Future<Map<String, dynamic>> listUsers({
-    int page = 1,
-    int pageSize = 50,
-    String? keyword,
-    String? role,
-    int? isActive,
-  }) =>
-      _guard(() async {
-        final res = await _dio.get('/admin/users', queryParameters: {
-          'page': page,
-          'page_size': pageSize,
-          if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-          if (role != null) 'role': role,
-          if (isActive != null) 'is_active': isActive,
-        });
-        return res.data as Map<String, dynamic>;
-      });
+  @PATCH('/admin/users/{id}/active')
+  Future<void> setUserActive(
+    @Path('id') int userId,
+    @Body() Map<String, dynamic> body,
+  );
 
-  Future<Map<String, dynamic>> getUser(int userId) =>
-      _guard(() => _dio.get('/admin/users/$userId').then((r) => r.data));
+  @PATCH('/admin/users/{id}/role')
+  Future<void> setUserRole(
+    @Path('id') int userId,
+    @Body() Map<String, dynamic> body,
+  );
 
-  Future<void> setUserActive(int userId, {required bool isActive}) =>
-      _guard(() => _dio.patch('/admin/users/$userId/active',
-          data: {'is_active': isActive}));
+  @PATCH('/admin/users/{id}/permissions')
+  Future<dynamic> setUserPermissions(
+    @Path('id') int userId,
+    @Body() Map<String, dynamic> body,
+  );
 
-  Future<void> setUserRole(int userId, String role) =>
-      _guard(() => _dio.patch('/admin/users/$userId/role',
-          data: {'role': role}));
+  @PATCH('/admin/users/{id}/quota')
+  Future<void> setUserQuota(
+    @Path('id') int userId,
+    @Body() Map<String, dynamic> body,
+  );
 
-  Future<Map<String, dynamic>> setUserPermissions(
-    int userId,
-    List<String> permissions,
-  ) =>
-      _guard(() => _dio
-          .patch('/admin/users/$userId/permissions',
-              data: {'permissions': permissions})
-          .then((r) => r.data));
+  @GET('/admin/stats')
+  Future<dynamic> getStats();
 
-  Future<void> setUserQuota(int userId, int quota) =>
-      _guard(() => _dio.patch('/admin/users/$userId/quota',
-          data: {'ai_quota_monthly': quota}));
+  @GET('/admin/configs')
+  Future<dynamic> listConfigs();
 
-  // ── 全局统计 ─────────────────────────────────────────────────────────
+  @PUT('/admin/configs/{key}')
+  Future<dynamic> upsertConfig(
+    @Path('key') String key,
+    @Body() Map<String, dynamic> body,
+  );
 
-  Future<Map<String, dynamic>> getStats() =>
-      _guard(() => _dio.get('/admin/stats').then((r) => r.data));
+  @DELETE('/admin/configs/{key}')
+  Future<void> deleteConfig(@Path('key') String key);
 
-  // ── 系统配置 ─────────────────────────────────────────────────────────
+  @POST('/admin/configs/batch')
+  Future<dynamic> batchUpsertConfigs(@Body() Map<String, dynamic> body);
 
-  Future<Map<String, dynamic>> listConfigs() =>
-      _guard(() => _dio.get('/admin/configs').then((r) => r.data));
+  @GET('/admin/ws/stats')
+  Future<dynamic> getWsStats();
 
-  Future<Map<String, dynamic>> upsertConfig(
-    String key,
-    String value, {
-    String? description,
-  }) =>
-      _guard(() => _dio
-          .put('/admin/configs/$key', data: {
-            'config_value': value,
-            if (description != null) 'description': description,
-          })
-          .then((r) => r.data));
-
-  Future<void> deleteConfig(String key) =>
-      _guard(() => _dio.delete('/admin/configs/$key'));
-
-  Future<Map<String, dynamic>> batchUpsertConfigs(
-      Map<String, String> configs) =>
-      _guard(() => _dio
-          .post('/admin/configs/batch', data: {'configs': configs})
-          .then((r) => r.data));
-
-  // ── WS 推送 ──────────────────────────────────────────────────────────
-
-  Future<Map<String, dynamic>> getWsStats() =>
-      _guard(() => _dio.get('/admin/ws/stats').then((r) => r.data));
-
-  Future<void> pushToUser(int userId, String message) =>
-      _guard(() => _dio.post('/admin/ws/push/$userId',
-          queryParameters: {'message': message}));
+  @POST('/admin/ws/push/{userId}')
+  Future<void> pushToUser(
+    @Path('userId') int userId,
+    @Query('message') String message,
+  );
 }

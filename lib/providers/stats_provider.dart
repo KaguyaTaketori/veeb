@@ -8,24 +8,16 @@ import '../models/transaction.dart';
 import '../providers/auth_provider.dart';
 import '../providers/group_provider.dart';
 import '../providers/database_provider.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+part 'stats_provider.freezed.dart';
 
-class StatsState {
-  final MonthlyStat? summary;
-  final bool loading;
-  final String? error;
-
-  const StatsState({this.summary, this.loading = false, this.error});
-
-  StatsState copyWith({
+@freezed
+abstract class StatsState with _$StatsState {
+  const factory StatsState({
     MonthlyStat? summary,
-    bool? loading,
+    @Default(false) bool loading,
     String? error,
-    bool clearError = false,
-  }) => StatsState(
-    summary: summary ?? this.summary,
-    loading: loading ?? this.loading,
-    error: clearError ? null : (error ?? this.error),
-  );
+  }) = _StatsState;
 }
 
 class StatsNotifier extends Notifier<StatsState> {
@@ -42,7 +34,7 @@ class StatsNotifier extends Notifier<StatsState> {
     final groupId = ref.read(currentGroupIdProvider);
     if (groupId == null) return;
 
-    state = state.copyWith(loading: true, clearError: true);
+    state = state.copyWith(loading: true, error: null);
 
     try {
       if (_isLoggedIn) {
@@ -59,7 +51,7 @@ class StatsNotifier extends Notifier<StatsState> {
 
   Future<void> _loadFromApi(int groupId, DateTime month) async {
     final summary = await _api.getMonthlySummary(
-      groupId: groupId,
+      groupId,
       year: month.year,
       month: month.month,
     );

@@ -1,68 +1,34 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/models/transaction.dart' as models;
 import '../api/transactions_api.dart';
 import '../database/app_database.dart' as db;
-import '../models/transaction.dart' as models;
+import '../models/transaction.dart';
 import 'auth_provider.dart';
 import 'group_provider.dart';
 import 'database_provider.dart';
 import '../database/mappers/transaction_mapper.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+part 'transactions_provider.freezed.dart';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-class TransactionsState {
-  final List<models.Transaction> transactions;
-  final bool loading;
-  final String? error;
-  final bool hasNext;
-  final int page;
-  final double monthExpense;
-  final double monthIncome;
-  final int monthCount;
-  final String keyword;
-  final String? typeFilter;
-
-  const TransactionsState({
-    this.transactions = const [],
-    this.loading = false,
-    this.error,
-    this.hasNext = false,
-    this.page = 1,
-    this.monthExpense = 0,
-    this.monthIncome = 0,
-    this.monthCount = 0,
-    this.keyword = '',
-    this.typeFilter,
-  });
-
-  TransactionsState copyWith({
-    List<models.Transaction>? transactions,
-    bool? loading,
+@freezed
+abstract class TransactionsState with _$TransactionsState {
+  const factory TransactionsState({
+    @Default([]) List<Transaction> transactions,
+    @Default(false) bool loading,
     String? error,
-    bool? hasNext,
-    int? page,
-    double? monthExpense,
-    double? monthIncome,
-    int? monthCount,
-    String? keyword,
+    @Default(false) bool hasNext,
+    @Default(1) int page,
+    @Default(0.0) double monthExpense,
+    @Default(0.0) double monthIncome,
+    @Default(0) int monthCount,
+    @Default('') String keyword,
     String? typeFilter,
-    bool clearError = false,
-  }) => TransactionsState(
-    transactions: transactions ?? this.transactions,
-    loading: loading ?? this.loading,
-    error: clearError ? null : (error ?? this.error),
-    hasNext: hasNext ?? this.hasNext,
-    page: page ?? this.page,
-    monthExpense: monthExpense ?? this.monthExpense,
-    monthIncome: monthIncome ?? this.monthIncome,
-    monthCount: monthCount ?? this.monthCount,
-    keyword: keyword ?? this.keyword,
-    typeFilter: typeFilter ?? this.typeFilter,
-  );
+  }) = _TransactionsState;
 }
-
-// ── 哨兵：区分"调用方未传"和"调用方明确传 null（合计=无筛选）" ────────────────
 
 const _keepValue = _KeepValue();
 
@@ -117,14 +83,11 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     final mySeq = ++_seq;
 
     // 立即更新 loading 状态；保留合计数字以避免切换 tab 时闪烁归零
-    state = TransactionsState(
+    state = state.copyWith(
       transactions: refresh ? [] : state.transactions,
       loading: true,
-      hasNext: state.hasNext,
+      error: null, // 清空错误
       page: page,
-      monthExpense: state.monthExpense,
-      monthIncome: state.monthIncome,
-      monthCount: state.monthCount,
       keyword: kw,
       typeFilter: type,
     );
@@ -169,7 +132,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     required int mySeq,
   }) async {
     final listFuture = _api.listTransactions(
-      groupId: groupId,
+      groupId,
       page: page,
       year: month.year,
       month: month.month,
@@ -181,16 +144,12 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     // 有筛选时并行拉整月汇总
     final summaryFuture = typeFilter != null
         ? _api
-              .getMonthlySummary(
-                groupId: groupId,
-                year: month.year,
-                month: month.month,
-              )
+              .getMonthlySummary(groupId, year: month.year, month: month.month)
               .then<models.MonthlyStat?>((s) => s)
               .catchError((_) => null as models.MonthlyStat?)
         : Future<models.MonthlyStat?>.value(null);
 
-    final data = await listFuture;
+    final data = await listFuture as Map<String, dynamic>;
     if (mySeq != _seq) return;
 
     final fetched = (data['transactions'] as List)
@@ -318,11 +277,10 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     required List<int> fileBytes,
     required String filename,
     required String mimeType,
-  }) => _api.uploadReceipt(
-    fileBytes: fileBytes,
-    filename: filename,
-    mimeType: mimeType,
-  );
+  }) async {
+    final resp = await _api.uploadReceiptRaw(fileBytes, filename: filename);
+    return (resp as Map<String, dynamic>)['receipt_url'] as String;
+  }
 
   // ── 写操作 ────────────────────────────────────────────────────────────────
 

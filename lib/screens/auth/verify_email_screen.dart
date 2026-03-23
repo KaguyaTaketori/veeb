@@ -67,9 +67,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       _error = null;
     });
     try {
-      final data = await ref
-          .read(authApiProvider)
-          .verifyEmail(email: widget.email, code: code);
+      final data =
+          await ref.read(authApiProvider).verifyEmail({
+                'email': widget.email,
+                'code': code,
+              })
+              as Map<String, dynamic>;
       await AuthService.instance.saveTokens(
         accessToken: data['access_token'] as String,
         refreshToken: data['refresh_token'] as String,
@@ -92,7 +95,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       _error = null;
     });
     try {
-      await ref.read(authApiProvider).resendCode(widget.email);
+      await ref.read(authApiProvider).resendCode({'email': widget.email});
       _startCountdown();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

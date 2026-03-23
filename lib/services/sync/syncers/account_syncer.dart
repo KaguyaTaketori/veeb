@@ -28,12 +28,12 @@ class AccountSyncer implements EntitySyncer {
 
         switch (account.syncStatus) {
           case 'pending_create':
-            final remote = await _api.createAccount(
-              name: account.name,
-              type: account.type,
-              currencyCode: account.currencyCode,
-              groupId: groupRemoteId,
-            );
+            final remote = await _api.createAccount({
+              'name': account.name,
+              'type': account.type,
+              'currency_code': account.currencyCode,
+              'group_id': groupRemoteId,
+            });
             await _db.accountDao.markSynced(account.id, remote.id);
 
           case 'pending_update':
@@ -57,7 +57,7 @@ class AccountSyncer implements EntitySyncer {
     final localGroup = await _db.groupDao.getDefault();
     if (localGroup?.remoteId == null) return;
 
-    final remotes = await _api.listAccounts(groupId: localGroup!.remoteId!);
+    final remotes = await _api.listAccounts(localGroup!.remoteId!);
 
     await _db.batch((b) {
       b.insertAllOnConflictUpdate(

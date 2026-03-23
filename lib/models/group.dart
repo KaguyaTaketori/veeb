@@ -1,32 +1,22 @@
-class Group {
-  final int    id;
-  final String name;
-  final int    ownerId;
-  final String? inviteCode;
-  final String baseCurrency;
-  final bool   isActive;
-  final double createdAt;
-  final double updatedAt;
-  
-  const Group({
-    required this.id,
-    required this.name,
-    required this.ownerId,
-    this.inviteCode,
-    required this.baseCurrency,
-    required this.isActive,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-  
-  factory Group.fromJson(Map<String, dynamic> j) => Group(
-        id:           j['id'] as int,
-        name:         j['name'] as String,
-        ownerId:      j['owner_id'] as int,
-        inviteCode:   j['invite_code'] as String?,
-        baseCurrency: j['base_currency'] as String? ?? 'JPY',
-        isActive:     j['is_active'] as bool? ?? true,
-        createdAt:    (j['created_at'] as num).toDouble(),
-        updatedAt:    (j['updated_at'] as num).toDouble(),
-      );
+import 'package:freezed_annotation/freezed_annotation.dart';
+import '../core/json_converters.dart';
+
+part 'group.freezed.dart';
+part 'group.g.dart';
+
+@freezed
+abstract class Group with _$Group {
+  @JsonSerializable(fieldRename: FieldRename.snake)
+  const factory Group({
+    required int id,
+    required String name,
+    required int ownerId,
+    String? inviteCode,
+    @Default('JPY') String baseCurrency,
+    @Default(true) bool isActive,
+    @JsonKey(fromJson: numToDouble) required double createdAt,
+    @JsonKey(fromJson: numToDouble) required double updatedAt,
+  }) = _Group;
+
+  factory Group.fromJson(Map<String, dynamic> json) => _$GroupFromJson(json);
 }

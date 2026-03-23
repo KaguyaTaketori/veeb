@@ -74,7 +74,7 @@ Future<List<MonthPoint>> _loadFromApi(
     months.map((m) async {
       try {
         final stat = await api.getMonthlySummary(
-          groupId: groupId,
+          groupId,
           year: m.year,
           month: m.month,
         );

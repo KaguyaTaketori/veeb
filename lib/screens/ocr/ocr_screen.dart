@@ -178,9 +178,12 @@ class _OcrScreenState extends ConsumerState<OcrScreen> {
   Future<void> _runCloudOcr(File file) async {
     final bytes = await file.readAsBytes();
     final base64Str = base64Encode(bytes);
-    final data = await ref
-        .read(transactionsApiProvider)
-        .ocrTransaction(base64Str, 'image/jpeg');
+    final data =
+        await ref.read(transactionsApiProvider).ocrTransaction({
+              'image_base64': base64Str,
+              'mime_type': 'image/jpeg',
+            })
+            as Map<String, dynamic>;
     setState(() => _result = _OcrDraft.fromMap(data));
   }
 

@@ -1,0 +1,15 @@
+targets:
+  $default:
+    builders:
+      freezed:
+        options:
+          map: true
+          explicit_from_json: true
+      json_serializable:
+        options:
+          any_map: false
+          checked: true
+          create_factory: true
+          create_to_json: true
+          explicit_to_json: true
+          include_if_null: true

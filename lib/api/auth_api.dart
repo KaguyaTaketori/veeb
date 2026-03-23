@@ -1,131 +1,64 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../exceptions/app_exception.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:retrofit/retrofit.dart';
 import '../models/user.dart';
 import 'client.dart';
-import 'dio_error_mapper.dart';
 
-final authApiProvider = Provider<AuthApi>((ref) =>
-    AuthApi(ref.watch(authClientProvider)));
+part 'auth_api.g.dart';
 
-final meApiProvider = Provider<MeApi>((ref) =>
-    MeApi(ref.watch(apiClientProvider)));
+final authApiProvider = Provider<AuthApi>(
+  (ref) => AuthApi(ref.watch(authClientProvider)),
+);
 
-class AuthApi {
-  final Dio _dio;
-  const AuthApi(this._dio);
+final meApiProvider = Provider<MeApi>(
+  (ref) => MeApi(ref.watch(apiClientProvider)),
+);
 
-  Future<T> _guard<T>(Future<T> Function() fn) async {
-    try {
-      return await fn();
-    } on AppException {
-      rethrow;
-    } on DioException catch (e) {
-      throw mapDioError(e);
-    }
-  }
+@RestApi()
+abstract class AuthApi {
+  factory AuthApi(Dio dio, {String? baseUrl}) = _AuthApi;
 
-  Future<Map<String, dynamic>> register({
-    required String username,
-    required String email,
-    required String password,
-    String? displayName,
-  }) =>
-      _guard(() => _dio.post('/auth/register', data: {
-            'username': username,
-            'email': email,
-            'password': password,
-            if (displayName != null) 'display_name': displayName,
-          }).then((r) => r.data as Map<String, dynamic>));
+  @POST('/auth/register')
+  Future<dynamic> register(@Body() Map<String, dynamic> body);
 
-  Future<Map<String, dynamic>> verifyEmail({
-    required String email,
-    required String code,
-  }) =>
-      _guard(() => _dio.post('/auth/verify-email', data: {
-            'email': email,
-            'code': code,
-          }).then((r) => r.data as Map<String, dynamic>));
+  @POST('/auth/verify-email')
+  Future<dynamic> verifyEmail(@Body() Map<String, dynamic> body);
 
-  Future<Map<String, dynamic>> resendCode(String email) =>
-      _guard(() => _dio
-          .post('/auth/resend-code', data: {'email': email})
-          .then((r) => r.data as Map<String, dynamic>));
+  @POST('/auth/resend-code')
+  Future<dynamic> resendCode(@Body() Map<String, dynamic> body);
 
-  Future<Map<String, dynamic>> login({
-    required String identifier,
-    required String password,
-  }) =>
-      _guard(() => _dio.post('/auth/login', data: {
-            'identifier': identifier,
-            'password': password,
-          }).then((r) => r.data as Map<String, dynamic>));
+  @POST('/auth/login')
+  Future<dynamic> login(@Body() Map<String, dynamic> body);
 
-  Future<Map<String, dynamic>> refreshToken(String refreshToken) =>
-      _guard(() => _dio
-          .post('/auth/refresh', data: {'refresh_token': refreshToken})
-          .then((r) => r.data as Map<String, dynamic>));
+  @POST('/auth/refresh')
+  Future<dynamic> refreshToken(@Body() Map<String, dynamic> body);
 
-  Future<void> logout(String refreshToken) =>
-      _guard(() => _dio.post('/auth/logout',
-          data: {'refresh_token': refreshToken}));
+  @POST('/auth/logout')
+  Future<void> logout(@Body() Map<String, dynamic> body);
 
-  Future<void> forgotPassword(String email) =>
-      _guard(() => _dio.post('/auth/forgot-password', data: {'email': email}));
+  @POST('/auth/forgot-password')
+  Future<void> forgotPassword(@Body() Map<String, dynamic> body);
 
-  Future<void> resetPassword({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) =>
-      _guard(() => _dio.post('/auth/reset-password', data: {
-            'email': email,
-            'code': code,
-            'new_password': newPassword,
-          }));
+  @POST('/auth/reset-password')
+  Future<void> resetPassword(@Body() Map<String, dynamic> body);
 }
 
-class MeApi {
-  final Dio _dio;
-  const MeApi(this._dio);
+@RestApi()
+abstract class MeApi {
+  factory MeApi(Dio dio, {String? baseUrl}) = _MeApi;
 
-  Future<T> _guard<T>(Future<T> Function() fn) async {
-    try {
-      return await fn();
-    } on AppException {
-      rethrow;
-    } on DioException catch (e) {
-      throw mapDioError(e);
-    }
-  }
+  @GET('/me')
+  Future<UserProfile> getMe();
 
-  Future<UserProfile> getMe() =>
-      _guard(() => _dio
-          .get('/me')
-          .then((r) => UserProfile.fromJson(r.data as Map<String, dynamic>)));
+  @PATCH('/me')
+  Future<UserProfile> updateMe(@Body() Map<String, dynamic> body);
 
-  Future<UserProfile> updateMe({String? displayName, String? avatarUrl}) =>
-      _guard(() => _dio.patch('/me', data: {
-            if (displayName != null) 'display_name': displayName,
-            if (avatarUrl != null) 'avatar_url': avatarUrl,
-          }).then((r) => UserProfile.fromJson(r.data as Map<String, dynamic>)));
+  @POST('/me/change-password')
+  Future<void> changePassword(@Body() Map<String, dynamic> body);
 
-  Future<void> changePassword({
-    required String oldPassword,
-    required String newPassword,
-  }) =>
-      _guard(() => _dio.post('/me/change-password', data: {
-            'old_password': oldPassword,
-            'new_password': newPassword,
-          }));
+  @POST('/me/tg-bind/request')
+  Future<dynamic> requestTgBindCode();
 
-  // FIX: was '/me/tg/bind' (404) — correct path matches backend route /me/tg-bind/request
-  Future<Map<String, dynamic>> requestTgBindCode() =>
-      _guard(() => _dio
-          .post('/me/tg-bind/request')
-          .then((r) => r.data as Map<String, dynamic>));
-
-  // FIX: was DELETE '/me/tg/bind' (404) — correct path matches backend route /me/tg-bind
-  Future<void> deleteTgBind() =>
-      _guard(() => _dio.delete('/me/tg-bind'));
+  @DELETE('/me/tg-bind')
+  Future<void> deleteTgBind();
 }

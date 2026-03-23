@@ -8,35 +8,21 @@ import '../services/auth_service.dart';
 import 'package:vee_app/services/sync/sync_coordinator.dart';
 import '../exceptions/app_exception.dart';
 import 'database_provider.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+part 'auth_provider.freezed.dart';
 
 enum AuthStatus { checking, authenticated, unauthenticated }
 
-class AuthState {
-  final AuthStatus status;
-  final UserProfile? user;
-  final String? error;
-  final bool loading;
+@freezed
+abstract class AuthState with _$AuthState {
+  const AuthState._();
 
-  const AuthState({
-    this.status = AuthStatus.checking,
-    this.user,
-    this.error,
-    this.loading = false,
-  });
-
-  AuthState copyWith({
-    AuthStatus? status,
+  const factory AuthState({
+    @Default(AuthStatus.checking) AuthStatus status,
     UserProfile? user,
     String? error,
-    bool? loading,
-    bool clearError = false,
-    bool clearUser = false,
-  }) => AuthState(
-    status: status ?? this.status,
-    user: clearUser ? null : (user ?? this.user),
-    error: clearError ? null : (error ?? this.error),
-    loading: loading ?? this.loading,
-  );
+    @Default(false) bool loading,
+  }) = _AuthState;
 
   bool get isLoggedIn => status == AuthStatus.authenticated;
   bool get isGuest => status == AuthStatus.unauthenticated;
@@ -70,15 +56,15 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: user,
-        clearError: true,
+        error: null,
       );
     } catch (e) {
       // token 已失效，清除后进入 Guest 模式（而非强制跳 Login）
       await AuthService.instance.clearTokens();
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        clearUser: true,
-        clearError: true,
+        user: null,
+        error: null,
       );
     }
   }
@@ -86,9 +72,11 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── 登录 ──────────────────────────────────────────────────────────────────
 
   Future<bool> login(String identifier, String password) async {
-    state = state.copyWith(loading: true, clearError: true);
+    state = state.copyWith(loading: true, error: null);
     try {
-      final data = await _api.login(identifier: identifier, password: password);
+      final data =
+          await _api.login({'identifier': identifier, 'password': password})
+              as Map<String, dynamic>;
       await AuthService.instance.saveTokens(
         accessToken: data['access_token'] as String,
         refreshToken: data['refresh_token'] as String,
@@ -115,7 +103,7 @@ class AuthNotifier extends Notifier<AuthState> {
     final refreshToken = await AuthService.instance.getRefreshToken();
     if (refreshToken != null) {
       try {
-        await _api.logout(refreshToken);
+        await _api.logout({'refresh_token': refreshToken});
       } catch (_) {}
     }
     await AuthService.instance.clearTokens();
@@ -127,12 +115,12 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> refreshProfile() => _loadMe();
 
-  void clearError() => state = state.copyWith(clearError: true);
+  void clearError() => state = state.copyWith(error: null);
 
   // ── Telegram 绑定 ─────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> requestTgBindCode() async {
-    return await _meApi.requestTgBindCode();
+  Future<dynamic> requestTgBindCode() async {
+    return await _meApi.requestTgBindCode() as Map<String, dynamic>;
   }
 
   Future<void> deleteTgBind() async {
@@ -169,7 +157,10 @@ class AuthNotifier extends Notifier<AuthState> {
       try {
         cloudGroup = await groupsApi.getMyGroup();
       } catch (_) {
-        cloudGroup = await groupsApi.createGroup();
+        cloudGroup = await groupsApi.createGroup({
+          'name': '我的账本',
+          'base_currency': 'JPY',
+        });
       }
 
       final db = ref.read(appDatabaseProvider);
