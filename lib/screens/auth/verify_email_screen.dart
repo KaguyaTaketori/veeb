@@ -1,7 +1,8 @@
-// lib/screens/auth/verify_email_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
@@ -12,110 +13,84 @@ import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_submit_button.dart';
 
-class VerifyEmailScreen extends ConsumerStatefulWidget {
+class VerifyEmailScreen extends HookConsumerWidget {
   final String email;
   final String? debugCode;
 
   const VerifyEmailScreen({super.key, required this.email, this.debugCode});
 
   @override
-  ConsumerState<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
 
-class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
-  late final TextEditingController _codeCtrl;
-  bool _loading = false;
-  bool _resending = false;
-  String? _error;
-  int _countdown = 0;
-  Timer? _timer;
+    final codeCtrl = useTextEditingController(text: debugCode ?? '');
+    final loading = useState(false);
+    final resending = useState(false);
+    final error = useState<String?>(null);
+    final countdown = useState(0);
 
-  @override
-  void initState() {
-    super.initState();
-    _codeCtrl = TextEditingController(text: widget.debugCode ?? '');
-  }
+    useEffect(() {
+      if (countdown.value <= 0) return null;
+      final timer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (countdown.value <= 1) {
+          t.cancel();
+          countdown.value = 0;
+        } else {
+          countdown.value--;
+        }
+      });
+      return timer.cancel;
+    }, [countdown.value > 0]);
 
-  @override
-  void dispose() {
-    _codeCtrl.dispose();
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startCountdown() {
-    setState(() => _countdown = 60);
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_countdown <= 1) {
-        t.cancel();
-        setState(() => _countdown = 0);
-      } else {
-        setState(() => _countdown--);
+    Future<void> verify() async {
+      final code = codeCtrl.text.trim();
+      if (code.length != 6) {
+        error.value = l10n.enter6DigitCode;
+        return;
       }
-    });
-  }
-
-  Future<void> _verify() async {
-    final l10n = AppLocalizations.of(context)!;
-    final code = _codeCtrl.text.trim();
-    if (code.length != 6) {
-      setState(() => _error = l10n.enter6DigitCode);
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final data =
-          await ref.read(authApiProvider).verifyEmail({
-                'email': widget.email,
-                'code': code,
-              })
-              as Map<String, dynamic>;
-      await AuthService.instance.saveTokens(
-        accessToken: data['access_token'] as String,
-        refreshToken: data['refresh_token'] as String,
-      );
-      await ref.read(authProvider.notifier).refreshProfile();
-    } on AppException catch (e) {
-      setState(() => _error = e.message);
-    } catch (_) {
-      setState(() => _error = l10n.verificationFailed);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _resend() async {
-    final l10n = AppLocalizations.of(context)!;
-    if (_countdown > 0 || _resending) return;
-    setState(() {
-      _resending = true;
-      _error = null;
-    });
-    try {
-      await ref.read(authApiProvider).resendCode({'email': widget.email});
-      _startCountdown();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.verificationSent),
-            behavior: SnackBarBehavior.floating,
-          ),
+      loading.value = true;
+      error.value = null;
+      try {
+        final data =
+            await ref.read(authApiProvider).verifyEmail({
+                  'email': email,
+                  'code': code,
+                })
+                as Map<String, dynamic>;
+        await AuthService.instance.saveTokens(
+          accessToken: data['access_token'] as String,
+          refreshToken: data['refresh_token'] as String,
         );
+        await ref.read(authProvider.notifier).refreshProfile();
+        // refreshProfile 後に authProvider が authenticated になると
+        // router の redirect が自動的に /transactions へ飛ばす
+      } on AppException catch (e) {
+        error.value = e.message;
+      } catch (_) {
+        error.value = l10n.verificationFailed;
+      } finally {
+        loading.value = false;
       }
-    } catch (_) {
-      setState(() => _error = l10n.sendFailed);
-    } finally {
-      if (mounted) setState(() => _resending = false);
     }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
+    Future<void> resend() async {
+      if (countdown.value > 0 || resending.value) return;
+      resending.value = true;
+      error.value = null;
+      try {
+        await ref.read(authApiProvider).resendCode({'email': email});
+        countdown.value = 60;
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.verificationSent)));
+        }
+      } catch (_) {
+        error.value = l10n.sendFailed;
+      } finally {
+        resending.value = false;
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.verifyEmailTitle), centerTitle: true),
@@ -131,15 +106,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── 图标 ──────────────────────────────────────────────
                 Icon(
                   Icons.mark_email_unread_outlined,
                   size: VeeTokens.iconHero - 8,
-                  color: theme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(height: VeeTokens.spacingLg),
-
-                // ── 标题 & 说明 ────────────────────────────────────────
                 Text(
                   l10n.checkVerificationCode,
                   textAlign: TextAlign.center,
@@ -147,7 +119,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 ),
                 const SizedBox(height: VeeTokens.spacingXs),
                 Text(
-                  l10n.verificationSentTo(widget.email),
+                  l10n.verificationSentTo(email),
                   textAlign: TextAlign.center,
                   style: context.veeText.caption.copyWith(
                     color: Colors.grey[600],
@@ -155,13 +127,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   ),
                 ),
                 const SizedBox(height: VeeTokens.s32),
-
-                // ── 错误提示 ───────────────────────────────────────────
-                if (_error != null) VeeErrorBanner(message: _error!),
-
-                // ── 验证码输入框 ───────────────────────────────────────
+                if (error.value != null) VeeErrorBanner(message: error.value!),
                 TextFormField(
-                  controller: _codeCtrl,
+                  controller: codeCtrl,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
                   textAlign: TextAlign.center,
@@ -179,25 +147,21 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                     ),
                   ),
                   onChanged: (v) {
-                    if (v.length == 6) _verify();
+                    if (v.length == 6) verify();
                   },
                 ),
                 const SizedBox(height: VeeTokens.s24),
-
-                // ── 验证按钮 ───────────────────────────────────────────
                 VeeSubmitButton(
                   label: l10n.verifyAndActivate,
-                  onPressed: _loading ? null : _verify,
-                  isLoading: _loading,
+                  onPressed: loading.value ? null : verify,
+                  isLoading: loading.value,
                 ),
                 const SizedBox(height: VeeTokens.spacingMd),
-
-                // ── 重发验证码 ─────────────────────────────────────────
                 TextButton(
-                  onPressed: _countdown > 0 ? null : _resend,
+                  onPressed: countdown.value > 0 ? null : resend,
                   child: Text(
-                    _countdown > 0
-                        ? l10n.resendCodeWithCountdown(_countdown)
+                    countdown.value > 0
+                        ? l10n.resendCodeWithCountdown(countdown.value)
                         : l10n.didNotReceiveResend,
                     style: context.veeText.bodyDefault,
                   ),

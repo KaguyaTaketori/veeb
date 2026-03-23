@@ -1,6 +1,7 @@
 // lib/screens/profile/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
@@ -222,10 +223,7 @@ class _GuestProfileView extends ConsumerWidget {
                 width: double.infinity,
                 height: VeeTokens.buttonHeight,
                 child: FilledButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  ),
+                  onPressed: () => context.push('/login'),
                   child: Text(l10n.loginOrRegister),
                 ),
               ),
@@ -252,22 +250,12 @@ class _GuestProfileView extends ConsumerWidget {
                   _SettingItem(
                     icon: Icons.account_balance_wallet_outlined,
                     label: '管理账户',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ManageAccountsScreen(),
-                      ),
-                    ),
+                    onTap: () => context.push('/profile/accounts'),
                   ),
                   _SettingItem(
                     icon: Icons.category_outlined,
                     label: '管理分类',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ManageCategoriesScreen(),
-                      ),
-                    ),
+                    onTap: () => context.push('/profile/categories'),
                   ),
                 ],
               ),
@@ -364,11 +352,9 @@ class _LoggedInProfileView extends ConsumerWidget {
                       icon: Icons.edit_outlined,
                       label: l10n.editProfile,
                       onTap: () async {
-                        final updated = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EditProfileScreen(user: user),
-                          ),
+                        final updated = await context.push<bool>(
+                          '/profile/edit',
+                          extra: {'user': user},
                         );
                         if (updated == true) {
                           ref.read(authProvider.notifier).refreshProfile();
@@ -378,12 +364,7 @@ class _LoggedInProfileView extends ConsumerWidget {
                     _SettingItem(
                       icon: Icons.lock_outline,
                       label: l10n.changePassword,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ChangePasswordScreen(),
-                        ),
-                      ),
+                      onTap: () => context.push('/profile/change-password'),
                     ),
                     _SettingItem(
                       icon: Icons.telegram,
@@ -399,22 +380,12 @@ class _LoggedInProfileView extends ConsumerWidget {
                     _SettingItem(
                       icon: Icons.account_balance_wallet_outlined,
                       label: '管理账户',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManageAccountsScreen(),
-                        ),
-                      ),
+                      onTap: () => context.push('/profile/accounts'),
                     ),
                     _SettingItem(
                       icon: Icons.category_outlined,
                       label: '管理分类',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManageCategoriesScreen(),
-                        ),
-                      ),
+                      onTap: () => context.push('/profile/categories'),
                     ),
                   ],
                 ),

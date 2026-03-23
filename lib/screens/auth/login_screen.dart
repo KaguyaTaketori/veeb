@@ -1,53 +1,37 @@
-// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
-import '../home/home_screen.dart';
-import 'register_screen.dart';
-import 'forgot_password_screen.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 import '../../widgets/ui_core/vee_text_field.dart';
 import '../../widgets/ui_core/vee_submit_button.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _identCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _identCtrl.dispose();
-    _passwordCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final success = await ref
-        .read(authProvider.notifier)
-        .login(_identCtrl.text.trim(), _passwordCtrl.text);
-    if (success && mounted) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final identCtrl = useTextEditingController();
+    final passwordCtrl = useTextEditingController();
+    final formKey = useMemoized(GlobalKey<FormState>.new);
+
+    // auth の loading と error は Provider から取得
     final auth = ref.watch(authProvider);
-    final theme = Theme.of(context);
+
+    Future<void> submit() async {
+      if (!formKey.currentState!.validate()) return;
+      final success = await ref
+          .read(authProvider.notifier)
+          .login(identCtrl.text.trim(), passwordCtrl.text);
+      if (success && context.mounted) {
+        context.go('/transactions');
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -60,11 +44,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 bottom: VeeTokens.s40,
               ),
               child: Form(
-                key: _formKey,
+                key: formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Logo 区域 ──────────────────────────────────────
+                    // ロゴ部分（変更なし）
                     Column(
                       children: [
                         Container(
@@ -72,23 +56,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           height: 72,
                           decoration: BoxDecoration(
                             color: VeeTokens.selectedTint(
-                              theme.colorScheme.primary,
+                              Theme.of(context).colorScheme.primary,
                             ),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             Icons.receipt_long_outlined,
                             size: VeeTokens.iconXxl - 4,
-                            color: theme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const SizedBox(height: VeeTokens.spacingMd),
                         Text(
                           'Vee',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: theme.colorScheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
                         const SizedBox(height: VeeTokens.spacingXxs),
                         Text(
@@ -101,13 +86,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: VeeTokens.s40),
 
-                    // ── 错误提示 ───────────────────────────────────────
                     if (auth.error != null)
                       VeeErrorBanner(message: auth.error!),
 
-                    // ── 用户名/邮箱 ────────────────────────────────────
                     VeeTextField(
-                      controller: _identCtrl,
+                      controller: identCtrl,
                       label: l10n.usernameOrEmail,
                       prefixIcon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
@@ -116,29 +99,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           v!.isEmpty ? l10n.enterUsernameOrEmail : null,
                     ),
                     const SizedBox(height: VeeTokens.spacingMd),
-
-                    // ── 密码 ───────────────────────────────────────────
                     VeeTextField(
-                      controller: _passwordCtrl,
+                      controller: passwordCtrl,
                       label: l10n.password,
                       prefixIcon: Icons.lock_outline,
                       isPassword: true,
                       textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _submit(),
+                      onSubmitted: (_) => submit(),
                       validator: (v) =>
                           v == null || v.isEmpty ? l10n.enterPassword : null,
                     ),
-
-                    // ── 忘记密码 ───────────────────────────────────────
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordScreen(),
-                          ),
-                        ),
+                        onPressed: () => context.push('/forgot-password'),
                         child: Text(
                           l10n.forgotPassword,
                           style: context.veeText.chipLabel,
@@ -146,16 +120,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: VeeTokens.spacingXs),
-
-                    // ── 登录按钮 ───────────────────────────────────────
                     VeeSubmitButton(
                       label: l10n.login,
-                      onPressed: auth.loading ? null : _submit,
+                      onPressed: auth.loading ? null : submit,
                       isLoading: auth.loading,
                     ),
                     const SizedBox(height: VeeTokens.s24),
-
-                    // ── 注册入口 ───────────────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -166,12 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RegisterScreen(),
-                            ),
-                          ),
+                          onPressed: () => context.push('/register'),
                           child: Text(
                             l10n.signUp,
                             style: context.veeText.chipLabel.copyWith(

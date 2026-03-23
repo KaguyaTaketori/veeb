@@ -70,8 +70,8 @@ class GroupNotifier extends Notifier<GroupState> {
 
   GroupsApi get _api => ref.read(groupsApiProvider);
 
-  models.Group _driftGroupToModel(db.Group row) {
-    return models.Group(
+  Group _driftGroupToModel(db.Group row) {
+    return Group(
       id: row.id,
       name: row.name,
       ownerId: row.ownerId,

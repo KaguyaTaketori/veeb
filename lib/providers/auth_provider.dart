@@ -131,10 +131,10 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── 用户信息更新 ─────────────────────────────────────────────────────────
 
   Future<void> updateProfile({String? displayName, String? avatarUrl}) async {
-    final user = await _meApi.updateMe(
-      displayName: displayName,
-      avatarUrl: avatarUrl,
-    );
+    final body = <String, dynamic>{};
+    if (displayName != null) body['display_name'] = displayName;
+    if (avatarUrl != null) body['avatar_url'] = avatarUrl;
+    final user = await _meApi.updateMe(body);
     state = state.copyWith(user: user);
   }
 
@@ -142,10 +142,10 @@ class AuthNotifier extends Notifier<AuthState> {
     required String oldPassword,
     required String newPassword,
   }) async {
-    await _meApi.changePassword(
-      oldPassword: oldPassword,
-      newPassword: newPassword,
-    );
+    await _meApi.changePassword({
+      'old_password': oldPassword,
+      'new_password': newPassword,
+    });
   }
 
   // ── 登录后合并本地数据 ────────────────────────────────────────────────────

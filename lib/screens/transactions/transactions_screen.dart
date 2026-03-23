@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../models/transaction.dart';
@@ -90,12 +91,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   }
 
   Future<void> _openTransactionDetail(Transaction txn) async {
-    final updated = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            AddEditTransactionScreen(transaction: txn, isReadOnly: true),
-      ),
+    final updated = await context.push<bool>(
+      '/transaction-detail',
+      extra: {'transaction': txn, 'isReadOnly': true},
     );
     if (updated == true) _load(refresh: true);
   }

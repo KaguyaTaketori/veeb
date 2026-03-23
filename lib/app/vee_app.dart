@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/locale_provider.dart';
 import '../l10n/app_localizations.dart';
-import '../widgets/auth_gate.dart';
 import '../widgets/ui_core/vee_tokens.dart';
 import '../widgets/ui_core/vee_text_styles.dart';
+import 'router.dart';
 
 class VeeApp extends ConsumerWidget {
   const VeeApp({super.key});
@@ -14,8 +14,9 @@ class VeeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
+    final router = ref.watch(routerProvider);
 
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Vee',
       debugShowCheckedModeBanner: false,
       locale: locale,
@@ -24,7 +25,7 @@ class VeeApp extends ConsumerWidget {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.system,
-      home: const AuthGate(),
+      routerConfig: router,
     );
   }
 

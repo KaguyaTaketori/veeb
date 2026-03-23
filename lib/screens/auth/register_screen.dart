@@ -1,6 +1,7 @@
 // lib/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
@@ -56,14 +57,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       final debugCode = data['debug_code'] as String?;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VerifyEmailScreen(
-            email: _emailCtrl.text.trim(),
-            debugCode: debugCode,
-          ),
-        ),
+      context.go(
+        '/verify-email',
+        extra: {'email': _emailCtrl.text.trim(), 'debug_code': debugCode},
       );
     } on AppException catch (e) {
       setState(() => _error = e.message);
