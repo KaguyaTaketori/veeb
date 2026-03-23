@@ -114,6 +114,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get date => '日付';
 
   @override
+  String get payee => '支払先';
+
+  @override
   String get note => 'メモ';
 
   @override
@@ -1225,7 +1228,4 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get myLedger => 'マイ帳簿';
-
-  @override
-  String get payee => '支払先';
 }

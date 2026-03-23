@@ -35,6 +35,7 @@
   "category": "カテゴリー",
   "account": "口座",
   "date": "日付",
+  "payee": "支払先",
   "note": "メモ",
   "description": "説明",
   "total": "合計",

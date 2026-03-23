@@ -310,6 +310,12 @@ abstract class AppLocalizations {
   /// **'Date'**
   String get date;
 
+  /// No description provided for @payee.
+  ///
+  /// In en, this message translates to:
+  /// **'Payee'**
+  String get payee;
+
   /// No description provided for @note.
   ///
   /// In en, this message translates to:
@@ -2427,12 +2433,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My Ledger'**
   String get myLedger;
-
-  /// No description provided for @payee.
-  ///
-  /// In en, this message translates to:
-  /// **'Payee'**
-  String get payee;
 }
 
 class _AppLocalizationsDelegate

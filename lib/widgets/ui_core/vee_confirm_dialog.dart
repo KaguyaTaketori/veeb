@@ -1,48 +1,81 @@
-// lib/widgets/ui_core/vee_confirm_dialog.dart
-//
-// VeeConfirmDialog — 统一操作确认对话框
-//
-// 替代以下 6+ 处重复的 showDialog(AlertDialog(...)) 调用：
-//   - TransactionsScreen Dismissible.confirmDismiss（删除流水）
-//   - AddEditTransactionScreen._confirmDelete（删除流水）
-//   - ProfileScreen._confirmLogout（登出）
-//   - ManageCategoriesScreen._confirmDelete（删除分类）
-//   - AdminDashboard._editConfig（保存配置）
-//   - PermissionsSheet._save（保存权限 — 注：此处无确认，但可统一错误弹窗）
-//
-// 使用示例：
-//
-//   // 危险操作（删除 / 登出）
-//   final ok = await VeeConfirmDialog.show(
-//     context: context,
-//     title: l10n.deleteConfirm,
-//     content: l10n.deleteThisRecord,
-//     confirmLabel: l10n.delete,
-//     isDangerous: true,
-//   );
-//   if (ok == true) { ... }
-//
-//   // 普通确认
-//   final ok = await VeeConfirmDialog.show(
-//     context: context,
-//     title: '保存更改',
-//     content: '确认将这些设置保存到服务端？',
-//   );
-//
-//   // 带图标的提示
-//   await VeeConfirmDialog.show(
-//     context: context,
-//     title: '操作不可撤销',
-//     content: '删除分类后，关联的流水将归类为「其他」。',
-//     icon: Icons.warning_amber_rounded,
-//     iconColor: Colors.orange,
-//     confirmLabel: '我已了解，继续删除',
-//     isDangerous: true,
-//   );
-
 import 'package:flutter/material.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
+
+class _VeeDialogContent extends StatelessWidget {
+  final String title;
+  final String content;
+  final IconData? icon;
+  final Color? iconColor;
+
+  final bool showIconContainer;
+
+  const _VeeDialogContent({
+    required this.title,
+    required this.content,
+    this.icon,
+    this.iconColor,
+    this.showIconContainer = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveIconColor =
+        iconColor ?? Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        VeeTokens.s24,
+        VeeTokens.s24,
+        VeeTokens.s24,
+        VeeTokens.s16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 图标（可选）──────────────────────────────────────────────
+          if (icon != null) ...[
+            showIconContainer
+                ? Container(
+                    width: VeeTokens.touchStandard + VeeTokens.s8,
+                    height: VeeTokens.touchStandard + VeeTokens.s8,
+                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                    child: Icon(
+                      icon,
+                      size: VeeTokens.iconXl,
+                      color: effectiveIconColor,
+                    ),
+                  )
+                : Icon(icon, size: VeeTokens.iconXl, color: effectiveIconColor),
+            const SizedBox(height: VeeTokens.spacingMd),
+          ],
+
+          // ── 标题 ─────────────────────────────────────────────────────
+          Text(
+            title,
+            style: context.veeText.sectionTitle,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: VeeTokens.spacingXs),
+
+          // ── 正文 ─────────────────────────────────────────────────────
+          Text(
+            content,
+            style: context.veeText.bodyDefault.copyWith(
+              color: VeeTokens.textSecondaryVal,
+              height: 1.6,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VeeConfirmDialog — 确认弹窗（取消 + 确认 双按钮）
+// ─────────────────────────────────────────────────────────────────────────────
 
 class VeeConfirmDialog extends StatelessWidget {
   final String title;
@@ -50,13 +83,10 @@ class VeeConfirmDialog extends StatelessWidget {
   final String confirmLabel;
   final String cancelLabel;
 
-  /// true → 确认按钮为红色（危险操作：删除/登出/封禁等）
+  /// true → 确认按钮为红色（危险操作：删除 / 登出 / 封禁等）
   final bool isDangerous;
 
-  /// 对话框顶部图标（可选）
   final IconData? icon;
-
-  /// 图标颜色（仅在 icon != null 时生效）
   final Color? iconColor;
 
   const VeeConfirmDialog._({
@@ -69,12 +99,9 @@ class VeeConfirmDialog extends StatelessWidget {
     this.iconColor,
   });
 
-  // ── 静态快捷方法 ──────────────────────────────────────────────────────────
+  // ── 静态快捷方法 ────────────────────────────────────────────────────────────
 
-  /// 显示确认对话框，返回用户是否点击了"确认"。
-  ///
-  /// 点击确认 → `true`
-  /// 点击取消 / 点击背景关闭 → `false` / `null`
+  /// 通用确认弹窗。点击确认 → true，取消 / 背景关闭 → false / null。
   static Future<bool?> show({
     required BuildContext context,
     required String title,
@@ -98,7 +125,7 @@ class VeeConfirmDialog extends StatelessWidget {
     ),
   );
 
-  /// 快捷方法：删除确认（isDangerous = true，图标 delete_outline）
+  /// 快捷：删除确认
   static Future<bool?> showDelete({
     required BuildContext context,
     required String content,
@@ -116,7 +143,7 @@ class VeeConfirmDialog extends StatelessWidget {
     iconColor: VeeTokens.error,
   );
 
-  /// 快捷方法：登出确认
+  /// 快捷：登出确认
   static Future<bool?> showLogout({
     required BuildContext context,
     String title = '退出登录',
@@ -132,7 +159,7 @@ class VeeConfirmDialog extends StatelessWidget {
     iconColor: VeeTokens.error,
   );
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +168,6 @@ class VeeConfirmDialog extends StatelessWidget {
         : Theme.of(context).colorScheme.primary;
 
     return AlertDialog(
-      // 内边距通过 contentPadding 精确控制
       contentPadding: EdgeInsets.zero,
       titlePadding: EdgeInsets.zero,
       actionsPadding: const EdgeInsets.fromLTRB(
@@ -150,55 +176,15 @@ class VeeConfirmDialog extends StatelessWidget {
         VeeTokens.s16,
         VeeTokens.s16,
       ),
-
-      content: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          VeeTokens.s24,
-          VeeTokens.s24,
-          VeeTokens.s24,
-          VeeTokens.s16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── 图标（可选）──────────────────────────────────────────────
-            if (icon != null) ...[
-              Container(
-                width: VeeTokens.touchStandard + VeeTokens.s8,
-                height: VeeTokens.touchStandard + VeeTokens.s8,
-                decoration: BoxDecoration(shape: BoxShape.circle),
-                child: Icon(
-                  icon,
-                  size: VeeTokens.iconXl,
-                  color: iconColor ?? Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: VeeTokens.spacingMd),
-            ],
-
-            // ── 标题 ─────────────────────────────────────────────────────
-            Text(
-              title,
-              style: context.veeText.sectionTitle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: VeeTokens.spacingXs),
-
-            // ── 正文 ─────────────────────────────────────────────────────
-            Text(
-              content,
-              style: context.veeText.bodyDefault.copyWith(
-                color: VeeTokens.textSecondaryVal,
-                height: 1.6,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      // ← 使用共享内容区，showIconContainer: true（圆形容器风格）
+      content: _VeeDialogContent(
+        title: title,
+        content: content,
+        icon: icon,
+        iconColor: iconColor,
+        showIconContainer: true,
       ),
-
       actions: [
-        // ── 取消按钮（占满一半宽度）──────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -208,8 +194,6 @@ class VeeConfirmDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(width: VeeTokens.spacingXs),
-
-            // ── 确认按钮 ──────────────────────────────────────────────────
             Expanded(
               child: FilledButton(
                 style: FilledButton.styleFrom(
@@ -228,7 +212,7 @@ class VeeConfirmDialog extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VeeInfoDialog — 纯信息展示弹窗（无取消按钮，只有"知道了"）
+// VeeInfoDialog — 信息弹窗（仅"知道了"单按钮）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class VeeInfoDialog extends StatelessWidget {
@@ -275,40 +259,12 @@ class VeeInfoDialog extends StatelessWidget {
         VeeTokens.s16,
         VeeTokens.s16,
       ),
-      content: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          VeeTokens.s24,
-          VeeTokens.s24,
-          VeeTokens.s24,
-          VeeTokens.s16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: VeeTokens.iconXl,
-                color: iconColor ?? Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: VeeTokens.spacingMd),
-            ],
-            Text(
-              title,
-              style: context.veeText.sectionTitle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: VeeTokens.spacingXs),
-            Text(
-              content,
-              style: context.veeText.bodyDefault.copyWith(
-                color: VeeTokens.textSecondaryVal,
-                height: 1.6,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      content: _VeeDialogContent(
+        title: title,
+        content: content,
+        icon: icon,
+        iconColor: iconColor,
+        showIconContainer: false,
       ),
       actions: [
         SizedBox(

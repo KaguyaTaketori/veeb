@@ -1,13 +1,7 @@
-// lib/widgets/ui_core/vee_category_grid.dart
-
 import 'package:flutter/material.dart';
 import '../../models/transaction.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VeeCategoryGrid — 主组件（分类列表模式）
-// ─────────────────────────────────────────────────────────────────────────────
 
 class VeeCategoryGrid extends StatelessWidget {
   final List<Category> categories;
@@ -71,71 +65,6 @@ class VeeCategoryGrid extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VeeEmojiGrid
-// ─────────────────────────────────────────────────────────────────────────────
-
-class VeeEmojiGrid extends StatelessWidget {
-  final List<String> emojis;
-  final String? selectedEmoji;
-  final ValueChanged<String> onSelected;
-  final int crossAxisCount;
-
-  const VeeEmojiGrid({
-    super.key,
-    required this.emojis,
-    required this.selectedEmoji,
-    required this.onSelected,
-    this.crossAxisCount = 6,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        mainAxisSpacing: VeeTokens.spacingXs,
-        crossAxisSpacing: VeeTokens.spacingXs,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: emojis.length,
-      itemBuilder: (_, i) {
-        final emoji = emojis[i];
-        final selected = emoji == selectedEmoji;
-
-        return GestureDetector(
-          onTap: () => onSelected(emoji),
-          child: AnimatedContainer(
-            duration: VeeTokens.durationFast,
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: selected
-                  ? VeeTokens.selectedTint(primary)
-                  : VeeTokens.surfaceSunken,
-              borderRadius: BorderRadius.circular(VeeTokens.rSm),
-              border: Border.all(
-                color: selected ? primary : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 22)),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _CategoryCell — 单个分类单元格
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _CategoryCell extends StatelessWidget {
   final Category category;
   final bool isSelected;
@@ -174,8 +103,6 @@ class _CategoryCell extends StatelessWidget {
 
     return Stack(
       clipBehavior: Clip.none,
-      // ✅ 修复：原默认 Alignment.topLeft，Column 在格子内靠左，图标视觉偏移。
-      // 改为 Alignment.center 后，Column 在格子水平居中，图标和名称对齐格子中线。
       alignment: Alignment.center,
       children: [
         // ── 主体 Cell ──────────────────────────────────────────────────

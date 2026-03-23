@@ -4,9 +4,10 @@
 // Phase 2 更新：
 //   - 尺寸 / 圆角继承全局 FilledButtonTheme（Phase 1 已注入）
 //   - 使用 VeeTokens.buttonHeight 统一按钮高度
-//   - isLoading 时锁定交互并展示 CircularProgressIndicator
+//   - isLoading 时锁定交互并展示 VeeButtonSpinner（替换原内联 SizedBox）
 
 import 'package:flutter/material.dart';
+import 'vee_button_spinner.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
 
@@ -29,14 +30,7 @@ class VeeSubmitButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget content = isLoading
-        ? const SizedBox(
-            width: VeeTokens.iconMd,
-            height: VeeTokens.iconMd,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: Colors.white,
-            ),
-          )
+        ? const VeeButtonSpinner() // ← 替换原 SizedBox + CircularProgressIndicator
         : Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -45,17 +39,12 @@ class VeeSubmitButton extends StatelessWidget {
                 Icon(icon, size: VeeTokens.iconMd),
                 const SizedBox(width: VeeTokens.spacingXs),
               ],
-              Text(
-                label,
-                // 从全局 FilledButtonTheme.textStyle 继承；
-                // 若需要覆盖，可在此处传 style
-                style: context.veeText.buttonLabel,
-              ),
+              Text(label, style: context.veeText.buttonLabel),
             ],
           );
 
     return SizedBox(
-      width:  double.infinity,
+      width: double.infinity,
       height: VeeTokens.buttonHeight,
       child: isOutlined
           ? OutlinedButton(

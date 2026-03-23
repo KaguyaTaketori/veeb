@@ -1,20 +1,11 @@
-// lib/screens/settings/manage_categories_screen.dart
-//
-// 变更说明（第二层迁移 #2）：
-//   - _AddCategorySheetState.build()：
-//       emoji 选择器：原 Wrap + GestureDetector + Container × 24 → VeeEmojiGrid
-//       颜色选择器：原 Wrap + GestureDetector + Container × 12 → VeeColorGrid
-//   - 删除了 _emojis / _colors 常量内联的所有渲染逻辑，由组件内部处理
-//   - VeeCategoryGrid 的 canDelete 行为保持不变（删除按钮由组件管理）
-//   - 其余逻辑、样式与原版完全一致
-
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vee_app/exceptions/app_exception.dart';
 import 'package:vee_app/utils/vee_colors.dart';
+import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import 'package:vee_app/widgets/ui_core/vee_category_grid.dart';
-import 'package:vee_app/widgets/ui_core/vee_color_grid.dart'; // ← 新增
+import 'package:vee_app/widgets/ui_core/vee_selection_grid.dart';
 import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
@@ -53,8 +44,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
               mainAxisSpacing: VeeTokens.s12,
               crossAxisSpacing: VeeTokens.s12,
               childAspectRatio: 0.9,
-              children: List.generate(
-                8, (_) => VeeSkeletonCard.stat()),
+              children: List.generate(8, (_) => VeeSkeletonCard.stat()),
             ),
             const SizedBox(height: VeeTokens.spacingLg),
             // 自定义分类区块
@@ -392,16 +382,7 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
               height: VeeTokens.buttonHeight,
               child: FilledButton(
                 onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: VeeTokens.iconMd,
-                        height: VeeTokens.iconMd,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('添加'),
+                child: _saving ? const VeeButtonSpinner() : const Text('添加'),
               ),
             ),
           ],

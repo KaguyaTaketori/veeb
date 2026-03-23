@@ -35,6 +35,7 @@
   "category": "分类",
   "account": "账户",
   "date": "日期",
+  "payee": "对方账户",
   "note": "备注",
   "description": "描述",
   "total": "合计",

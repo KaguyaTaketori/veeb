@@ -1,6 +1,7 @@
 // lib/screens/settings/manage_accounts_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/accounts_provider.dart';
 import '../../providers/group_provider.dart';
@@ -270,16 +271,7 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
             height: VeeTokens.buttonHeight,
             child: FilledButton(
               onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      width: VeeTokens.iconMd,
-                      height: VeeTokens.iconMd,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('添加'),
+              child: _saving ? const VeeButtonSpinner() : const Text('添加'),
             ),
           ),
         ],

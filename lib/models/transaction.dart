@@ -59,8 +59,8 @@ class Transaction {
   final int groupId;
   final bool isPrivate;
   final String? note;
-  final String? payee; // 交易对手方：expense=商家/店铺，income=来源，transfer=null
-  final double transactionDate; // unix timestamp
+  final String? payee;
+  final double transactionDate;
   final String receiptUrl;
   final List<TransactionItem> items;
   final double createdAt;
@@ -110,9 +110,6 @@ class Transaction {
 
   String? get sourceLabel => null;
 
-  /// 列表展示用收款方名称。
-  /// payee 有值时优先显示；否则降级到 categoryName。
-  /// transfer 类型无外部对手方，返回 null。
   String? get displayPayee {
     if (type == 'transfer') return null;
     if (payee != null && payee!.isNotEmpty) return payee;
@@ -134,7 +131,6 @@ class Transaction {
     groupId: j['group_id'] as int,
     isPrivate: j['is_private'] as bool? ?? false,
     note: j['note'] as String?,
-    // 兼容服务端新旧两种字段名：payee（新）/ merchant（旧 Bill 时代）
     payee: (j['payee'] ?? j['merchant']) as String?,
     transactionDate: (j['transaction_date'] as num).toDouble(),
     receiptUrl: j['receipt_url'] as String? ?? '',

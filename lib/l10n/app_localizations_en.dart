@@ -114,6 +114,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get date => 'Date';
 
   @override
+  String get payee => 'Payee';
+
+  @override
   String get note => 'Note';
 
   @override
@@ -1275,7 +1278,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get myLedger => 'My Ledger';
-
-  @override
-  String get payee => 'Payee';
 }

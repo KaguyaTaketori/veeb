@@ -114,6 +114,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get date => '日期';
 
   @override
+  String get payee => '收款方';
+
+  @override
   String get note => '备注';
 
   @override
@@ -1225,7 +1228,4 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get myLedger => '我的账本';
-
-  @override
-  String get payee => '收款方';
 }

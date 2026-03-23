@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
@@ -34,7 +35,9 @@ class ProfileScreen extends ConsumerWidget {
       return Scaffold(
         body: ListView(
           padding: const EdgeInsets.symmetric(
-              horizontal: VeeTokens.s24, vertical: VeeTokens.s32),
+            horizontal: VeeTokens.s24,
+            vertical: VeeTokens.s32,
+          ),
           children: [
             // 头像 + 用户名卡
             VeeSkeletonCard.card(),
@@ -43,11 +46,13 @@ class ProfileScreen extends ConsumerWidget {
             VeeSkeletonCard.card(),
             const SizedBox(height: VeeTokens.spacingLg),
             // 设置列表项 × 5
-            ...List.generate(5, (_) => Padding(
-              padding: const EdgeInsets.only(
-                  bottom: VeeTokens.spacingXs),
-              child: VeeSkeletonCard.list(),
-            )),
+            ...List.generate(
+              5,
+              (_) => Padding(
+                padding: const EdgeInsets.only(bottom: VeeTokens.spacingXs),
+                child: VeeSkeletonCard.list(),
+              ),
+            ),
           ],
         ),
       );
@@ -888,11 +893,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
               ),
               onPressed: _loading ? null : _unbind,
               child: _loading
-                  ? const SizedBox(
-                      width: VeeTokens.iconSm,
-                      height: VeeTokens.iconSm,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? VeeButtonSpinner.small(color: VeeTokens.error)
                   : Text(l10n.unbind),
             ),
           ] else ...[
@@ -970,14 +971,7 @@ class _TgBindSheetState extends ConsumerState<_TgBindSheet> {
                 child: FilledButton.icon(
                   onPressed: _loading ? null : _requestCode,
                   icon: _loading
-                      ? const SizedBox(
-                          width: VeeTokens.iconSm,
-                          height: VeeTokens.iconSm,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                      ? const VeeButtonSpinner.small()
                       : const Icon(Icons.link, size: VeeTokens.iconMd),
                   label: Text(l10n.applyBindCode),
                 ),

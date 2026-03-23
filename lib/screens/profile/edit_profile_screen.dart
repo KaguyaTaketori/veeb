@@ -1,6 +1,7 @@
 // lib/screens/profile/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/user.dart';
@@ -70,13 +71,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         actions: [
           // 保存按钮放在 AppBar actions，loading 时换成 indicator
           if (_loading)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.only(right: VeeTokens.s16),
-                child: SizedBox(
-                  width: VeeTokens.iconMd,
-                  height: VeeTokens.iconMd,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                padding: const EdgeInsets.only(right: VeeTokens.s16),
+                child: VeeButtonSpinner(
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             )

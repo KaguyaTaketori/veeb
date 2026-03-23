@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vee_app/widgets/transaction_item_row.dart';
-import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
+import 'package:vee_app/widgets/ui_core/vee_row.dart';
 import '../../constants/categories.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/transaction.dart';
@@ -17,6 +17,7 @@ import '../../providers/transactions_provider.dart';
 import '../../api/transactions_api.dart';
 import '../../services/ml_kit_ocr_service.dart';
 import '../../services/local_receipt_parser.dart';
+import '../../utils/currency.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
 import '../../widgets/ui_core/vee_card.dart';
@@ -30,7 +31,7 @@ import '../../widgets/ui_core/vee_amount_display.dart';
 class _OcrDraft {
   final double amount;
   final String currency;
-  final String? payee; // 交易对手方（原 merchant，Step 4 后由 LocalReceiptParser 填充）
+  final String? merchant;
   final String? category;
   final String? date;
   final String? description;
@@ -40,7 +41,7 @@ class _OcrDraft {
   const _OcrDraft({
     required this.amount,
     required this.currency,
-    this.payee,
+    this.merchant,
     this.category,
     this.date,
     this.description,
@@ -67,9 +68,7 @@ class _OcrDraft {
     return _OcrDraft(
       amount: (map['amount'] as num?)?.toDouble() ?? 0,
       currency: map['currency'] as String? ?? 'JPY',
-      // 兼容 LocalReceiptParser（当前返回 'merchant' key）
-      // 待 Step 4 完成后 LocalReceiptParser 改为返回 'payee' key，两者均可解析
-      payee: (map['payee'] ?? map['merchant']) as String?,
+      merchant: map['merchant'] as String?,
       category: map['category'] as String?,
       date: rawDate,
       description: map['description'] as String?,
@@ -384,6 +383,7 @@ class _PickerView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // 主扫描卡
           VeeCard(
             padding: const EdgeInsets.symmetric(
               vertical: VeeTokens.s64,
@@ -421,6 +421,7 @@ class _PickerView extends StatelessWidget {
           ),
           const SizedBox(height: VeeTokens.s40),
 
+          // 拍照按钮
           SizedBox(
             width: double.infinity,
             height: VeeTokens.touchStandard + VeeTokens.spacingXs,
@@ -432,6 +433,7 @@ class _PickerView extends StatelessWidget {
           ),
           const SizedBox(height: VeeTokens.spacingMd),
 
+          // 相册按钮
           SizedBox(
             width: double.infinity,
             height: VeeTokens.touchStandard + VeeTokens.spacingXs,
@@ -537,6 +539,7 @@ class _ConfirmView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: VeeTokens.spacingXs),
+                  // VeeAmountDisplay 替代手写双 Text 金额组合
                   VeeAmountDisplay(
                     amount: result.amount,
                     currency: result.currency,
@@ -550,18 +553,18 @@ class _ConfirmView extends StatelessWidget {
               VeeCard.list(
                 child: Column(
                   children: [
-                    VeeDetailRow(
-                      icon: Icons.storefront_outlined,
-                      label: '收款方', // Step 9 后改为 l10n.payee
-                      value: result.payee?.isNotEmpty == true
-                          ? result.payee!
+                    VeeRow.display(
+                      icon: Icons.store_outlined,
+                      label: l10n.account,
+                      value: result.merchant?.isNotEmpty == true
+                          ? result.merchant!
                           : l10n.notSet,
                     ),
                     const Divider(
                       height: 1,
                       indent: VeeTokens.dividerIndentStd,
                     ),
-                    VeeDetailRow(
+                    VeeRow.display(
                       icon: Icons.category_outlined,
                       label: l10n.category,
                       value: '$emoji ${result.category ?? l10n.category}',
@@ -570,7 +573,7 @@ class _ConfirmView extends StatelessWidget {
                       height: 1,
                       indent: VeeTokens.dividerIndentStd,
                     ),
-                    VeeDetailRow(
+                    VeeRow.display(
                       icon: Icons.calendar_today_outlined,
                       label: l10n.date,
                       value: result.date ?? '',
@@ -580,7 +583,7 @@ class _ConfirmView extends StatelessWidget {
                         height: 1,
                         indent: VeeTokens.dividerIndentStd,
                       ),
-                      VeeDetailRow(
+                      VeeRow.display(
                         icon: Icons.notes_outlined,
                         label: l10n.note,
                         value: result.description!,
@@ -607,6 +610,7 @@ class _ConfirmView extends StatelessWidget {
                   padding: VeeTokens.cardPadding,
                   child: Column(
                     children: result.items.map((item) {
+                      // Map → TransactionItem 轻量转换（无需 id）
                       final txItem = TransactionItem.fromJson(item);
                       return TransactionItemRow.fromModel(
                         txItem,

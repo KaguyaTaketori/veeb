@@ -35,6 +35,7 @@
   "category": "Category",
   "account": "Account",
   "date": "Date",
+  "payee": "Payee",
   "note": "Note",
   "description": "Description",
   "total": "Total",

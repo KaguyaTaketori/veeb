@@ -10,7 +10,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vee_app/widgets/ui_core/vee_detail_row.dart';
+import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
+import 'package:vee_app/widgets/ui_core/vee_row.dart';
 import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../api/admin_api.dart';
 import '../../l10n/app_localizations.dart';
@@ -126,7 +127,8 @@ class _StatsTabState extends ConsumerState<_StatsTab> {
             children: List.generate(
               8,
               (_) => SizedBox(
-                width: (MediaQuery.of(context).size.width -
+                width:
+                    (MediaQuery.of(context).size.width -
                         VeeTokens.s32 * 2 -
                         VeeTokens.s12) /
                     2,
@@ -231,19 +233,22 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-        spacing: VeeTokens.s12,
-        runSpacing: VeeTokens.s12,
-        children: items
-            .map((item) => SizedBox(
-                  width: (MediaQuery.of(context).size.width -
-                          VeeTokens.s32 * 2 -
-                          VeeTokens.s12) /
-                      2,
-                  height: 88,
-                  child: item,
-                ))
-            .toList(),
-      );
+      spacing: VeeTokens.s12,
+      runSpacing: VeeTokens.s12,
+      children: items
+          .map(
+            (item) => SizedBox(
+              width:
+                  (MediaQuery.of(context).size.width -
+                      VeeTokens.s32 * 2 -
+                      VeeTokens.s12) /
+                  2,
+              height: 88,
+              child: item,
+            ),
+          )
+          .toList(),
+    );
   }
 }
 
@@ -566,11 +571,16 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(
-                horizontal: VeeTokens.s16, vertical: VeeTokens.spacingXs),
-              children: List.generate(5, (_) => Padding(
-                padding: const EdgeInsets.only(bottom: VeeTokens.spacingXs),
-                child: VeeSkeletonCard.card(),
-              )),
+                horizontal: VeeTokens.s16,
+                vertical: VeeTokens.spacingXs,
+              ),
+              children: List.generate(
+                5,
+                (_) => Padding(
+                  padding: const EdgeInsets.only(bottom: VeeTokens.spacingXs),
+                  child: VeeSkeletonCard.card(),
+                ),
+              ),
             ),
           )
         else
@@ -808,13 +818,13 @@ class _UserCardState extends ConsumerState<_UserCard> {
             ],
           ),
           const SizedBox(height: VeeTokens.s10),
-          VeeDetailRow(
+          VeeRow.display(
             icon: Icons.location_on_outlined,
             label: 'Reg IP',
             value: u['registration_ip'] ?? '—',
           ),
           const SizedBox(height: VeeTokens.s2),
-          VeeDetailRow(
+          VeeRow.display(
             icon: Icons.history,
             label: 'Last IP',
             value: u['last_login_ip'] ?? '—',
@@ -1101,14 +1111,7 @@ class _PermissionsSheetState extends ConsumerState<_PermissionsSheet> {
                 child: FilledButton(
                   onPressed: _saving ? null : _save,
                   child: _saving
-                      ? const SizedBox(
-                          width: VeeTokens.iconMd,
-                          height: VeeTokens.iconMd,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                      ? const VeeButtonSpinner()
                       : Text(l10n.savePermission(_selected.length)),
                 ),
               ),

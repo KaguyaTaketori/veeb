@@ -273,7 +273,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       'group_id': groupId,
       'is_private': isPrivate,
       'note': note,
-      if (payee != null && payee.isNotEmpty) 'payee': payee, // ✅ 新增
+      if (payee != null && payee.isNotEmpty) 'payee': payee,
       'transaction_date': transactionDate,
       'receipt_url': receiptUrl ?? '',
       'items': items,
