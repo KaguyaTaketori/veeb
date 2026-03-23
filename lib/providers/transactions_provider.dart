@@ -61,6 +61,14 @@ class TransactionsState {
   );
 }
 
+// ── 哨兵：区分"调用方未传"和"调用方明确传 null（合计=无筛选）" ────────────────
+
+const _keepValue = _KeepValue();
+
+class _KeepValue {
+  const _KeepValue();
+}
+
 // ── Notifier ──────────────────────────────────────────────────────────────────
 
 class TransactionsNotifier extends Notifier<TransactionsState> {
@@ -75,30 +83,49 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
   bool get _isLoggedIn =>
       ref.read(authProvider).status == AuthStatus.authenticated;
 
-  // ── 加载 ──────────────────────────────────────────────────────────────────
+  // ── 加载
+  //
+  // typeFilter 使用 Object? 加哨兵，解决 Dart 中 null 不能区分
+  // "未传"和"明确传 null" 的问题：
+  //   - 不传（默认 _keepValue） → 保留上次的筛选（翻页、搜索场景）
+  //   - 传 null               → 清除筛选（合计 tab）
+  //   - 传 'expense'等        → 设置新筛选
+  //
+  // keyword 同理。
 
   Future<void> load(
     DateTime month, {
     bool refresh = false,
-    String? keyword,
-    String? typeFilter,
+    Object? keyword = _keepValue,
+    Object? typeFilter = _keepValue,
     int? accountId,
   }) async {
     final groupId = ref.read(currentGroupIdProvider);
     if (groupId == null) return;
 
+    final kw = identical(keyword, _keepValue)
+        ? state.keyword
+        : (keyword as String?) ?? '';
+
+    final String? type = identical(typeFilter, _keepValue)
+        ? state
+              .typeFilter // 未传 → 保留旧值
+        : typeFilter as String?; // 传 null = 合计，传字符串 = 筛选
+
     final page = refresh ? 1 : state.page;
-    final kw = keyword ?? state.keyword;
-    final type = typeFilter ?? state.typeFilter;
     final mySeq = ++_seq;
 
-    state = state.copyWith(
+    // 立即更新 loading 状态；保留合计数字以避免切换 tab 时闪烁归零
+    state = TransactionsState(
+      transactions: refresh ? [] : state.transactions,
       loading: true,
-      clearError: true,
+      hasNext: state.hasNext,
       page: page,
+      monthExpense: state.monthExpense,
+      monthIncome: state.monthIncome,
+      monthCount: state.monthCount,
       keyword: kw,
       typeFilter: type,
-      transactions: refresh ? [] : state.transactions,
     );
 
     try {
@@ -127,7 +154,9 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     }
   }
 
-  // ── 从 API 加载（已登录）─────────────────────────────────────────────────
+  // ── API 模式 ──────────────────────────────────────────────────────────────
+  //
+  // 有类型筛选时，并行拉整月汇总，使合计数字始终反映全月数据。
 
   Future<void> _loadFromApi(
     DateTime month, {
@@ -138,7 +167,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     required int? accountId,
     required int mySeq,
   }) async {
-    final data = await _api.listTransactions(
+    final listFuture = _api.listTransactions(
       groupId: groupId,
       page: page,
       year: month.year,
@@ -148,19 +177,49 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       accountId: accountId,
     );
 
+    // 有筛选时并行拉整月汇总
+    final summaryFuture = typeFilter != null
+        ? _api
+              .getMonthlySummary(
+                groupId: groupId,
+                year: month.year,
+                month: month.month,
+              )
+              .then<models.MonthlyStat?>((s) => s)
+              .catchError((_) => null as models.MonthlyStat?)
+        : Future<models.MonthlyStat?>.value(null);
+
+    final data = await listFuture;
     if (mySeq != _seq) return;
 
     final fetched = (data['transactions'] as List)
         .map((e) => models.Transaction.fromJson(e as Map<String, dynamic>))
         .toList();
-    final merged = state.transactions.isEmpty || page == 1
+    final merged = (state.transactions.isEmpty || page == 1)
         ? fetched
         : [...state.transactions, ...fetched];
+    final hasNext = data['has_next'] as bool? ?? false;
 
-    _updateStateFromList(merged, data['has_next'] as bool? ?? false);
+    final summary = await summaryFuture;
+    if (mySeq != _seq) return;
+
+    if (summary != null) {
+      state = state.copyWith(
+        transactions: merged,
+        hasNext: hasNext,
+        monthExpense: summary.totalExpense,
+        monthIncome: summary.totalIncome,
+        monthCount: summary.count,
+        loading: false,
+      );
+    } else {
+      _updateStateFromList(merged, hasNext);
+    }
   }
 
-  // ── 从本地 DB 加载（Guest 模式）──────────────────────────────────────────
+  // ── 本地 DB 模式（Guest）──────────────────────────────────────────────────
+  //
+  // 先对全月流水计算合计（筛选前），再对展示列表应用筛选。
 
   Future<void> _loadFromLocal(
     DateTime month, {
@@ -178,28 +237,46 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     final cats = await _db.categoryDao.getAvailable(groupId);
     final catMap = {for (final c in cats) c.id: c};
 
-    var txns = rawList
+    final allTxns = rawList
         .map((row) => _driftRowToTransaction(row, catMap: catMap))
         .toList();
 
+    // 合计：全月数据（筛选前）
+    final expense = allTxns
+        .where((t) => t.type == 'expense')
+        .fold(0.0, (s, t) => s + t.amount);
+    final income = allTxns
+        .where((t) => t.type == 'income')
+        .fold(0.0, (s, t) => s + t.amount);
+    final count = allTxns.length;
+
+    // 展示列表：应用筛选
+    var display = allTxns;
     if (keyword.isNotEmpty) {
       final kw = keyword.toLowerCase();
-      txns = txns
+      display = display
           .where(
             (t) =>
                 (t.note?.toLowerCase().contains(kw) ?? false) ||
                 (t.categoryName?.toLowerCase().contains(kw) ?? false) ||
-                (t.payee?.toLowerCase().contains(kw) ??
-                    false), // ✅ 支持按 payee 搜索
+                (t.payee?.toLowerCase().contains(kw) ?? false),
           )
           .toList();
     }
-
     if (typeFilter != null) {
-      txns = txns.where((t) => t.type == typeFilter).toList();
+      display = display.where((t) => t.type == typeFilter).toList();
     }
 
-    _updateStateFromList(txns, false);
+    if (mySeq != _seq) return;
+
+    state = state.copyWith(
+      transactions: display,
+      hasNext: false,
+      monthExpense: expense,
+      monthIncome: income,
+      monthCount: count,
+      loading: false,
+    );
   }
 
   void _updateStateFromList(List<models.Transaction> txns, bool hasNext) {
@@ -220,30 +297,31 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     );
   }
 
-  // ── 分页 ──────────────────────────────────────────────────────────────────
+  // ── 翻页：不传 typeFilter/keyword → 哨兵保留旧值 ──────────────────────────
 
   Future<void> loadMore(DateTime month) async {
     if (!state.hasNext || state.loading || !_isLoggedIn) return;
     state = state.copyWith(page: state.page + 1);
-    await load(month);
+    await load(month); // 不传 typeFilter → 哨兵 → 保留旧值
   }
+
+  // ── 搜索：保留当前类型筛选 ────────────────────────────────────────────────
 
   Future<void> search(DateTime month, String keyword) =>
       load(month, refresh: true, keyword: keyword);
+  // typeFilter 不传 → 哨兵 → 保留旧值
 
   // ── 图片上传 ─────────────────────────────────────────────────────────────
 
   Future<String?> uploadReceipt({
-    required Uint8List fileBytes,
+    required List<int> fileBytes,
     required String filename,
     required String mimeType,
-  }) async {
-    return await _api.uploadReceipt(
-      fileBytes: fileBytes,
-      filename: filename,
-      mimeType: mimeType,
-    );
-  }
+  }) => _api.uploadReceipt(
+    fileBytes: fileBytes,
+    filename: filename,
+    mimeType: mimeType,
+  );
 
   // ── 写操作 ────────────────────────────────────────────────────────────────
 
@@ -388,7 +466,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
     }
   }
 
-  // ── WS 实时更新 ─────────────────────────────────────────────────────────
+  // ── WS 实时更新 ──────────────────────────────────────────────────────────
 
   void insertFromWs(Map<String, dynamic> data) {
     try {
@@ -478,7 +556,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       groupId: row.groupId,
       isPrivate: row.isPrivate,
       note: row.note,
-      payee: row.payee, // ✅ 新增
+      payee: row.payee,
       transactionDate: row.transactionDate.toDouble(),
       createdAt: row.createdAt.toDouble(),
       updatedAt: row.updatedAt.toDouble(),
@@ -515,7 +593,7 @@ class TransactionsNotifier extends Notifier<TransactionsState> {
       groupId: groupId,
       isPrivate: Value(data['is_private'] as bool? ?? false),
       note: Value(data['note'] as String?),
-      payee: Value(data['payee'] as String?), // ✅ 新增
+      payee: Value(data['payee'] as String?),
       transactionDate: transactionDate,
       createdAt: now,
       updatedAt: now,

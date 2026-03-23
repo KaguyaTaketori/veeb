@@ -1,10 +1,4 @@
 // lib/database/app_database.dart
-//
-// Drift 数据库主类，包含：
-//   - 所有表的注册
-//   - 版本迁移逻辑（schemaVersion = 8）
-//   - 系统预设分类的初始化
-
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -89,16 +83,20 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(statements);
         await m.createTable(scheduledBills);
         await _seedSystemCategories();
-
-        // v007 同步修复：Groups.inviteCode 改为 nullable
-        // 已在表定义中处理，新安装用户自动获得正确定义
-        // 旧用户升级时 'local' 值保留（不影响功能）
       }
 
       if (from < 8) {
         // v008: Transactions 新增 payee 字段
         // 记录交易对手方：expense=商家名，income=收款来源，transfer=null
-        await m.addColumn(transactions, transactions.payee);
+        //
+        // ⚠️ 用 try-catch 防止重复执行：
+        // 若上次迁移在添加列后崩溃（schema version 未写入），
+        // 下次启动仍会进入此分支，直接 ADD COLUMN 会报 "duplicate column" 错误。
+        try {
+          await m.addColumn(transactions, transactions.payee);
+        } catch (_) {
+          // payee 列已存在，忽略即可
+        }
       }
     },
     beforeOpen: (details) async {
@@ -107,28 +105,24 @@ class AppDatabase extends _$AppDatabase {
 
       // ── 关键业务索引（幂等，可跨版本安全执行）────────────────────────
 
-      // 最高频查询：按月份加载流水列表
       await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_txn_group_date
             ON transactions(group_id, transaction_date DESC)
             WHERE is_deleted = 0
           ''');
 
-      // 账户维度查询（账户详情页）
       await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_txn_account_date
             ON transactions(account_id, transaction_date DESC)
             WHERE is_deleted = 0
           ''');
 
-      // 同步待推送查询（避免全表扫描）
       await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_txn_sync_status
             ON transactions(sync_status)
             WHERE sync_status != 'synced'
           ''');
 
-      // remote_id 唯一约束索引（pull 时 insertOnConflictUpdate 依赖）
       await customStatement('''
             CREATE UNIQUE INDEX IF NOT EXISTS idx_txn_remote_id
             ON transactions(remote_id)
@@ -141,13 +135,11 @@ class AppDatabase extends _$AppDatabase {
             WHERE remote_id IS NOT NULL
           ''');
 
-      // 明细行查询
       await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_txn_items_txn
             ON transaction_items(transaction_id, sort_order)
           ''');
 
-      // 待执行定期账单查询
       await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_scheduled_due
             ON scheduled_bills(is_active, next_due_date)
@@ -231,7 +223,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> markAllLocalAsPending() async {
-    // ✅ transaction() 包裹保证原子性，任一步骤失败则整体回滚
     await transaction(() async {
       await batch((b) {
         b.update(
