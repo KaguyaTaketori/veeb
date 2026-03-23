@@ -106,6 +106,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     final state = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
+    ref.listen<int?>(currentGroupIdProvider, (previous, next) {
+      if (previous == null && next != null) {
+        _load(refresh: true);
+      }
+    });
+
     if (groupId == null && !ref.watch(groupProvider).loading) {
       return _NoGroupPlaceholder(
         onCreateGroup: () => ref.read(groupProvider.notifier).createDefault(),
