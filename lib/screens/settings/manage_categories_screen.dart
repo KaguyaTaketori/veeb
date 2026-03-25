@@ -1,12 +1,19 @@
+// lib/screens/settings/manage_categories_screen.dart
+//
+// 变更说明（引入 skeletonizer）：
+//   - loading 回调不再维护一套平行的假布局（VeeSkeletonCard.card / .stat）
+//   - 改为 Skeletonizer(enabled: true) 包裹真实 Widget + 占位数据
+//   - 骨架效果自动从真实 Widget 树生成，结构永远与真实 UI 同步
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:vee_app/exceptions/app_exception.dart';
 import 'package:vee_app/utils/vee_colors.dart';
 import 'package:vee_app/widgets/ui_core/vee_button_spinner.dart';
 import 'package:vee_app/widgets/ui_core/vee_category_grid.dart';
 import 'package:vee_app/widgets/ui_core/vee_selection_grid.dart';
-import 'package:vee_app/widgets/ui_core/vee_skeleton_card.dart';
 import '../../database/app_database.dart' hide Category;
 import '../../models/transaction.dart';
 import '../../providers/categories_provider.dart';
@@ -20,6 +27,30 @@ import '../../widgets/ui_core/vee_empty_state.dart';
 import '../../widgets/ui_core/vee_confirm_dialog.dart';
 import '../../widgets/ui_core/vee_error_banner.dart';
 
+// ── 骨架占位数据 ──────────────────────────────────────────────────────────────
+// Skeletonizer 会自动对这些 Widget 应用闪烁效果；
+// 文字内容会被矩形替代，emoji 会被圆圈替代。
+// 不再需要手动创建"假"卡片布局。
+
+const _kFakeCategoryName = 'BonePlaceholder';
+
+List<Category> _fakeCategoryList(int count, String type) => List.generate(
+  count,
+  (i) => Category(
+    id: -(i + 1),
+    name: _kFakeCategoryName,
+    icon: '📦',
+    color: '#95A5A6',
+    type: type,
+    isSystem: true,
+    sortOrder: i,
+  ),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ManageCategoriesScreen
+// ─────────────────────────────────────────────────────────────────────────────
+
 class ManageCategoriesScreen extends ConsumerWidget {
   const ManageCategoriesScreen({super.key});
 
@@ -31,60 +62,37 @@ class ManageCategoriesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('管理分类'), centerTitle: true),
       body: catsAsync.when(
-        loading: () => ListView(
-          padding: VeeTokens.cardPadding,
-          children: [
-            // 系统分类区块
-            VeeSkeletonCard.card(),
-            const SizedBox(height: VeeTokens.spacingXs),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: VeeTokens.s12,
-              crossAxisSpacing: VeeTokens.s12,
-              childAspectRatio: 0.9,
-              children: List.generate(8, (_) => VeeSkeletonCard.stat()),
-            ),
-            const SizedBox(height: VeeTokens.spacingLg),
-            // 自定义分类区块
-            VeeSkeletonCard.card(),
-          ],
+        // ── loading：Skeletonizer 包裹真实布局 + 占位数据 ──────────────────
+        // 替代原来的 VeeSkeletonCard.card() + GridView(VeeSkeletonCard.stat())
+        // 骨架结构与真实 UI 完全一致，不会出现"假卡和真卡布局不一样"的问题
+        loading: () => Skeletonizer(
+          enabled: true,
+          containersColor: VeeTokens.surfaceSunken,
+          child: _buildBody(
+            context: context,
+            systemCats: _fakeCategoryList(8, 'expense'),
+            customCats: _fakeCategoryList(3, 'expense'),
+            ref: ref,
+            canInteract: false,
+          ),
         ),
+
         error: (e, _) => VeeEmptyState(
           icon: Icons.error_outline,
           title: e.toString(),
           iconColor: VeeTokens.error,
         ),
+
         data: (cats) {
           final system = cats.where((c) => c.isSystem).toList();
           final custom = cats.where((c) => !c.isSystem).toList();
-          return ListView(
-            padding: VeeTokens.cardPadding,
-            children: [
-              _SectionHeader('系统分类', system.length),
-              const SizedBox(height: VeeTokens.spacingXs),
-              VeeCategoryGrid(categories: system, canDelete: false),
-              const SizedBox(height: VeeTokens.spacingLg),
-              _SectionHeader('自定义分类', custom.length),
-              const SizedBox(height: VeeTokens.spacingXs),
-              if (custom.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(VeeTokens.s24),
-                  child: Center(
-                    child: Text(
-                      '暂无自定义分类',
-                      style: TextStyle(color: VeeTokens.textPlaceholderVal),
-                    ),
-                  ),
-                )
-              else
-                VeeCategoryGrid(
-                  categories: custom,
-                  canDelete: true,
-                  onDelete: (cat) => _confirmDeleteCategory(context, ref, cat),
-                ),
-            ],
+          return _buildBody(
+            context: context,
+            systemCats: system,
+            customCats: custom,
+            ref: ref,
+            canInteract: true,
+            groupId: groupId,
           );
         },
       ),
@@ -92,16 +100,62 @@ class ManageCategoriesScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VeeTokens.rLg),
         ),
-        onPressed: () => _showAddSheet(context, ref, groupId),
+        onPressed: groupId != null
+            ? () => _showAddSheet(context, ref, groupId)
+            : null,
         child: const Icon(Icons.add),
       ),
     );
   }
 
+  // ── 主体布局（loading 和 data 共用）────────────────────────────────────────
+
+  Widget _buildBody({
+    required BuildContext context,
+    required List<Category> systemCats,
+    required List<Category> customCats,
+    required WidgetRef ref,
+    required bool canInteract,
+    int? groupId,
+  }) {
+    return ListView(
+      padding: VeeTokens.cardPadding,
+      children: [
+        _SectionHeader('系统分类', systemCats.length),
+        const SizedBox(height: VeeTokens.spacingXs),
+        VeeCategoryGrid(categories: systemCats, canDelete: false),
+        const SizedBox(height: VeeTokens.spacingLg),
+        _SectionHeader('自定义分类', customCats.length),
+        const SizedBox(height: VeeTokens.spacingXs),
+        if (customCats.isEmpty && canInteract)
+          Padding(
+            padding: const EdgeInsets.all(VeeTokens.s24),
+            child: Center(
+              child: Text(
+                '暂无自定义分类',
+                style: TextStyle(color: VeeTokens.textPlaceholderVal),
+              ),
+            ),
+          )
+        else
+          VeeCategoryGrid(
+            categories: customCats,
+            canDelete: canInteract,
+            onDelete: canInteract && groupId != null
+                ? (cat) => _confirmDeleteCategory(context, ref, cat, groupId)
+                : null,
+          ),
+      ],
+    );
+  }
+
+  // ── 删除确认（与原版相同）──────────────────────────────────────────────────
+
   Future<void> _confirmDeleteCategory(
     BuildContext context,
     WidgetRef ref,
     Category cat,
+    int groupId,
   ) async {
     final ok = await VeeConfirmDialog.showDelete(
       context: context,
@@ -112,7 +166,6 @@ class ManageCategoriesScreen extends ConsumerWidget {
     final isLoggedIn =
         ref.read(authProvider).status == AuthStatus.authenticated;
     final db = ref.read(appDatabaseProvider);
-    final groupId = ref.read(currentGroupIdProvider);
 
     if (isLoggedIn && cat.id != 0) {
       try {
@@ -123,12 +176,10 @@ class ManageCategoriesScreen extends ConsumerWidget {
     }
 
     await (db.delete(db.categories)..where((c) => c.id.equals(cat.id))).go();
-
     ref.invalidate(categoriesProvider(groupId));
   }
 
-  void _showAddSheet(BuildContext context, WidgetRef ref, int? groupId) {
-    if (groupId == null) return;
+  void _showAddSheet(BuildContext context, WidgetRef ref, int groupId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -174,7 +225,7 @@ class _SectionHeader extends StatelessWidget {
   );
 }
 
-// ── 添加分类表单 ──────────────────────────────────────────────────────────────
+// ── 添加分类 Sheet（与原版相同）──────────────────────────────────────────────
 
 class _AddCategorySheet extends ConsumerStatefulWidget {
   final int groupId;
@@ -192,7 +243,6 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
   bool _saving = false;
   String? _error;
 
-  // 迁移 #2：常量列表保留（作为数据源），渲染逻辑移入组件
   static const _emojis = [
     '🍜',
     '🍕',
@@ -321,14 +371,12 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
 
             if (_error != null) VeeErrorBanner(message: _error!),
 
-            // 名称
             TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: '分类名称'),
             ),
             const SizedBox(height: VeeTokens.spacingMd),
 
-            // 收支类型
             Text(
               '类型',
               style: context.veeText.caption.copyWith(
@@ -347,7 +395,6 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
             ),
             const SizedBox(height: VeeTokens.spacingMd),
 
-            // ── emoji 选择器（迁移 #2：Wrap × 24 → VeeEmojiGrid）────────────
             Text(
               '图标',
               style: context.veeText.caption.copyWith(
@@ -359,11 +406,10 @@ class _AddCategorySheetState extends ConsumerState<_AddCategorySheet> {
               emojis: _emojis,
               selectedEmoji: _icon,
               onSelected: (e) => setState(() => _icon = e),
-              crossAxisCount: 6, // 与原 Wrap 列数保持视觉一致
+              crossAxisCount: 6,
             ),
             const SizedBox(height: VeeTokens.spacingMd),
 
-            // ── 颜色选择器（迁移 #2：Wrap × 12 → VeeColorGrid）──────────────
             Text(
               '颜色',
               style: context.veeText.caption.copyWith(

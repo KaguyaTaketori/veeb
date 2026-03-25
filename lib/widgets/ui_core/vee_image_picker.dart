@@ -1,34 +1,17 @@
-// lib/widgets/ui_core/vee_image_picker.dart
-//
-// 变更说明（Layer 3 升级）：
-//   - VeeImagePicker._buildEmpty：
-//     原来使用 Container(decoration: BoxDecoration(border: Border.all(...)))，
-//     实线边框在视觉上与其他表单卡片没有区别，无法传达"这是一个可上传的占位区"。
-//     现在改用已定义在本文件底部的 VeeDashedBorder 包裹，虚线边框更直观地
-//     表达"这里可以放东西进来"的 drop-zone 语义。
-//   - VeeDashedBorder 及其 _DashedBorderPainter 代码完全不变。
-//   - 其余功能、接口与原版完全一致。
-
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
 
 class VeeImagePicker extends StatelessWidget {
-  // ── 状态入参 ──────────────────────────────────────────────────────────────
-
   final File? pendingFile;
   final String? remoteUrl;
   final bool uploading;
-
-  // ── 事件回调 ──────────────────────────────────────────────────────────────
-
   final VoidCallback? onCamera;
   final VoidCallback? onGallery;
   final VoidCallback? onRemove;
-
-  // ── 外观配置 ──────────────────────────────────────────────────────────────
-
   final double previewHeight;
   final double emptyHeight;
   final String? cameraLabel;
@@ -69,57 +52,59 @@ class VeeImagePicker extends StatelessWidget {
     return _buildEmpty(context);
   }
 
-  // ── State A: 空占位（Layer 3 升级：实线边框 → VeeDashedBorder）──────────
-  //
-  // 虚线边框在 UI 设计中是"拖拽放置区 / 可上传占位区"的通用语义，
-  // 比实线边框更清晰地告诉用户"这里可以添加图片"。
-  // VeeDashedBorder 已在本文件底部定义，无需额外 import。
+  // ── State A: 空占位 ─────────────────────────────────────────────────────
+  // dotted_border 替代自定义 VeeDashedBorder + _DashedBorderPainter
 
   Widget _buildEmpty(BuildContext context) {
-    return VeeDashedBorder(
-      color: VeeTokens.borderColor,
-      radius: VeeTokens.rLg,
-      strokeWidth: 1.8,
-      dashLength: 8.0,
-      dashGap: 4.0,
-      child: Container(
-        height: emptyHeight,
-        decoration: BoxDecoration(
-          // 去掉 border，由 VeeDashedBorder 统一绘制
-          borderRadius: BorderRadius.circular(VeeTokens.rLg),
+    return DottedBorder(
+      options: RoundedRectDottedBorderOptions(
+        color: VeeTokens.borderColor,
+        strokeWidth: 1.8,
+        dashPattern: const [8, 4],
+        radius: const Radius.circular(VeeTokens.rLg),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(VeeTokens.rLg),
+        child: Container(
+          height: emptyHeight,
+          width: double.infinity,
           color: Theme.of(context).colorScheme.surface,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (onCamera != null)
-              _PickButton(
-                icon: Icons.camera_alt_outlined,
-                label: cameraLabel ?? '拍照',
-                onTap: onCamera!,
-              ),
-            if (onCamera != null && onGallery != null)
-              const SizedBox(width: VeeTokens.s48),
-            if (onGallery != null)
-              _PickButton(
-                icon: Icons.photo_library_outlined,
-                label: galleryLabel ?? '相册',
-                onTap: onGallery!,
-              ),
-            if (onCamera == null && onGallery == null)
-              Text(
-                '暂无图片',
-                style: context.veeText.caption.copyWith(
-                  color: VeeTokens.textPlaceholderVal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (onCamera != null)
+                _PickButton(
+                  icon: Icons.camera_alt_outlined,
+                  label: cameraLabel ?? '拍照',
+                  onTap: onCamera!,
                 ),
-              ),
-          ],
+              if (onCamera != null && onGallery != null)
+                const SizedBox(width: VeeTokens.s48),
+              if (onGallery != null)
+                _PickButton(
+                  icon: Icons.photo_library_outlined,
+                  label: galleryLabel ?? '相册',
+                  onTap: onGallery!,
+                ),
+              if (onCamera == null && onGallery == null)
+                Text(
+                  '暂无图片',
+                  style: context.veeText.caption.copyWith(
+                    color: VeeTokens.textPlaceholderVal,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── State B/C: 图片预览（与原版完全相同）─────────────────────────────────
+  // ── State B/C: 图片预览 ──────────────────────────────────────────────────
+  // CachedNetworkImage 替代 Image.network：
+  //   - 自动缓存到磁盘，重复查看不重新下载
+  //   - 内置 placeholder（骨架占位）和 errorWidget
+  //   - 与 Image.network 接口完全兼容，切换零迁移成本
 
   Widget _buildPreview(BuildContext context) {
     return Stack(
@@ -133,13 +118,22 @@ class VeeImagePicker extends StatelessWidget {
                   width: double.infinity,
                   fit: BoxFit.cover,
                 )
-              : Image.network(
-                  remoteUrl!,
+              : CachedNetworkImage(
+                  imageUrl: remoteUrl!,
                   height: previewHeight,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  placeholder: (_, __) => Container(
                     height: previewHeight,
+                    width: double.infinity,
+                    color: VeeTokens.surfaceSunken,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    height: previewHeight,
+                    width: double.infinity,
                     color: VeeTokens.surfaceSunken,
                     child: const Center(
                       child: Icon(
@@ -185,7 +179,7 @@ class VeeImagePicker extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _PickButton（与原版完全相同）
+// _PickButton（与原版相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PickButton extends StatelessWidget {
@@ -232,92 +226,4 @@ class _PickButton extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VeeDashedBorder（与原版完全相同，现在被 _buildEmpty 实际使用）
-// ─────────────────────────────────────────────────────────────────────────────
-
-class VeeDashedBorder extends StatelessWidget {
-  final Widget child;
-  final Color color;
-  final double radius;
-  final double strokeWidth;
-  final double dashLength;
-  final double dashGap;
-
-  const VeeDashedBorder({
-    super.key,
-    required this.child,
-    this.color = VeeTokens.borderColor,
-    this.radius = VeeTokens.rLg,
-    this.strokeWidth = 1.0,
-    this.dashLength = 6.0,
-    this.dashGap = 4.0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(
-        color: color,
-        radius: radius,
-        strokeWidth: strokeWidth,
-        dashLength: dashLength,
-        dashGap: dashGap,
-      ),
-      child: child,
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double radius;
-  final double strokeWidth;
-  final double dashLength;
-  final double dashGap;
-
-  const _DashedBorderPainter({
-    required this.color,
-    required this.radius,
-    required this.strokeWidth,
-    required this.dashLength,
-    required this.dashGap,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        strokeWidth / 2,
-        strokeWidth / 2,
-        size.width - strokeWidth,
-        size.height - strokeWidth,
-      ),
-      Radius.circular(radius),
-    );
-
-    final path = Path()..addRRect(rrect);
-    final metrics = path.computeMetrics().first;
-    double dist = 0;
-
-    while (dist < metrics.length) {
-      final extract = metrics.extractPath(
-        dist,
-        (dist + dashLength).clamp(0, metrics.length),
-      );
-      canvas.drawPath(extract, paint);
-      dist += dashLength + dashGap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedBorderPainter old) =>
-      old.color != color || old.radius != radius;
 }

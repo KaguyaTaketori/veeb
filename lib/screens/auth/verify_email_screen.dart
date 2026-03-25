@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pinput/pinput.dart';
 import '../../api/auth_api.dart';
 import '../../exceptions/app_exception.dart';
 import '../../l10n/app_localizations.dart';
@@ -62,8 +63,6 @@ class VerifyEmailScreen extends HookConsumerWidget {
           refreshToken: data['refresh_token'] as String,
         );
         await ref.read(authProvider.notifier).refreshProfile();
-        // refreshProfile 後に authProvider が authenticated になると
-        // router の redirect が自動的に /transactions へ飛ばす
       } on AppException catch (e) {
         error.value = e.message;
       } catch (_) {
@@ -91,6 +90,46 @@ class VerifyEmailScreen extends HookConsumerWidget {
         resending.value = false;
       }
     }
+
+    // ── Pinput 三态样式 ─────────────────────────────────────────────────────
+
+    final defaultTheme = PinTheme(
+      width: 48,
+      height: 56,
+      textStyle: context.veeText.sectionTitle,
+      decoration: BoxDecoration(
+        border: Border.all(color: VeeTokens.borderColor),
+        borderRadius: BorderRadius.circular(VeeTokens.rMd),
+        color: Theme.of(context).colorScheme.surface,
+      ),
+    );
+
+    final focusedTheme = defaultTheme.copyWith(
+      textStyle: context.veeText.sectionTitle.copyWith(
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      decoration: defaultTheme.decoration!.copyWith(
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary,
+          width: 1.5,
+        ),
+        color: VeeTokens.selectedTint(Theme.of(context).colorScheme.primary),
+      ),
+    );
+
+    final submittedTheme = defaultTheme.copyWith(
+      decoration: defaultTheme.decoration!.copyWith(
+        color: VeeTokens.surfaceSunken,
+        border: Border.all(color: VeeTokens.borderColor),
+      ),
+    );
+
+    final errorTheme = defaultTheme.copyWith(
+      decoration: defaultTheme.decoration!.copyWith(
+        border: Border.all(color: VeeTokens.error, width: 1.5),
+        color: VeeTokens.errorSurface,
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.verifyEmailTitle), centerTitle: true),
@@ -127,29 +166,27 @@ class VerifyEmailScreen extends HookConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: VeeTokens.s32),
+
                 if (error.value != null) VeeErrorBanner(message: error.value!),
-                TextFormField(
-                  controller: codeCtrl,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: context.veeText.monoCode,
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '------',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade300,
-                      fontSize: 28,
-                      letterSpacing: 12,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: VeeTokens.spacingLg,
-                    ),
+
+                // ── Pinput 替代 TextFormField ─────────────────────────────
+                // 每格独立高亮；输满 6 位自动调用 verify()；
+                // 删除了 hintText:'------' / letterSpacing:12 等视觉 hack
+                Center(
+                  child: Pinput(
+                    length: 6,
+                    controller: codeCtrl,
+                    autofocus: true,
+                    defaultPinTheme: defaultTheme,
+                    focusedPinTheme: focusedTheme,
+                    submittedPinTheme: submittedTheme,
+                    errorPinTheme: errorTheme,
+                    hapticFeedbackType: HapticFeedbackType.lightImpact,
+                    onCompleted: (_) => verify(),
+                    errorText: null,
                   ),
-                  onChanged: (v) {
-                    if (v.length == 6) verify();
-                  },
                 ),
+
                 const SizedBox(height: VeeTokens.s24),
                 VeeSubmitButton(
                   label: l10n.verifyAndActivate,

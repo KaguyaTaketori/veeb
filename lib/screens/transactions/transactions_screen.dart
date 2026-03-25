@@ -1,9 +1,10 @@
-// lib/screens/transactions/transactions_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../../l10n/app_localizations.dart';
 import '../../mixin/month_selector_mixin.dart';
 import '../../models/transaction.dart';
@@ -18,8 +19,32 @@ import '../../widgets/ui_core/vee_month_selector.dart';
 import '../../widgets/ui_core/vee_amount_display.dart';
 import '../../widgets/ui_core/vee_tokens.dart';
 import '../../widgets/ui_core/vee_text_styles.dart';
-import 'add_edit_transaction_screen.dart';
 import 'new_transaction_sheet.dart';
+
+// ── 骨架占位数据 ──────────────────────────────────────────────────────────────
+
+final _fakeTxn = Transaction(
+  id: 0,
+  type: 'expense',
+  amount: 1280,
+  currencyCode: 'JPY',
+  baseAmount: 1280,
+  accountId: 0,
+  categoryId: 0,
+  userId: 0,
+  groupId: 0,
+  transactionDate: 0,
+  createdAt: 0,
+  updatedAt: 0,
+  categoryName: '餐饮消费',
+  categoryIcon: '🍜',
+  categoryColor: '#E85D30',
+  payee: '商家名称',
+);
+
+final _fakeTxns = List.generate(7, (i) => _fakeTxn.copyWith(id: i));
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -34,34 +59,41 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   bool _showSearch = false;
   String? _typeFilter;
 
+  late final PagingController<int, Transaction> _pagingController;
+
   static const _filterValues = <String?>[null, 'expense', 'income', 'transfer'];
 
   @override
   void initState() {
     super.initState();
     selectedMonth = DateTime.now();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load(refresh: true));
+    _pagingController = PagingController<int, Transaction>(firstPageKey: 1);
+    _pagingController.addPageRequestListener(_onPageRequested);
   }
 
   @override
   void dispose() {
+    _pagingController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  void onMonthChanged() => _load(refresh: true);
-
-  void _load({bool refresh = false}) {
-    ref
-        .read(transactionsProvider.notifier)
-        .load(
-          selectedMonth,
-          refresh: refresh,
-          keyword: _searchCtrl.text.trim(),
-          typeFilter: _typeFilter,
-        );
+  Future<void> _onPageRequested(int pageKey) async {
+    final notifier = ref.read(transactionsProvider.notifier);
+    if (pageKey == 1) {
+      notifier.load(
+        selectedMonth,
+        refresh: true,
+        keyword: _searchCtrl.text.trim(),
+        typeFilter: _typeFilter,
+      );
+    } else {
+      notifier.loadMore(selectedMonth);
+    }
   }
+
+  @override
+  void onMonthChanged() => _refresh();
 
   void _onMonthSelected(DateTime picked) {
     if (picked.year == selectedMonth.year &&
@@ -72,12 +104,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     onMonthChanged();
   }
 
+  void _refresh() {
+    _pagingController.refresh();
+  }
+
   void _toggleSearch() {
     setState(() {
       _showSearch = !_showSearch;
       if (!_showSearch) {
         _searchCtrl.clear();
-        _load(refresh: true);
+        _refresh();
       }
     });
   }
@@ -87,7 +123,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       context,
       selectedMonth: selectedMonth,
     );
-    if (saved == true) _load(refresh: true);
+    if (saved == true) _refresh();
   }
 
   Future<void> _openTransactionDetail(Transaction txn) async {
@@ -95,19 +131,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       '/transaction-detail',
       extra: {'transaction': txn, 'isReadOnly': true},
     );
-    if (updated == true) _load(refresh: true);
+    if (updated == true) _refresh();
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final state = ref.watch(transactionsProvider);
+    final summaryState = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
+    ref.listen<TransactionsState>(transactionsProvider, (_, next) {
+      if (next.loading) return;
+
+      _pagingController.value = PagingState(
+        nextPageKey: next.hasNext ? next.page + 1 : null,
+        itemList: next.transactions,
+        error: next.error != null ? Exception(next.error) : null,
+      );
+    });
+
+    // ── 监听 groupId 变化，group 就绪时触发首次加载 ────────────────────
     ref.listen<int?>(currentGroupIdProvider, (previous, next) {
-      if (previous == null && next != null) {
-        _load(refresh: true);
-      }
+      if (previous == null && next != null) _refresh();
     });
 
     if (groupId == null && !ref.watch(groupProvider).loading) {
@@ -120,49 +167,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       appBar: _buildAppBar(context, l10n),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: VeeTokens.maxContentWidth,
-          ),
+          constraints: const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
           child: Column(
             children: [
-              if (!_showSearch) _buildSummaryCard(context, state, l10n),
+              _buildSummaryCard(context, summaryState, l10n),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  VeeTokens.s16,
-                  0,
-                  VeeTokens.s16,
-                  VeeTokens.s8,
+                  VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s8,
                 ),
                 child: VeeChipGroup<String?>(
                   items: _filterValues,
                   labelBuilder: (v) => switch (v) {
-                    'expense' => l10n.expense,
-                    'income' => l10n.income,
+                    'expense'  => l10n.expense,
+                    'income'   => l10n.income,
                     'transfer' => l10n.transfer,
-                    _ => l10n.total,
+                    _          => l10n.total,
                   },
                   selected: _typeFilter,
                   onChanged: (v) {
                     setState(() => _typeFilter = v);
-                    _load(refresh: true);
+                    _refresh();
                   },
                 ),
               ),
-              Expanded(
-                child: state.error != null
-                    ? _buildError(context, state.error!, l10n)
-                    : RefreshIndicator(
-                        onRefresh: () async => _load(refresh: true),
-                        child: state.transactions.isEmpty && !state.loading
-                            ? VeeEmptyState(
-                                icon: Icons.receipt_long_outlined,
-                                title: l10n.noTransactions,
-                              )
-                            : _buildList(context, state, l10n),
-                      ),
-              ),
-              if (state.loading && state.transactions.isEmpty)
-                const LinearProgressIndicator(),
+              Expanded(child: _buildPagedList(context, l10n)),
             ],
           ),
         ),
@@ -174,6 +202,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       ),
     );
   }
+
+  // ── AppBar ────────────────────────────────────────────────────────────────
 
   AppBar _buildAppBar(BuildContext context, AppLocalizations l10n) {
     return AppBar(
@@ -189,9 +219,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   onPressed: _toggleSearch,
                 ),
               ),
-              onChanged: (v) => ref
-                  .read(transactionsProvider.notifier)
-                  .search(selectedMonth, v.trim()),
+              onChanged: (v) {
+                // 搜索词变化时重置分页
+                _refresh();
+              },
             )
           : Text(l10n.transactions, style: context.veeText.pageTitle),
       actions: _showSearch
@@ -204,12 +235,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               ),
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () => _load(refresh: true),
+                onPressed: _refresh,
                 tooltip: l10n.retry,
               ),
             ],
     );
   }
+
+  // ── 汇总卡（月度收支摘要）────────────────────────────────────────────────
 
   Widget _buildSummaryCard(
     BuildContext context,
@@ -218,10 +251,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        VeeTokens.s16,
-        VeeTokens.s4,
-        VeeTokens.s16,
-        VeeTokens.s12,
+        VeeTokens.s16, VeeTokens.s4, VeeTokens.s16, VeeTokens.s12,
       ),
       child: VeeMonthSelectorCard(
         month: selectedMonth,
@@ -244,137 +274,125 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  Widget _buildList(
-    BuildContext context,
-    TransactionsState state,
-    AppLocalizations l10n,
-  ) {
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: VeeTokens.s80, top: VeeTokens.s4),
-      itemCount: state.transactions.length + (state.hasNext ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: VeeTokens.spacingXs),
-      itemBuilder: (ctx, i) {
-        if (i == state.transactions.length) {
-          return Padding(
+  // ── 分页列表 ──────────────────────────────────────────────────────────────
+  // PagedListView 替代手动 ListView + "加载更多"按钮
+
+  Widget _buildPagedList(BuildContext context, AppLocalizations l10n) {
+    return RefreshIndicator(
+      onRefresh: () async => _refresh(),
+      child: PagedListView<int, Transaction>(
+        pagingController: _pagingController,
+        padding: const EdgeInsets.only(bottom: VeeTokens.s80, top: VeeTokens.s4),
+
+        builderDelegate: PagedChildBuilderDelegate<Transaction>(
+          // ── 普通列表项：Slidable 替代 _SlidableRow ─────────────────────
+          itemBuilder: (context, txn, index) => Padding(
+            padding: VeeTokens.pageHorizontal,
+            child: _buildSlidableTile(context, txn, l10n),
+          ),
+
+          // ── 首页加载中：Skeletonizer 替代 VeeSkeletonCard ──────────────
+          // 直接用真实 _TransactionTile 结构 + 占位数据，自动生成闪烁效果
+          firstPageProgressIndicatorBuilder: (_) => Skeletonizer(
+            enabled: true,
+            containersColor: VeeTokens.surfaceSunken,
+            child: Column(
+              children: _fakeTxns
+                  .map(
+                    (txn) => Padding(
+                      padding: const EdgeInsets.only(
+                        left: VeeTokens.s16,
+                        right: VeeTokens.s16,
+                        bottom: VeeTokens.spacingXs,
+                      ),
+                      child: _TransactionTile(transaction: txn, onTap: () {}),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+
+          // ── 翻页加载中（底部 spinner）──────────────────────────────────
+          newPageProgressIndicatorBuilder: (_) => const Padding(
+            padding: EdgeInsets.all(VeeTokens.spacingMd),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+
+          // ── 无数据 ────────────────────────────────────────────────────
+          noItemsFoundIndicatorBuilder: (_) => VeeEmptyState(
+            icon: Icons.receipt_long_outlined,
+            title: l10n.noTransactions,
+          ),
+
+          // ── 首页加载错误 ──────────────────────────────────────────────
+          firstPageErrorIndicatorBuilder: (_) => VeeEmptyState(
+            icon: Icons.error_outline,
+            title: _pagingController.error?.toString() ?? '加载失败',
+            iconColor: VeeTokens.error,
+            actionLabel: l10n.retry,
+            onAction: _refresh,
+          ),
+
+          // ── 翻页加载错误（底部重试）──────────────────────────────────
+          newPageErrorIndicatorBuilder: (_) => Padding(
             padding: VeeTokens.cardPadding,
             child: FilledButton.tonal(
-              onPressed: () => ref
-                  .read(transactionsProvider.notifier)
-                  .loadMore(selectedMonth),
-              child: Text(l10n.loadMore),
+              onPressed: () => _pagingController.retryLastFailedRequest(),
+              child: Text(l10n.retry),
             ),
-          );
-        }
+          ),
+        ),
+      ),
+    );
+  }
 
-        final txn = state.transactions[i];
-        return Padding(
-          padding: VeeTokens.pageHorizontal,
-          child: _SlidableRow(
-            key: ValueKey(txn.id),
-            onConfirmDelete: () async {
+  // ── Slidable 瓦片（替代原 _SlidableRow + Dismissible）────────────────────
+  // flutter_slidable 处理手势、动画、按钮渲染
+  // 无需手动追踪 _dragProgress、AnimatedContainer 等
+
+  Widget _buildSlidableTile(
+    BuildContext context,
+    Transaction txn,
+    AppLocalizations l10n,
+  ) {
+    return Slidable(
+      key: ValueKey(txn.id),
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        extentRatio: 0.22,
+        children: [
+          SlidableAction(
+            onPressed: (_) async {
               HapticFeedback.mediumImpact();
               final ok = await VeeConfirmDialog.showDelete(
                 context: context,
                 content: l10n.deleteThisRecord,
               );
-              return ok ?? false;
+              if (ok == true) {
+                // provider 删除 → state 更新 → ref.listen → PagingController 同步
+                ref
+                    .read(transactionsProvider.notifier)
+                    .deleteTransaction(txn.id);
+              }
             },
-            onDeleted: () => ref
-                .read(transactionsProvider.notifier)
-                .deleteTransaction(txn.id),
-            child: _TransactionTile(
-              transaction: txn,
-              onTap: () => _openTransactionDetail(txn),
-            ),
+            backgroundColor: VeeTokens.error,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline,
+            label: '删除',
+            borderRadius: VeeTokens.cardBorderRadius,
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildError(
-    BuildContext context,
-    String error,
-    AppLocalizations l10n,
-  ) {
-    return VeeEmptyState(
-      icon: Icons.error_outline,
-      title: error,
-      iconColor: VeeTokens.error,
-      actionLabel: l10n.retry,
-      onAction: () => _load(refresh: true),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Slidable row
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SlidableRow extends StatefulWidget {
-  final Widget child;
-  final Future<bool> Function() onConfirmDelete;
-  final VoidCallback onDeleted;
-
-  const _SlidableRow({
-    super.key,
-    required this.child,
-    required this.onConfirmDelete,
-    required this.onDeleted,
-  });
-
-  @override
-  State<_SlidableRow> createState() => _SlidableRowState();
-}
-
-class _SlidableRowState extends State<_SlidableRow> {
-  double _dragProgress = 0.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dismissible(
-      key: widget.key!,
-      direction: DismissDirection.endToStart,
-      dismissThresholds: const {DismissDirection.endToStart: 0.40},
-      resizeDuration: VeeTokens.durationSlow,
-      movementDuration: const Duration(milliseconds: 300),
-      onUpdate: (details) {
-        setState(() => _dragProgress = details.progress);
-      },
-      confirmDismiss: (_) => widget.onConfirmDelete(),
-      onDismissed: (_) => widget.onDeleted(),
-      background: AnimatedContainer(
-        duration: VeeTokens.durationFast,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: VeeTokens.s24),
-        decoration: BoxDecoration(
-          color: VeeTokens.error.withOpacity(
-            (_dragProgress / 0.40).clamp(0.0, 1.0),
-          ),
-          borderRadius: VeeTokens.cardBorderRadius,
-        ),
-        child: Semantics(
-          label: '删除',
-          child: AnimatedScale(
-            scale: (_dragProgress / 0.40).clamp(0.4, 1.0),
-            duration: VeeTokens.durationFast,
-            child: Icon(
-              Icons.delete_outline,
-              color: Colors.white.withOpacity(
-                (_dragProgress / 0.40).clamp(0.0, 1.0),
-              ),
-              size: VeeTokens.iconXl,
-            ),
-          ),
-        ),
+        ],
       ),
-      child: widget.child,
+      child: _TransactionTile(
+        transaction: txn,
+        onTap: () => _openTransactionDetail(txn),
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Transaction tile
+// _TransactionTile（与原版完全相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TransactionTile extends StatelessWidget {
@@ -389,8 +407,6 @@ class _TransactionTile extends StatelessWidget {
     final color = VeeColors.fromHex(t.categoryColor);
     final amtColor = VeeColors.forTransactionType(t.type);
     final prefix = VeeColors.prefixForTransactionType(t.type);
-
-    // ✅ 副标题优先级：payee > note > 无
     final String? subtitle =
         t.displayPayee ?? (t.note?.isNotEmpty == true ? t.note : null);
 
@@ -423,7 +439,6 @@ class _TransactionTile extends StatelessWidget {
                     t.categoryName ?? l10n.pleaseSelect,
                     style: context.veeText.cardTitle,
                   ),
-                  // ✅ 副标题：payee 优先，fallback 到 note
                   if (subtitle != null) ...[
                     const SizedBox(height: VeeTokens.s2),
                     Text(
@@ -458,7 +473,7 @@ class _TransactionTile extends StatelessWidget {
                 ),
                 if (t.hasReceipt) ...[
                   const SizedBox(height: VeeTokens.s2),
-                  Icon(
+                  const Icon(
                     Icons.image_outlined,
                     size: VeeTokens.iconXs,
                     color: VeeTokens.textPlaceholderVal,
@@ -472,6 +487,10 @@ class _TransactionTile extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _NoGroupPlaceholder（与原版相同）
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _NoGroupPlaceholder extends StatelessWidget {
   final VoidCallback onCreateGroup;

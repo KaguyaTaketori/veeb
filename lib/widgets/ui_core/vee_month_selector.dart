@@ -1,24 +1,22 @@
 // lib/widgets/ui_core/vee_month_selector.dart
+//
+// 变更说明（引入 flutter_animate）：
+//   - AnimatedSwitcher + 14行 transitionBuilder 样板
+//     → Text(...).animate(key: ValueKey(month)).fadeIn().slideY()
+//   - 效果等价：月份切换时新文字淡入 + 从下方轻微滑入
+
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'vee_tokens.dart';
 import 'vee_text_styles.dart';
 
 class VeeMonthSelector extends StatelessWidget {
   final DateTime month;
-
-  /// 能否前进到下一个月（当月时禁用）
   final bool canGoNext;
-
   final VoidCallback onPrev;
   final VoidCallback onNext;
-
-  /// 日期格式，默认 yMMMM（如 "2025年1月" / "January 2025"）
   final DateFormat? dateFormat;
-
-  /// 用户通过日期选择器选中某月后的回调。
-  /// 传入值已规范化为该月第一天（day=1，时分秒为0）。
-  /// 若为 null，则点击月份标题不弹出选择器。
   final ValueChanged<DateTime>? onMonthSelected;
 
   const VeeMonthSelector({
@@ -44,33 +42,39 @@ class VeeMonthSelector extends StatelessWidget {
           onTap: onMonthSelected != null
               ? () => _showMonthPicker(context)
               : null,
-          child: AnimatedSwitcher(
-            duration: VeeTokens.durationFast,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.15),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
-            child: Text(
-              fmt.format(month),
-              key: ValueKey(month),
-              style: context.veeText.sectionTitle.copyWith(
-                letterSpacing: 0.2,
-                color: onMonthSelected != null
-                    ? VeeTokens.brandPrimaryDark
-                    : null,
-                decoration: onMonthSelected != null
-                    ? TextDecoration.underline
-                    : TextDecoration.none,
-                decorationColor: VeeTokens.brandPrimaryDark.withOpacity(0.35),
-              ),
-            ),
-          ),
+
+          // ── flutter_animate 替代 AnimatedSwitcher ──────────────────────
+          // key: ValueKey(month) → 月份变化时触发重新动画
+          // .fadeIn()  → 替代 FadeTransition
+          // .slideY()  → 替代 SlideTransition(Offset(0, 0.15) → Offset.zero)
+          child:
+              Text(
+                    fmt.format(month),
+                    key: ValueKey(month),
+                    style: context.veeText.sectionTitle.copyWith(
+                      letterSpacing: 0.2,
+                      color: onMonthSelected != null
+                          ? VeeTokens.brandPrimaryDark
+                          : null,
+                      decoration: onMonthSelected != null
+                          ? TextDecoration.underline
+                          : TextDecoration.none,
+                      decorationColor: VeeTokens.brandPrimaryDark.withOpacity(
+                        0.35,
+                      ),
+                    ),
+                  )
+                  .animate(key: ValueKey(month))
+                  .fadeIn(
+                    duration: VeeTokens.durationFast,
+                    curve: Curves.easeOut,
+                  )
+                  .slideY(
+                    begin: 0.15,
+                    end: 0,
+                    duration: VeeTokens.durationFast,
+                    curve: Curves.easeOut,
+                  ),
         ),
 
         _NavButton(
@@ -86,12 +90,7 @@ class VeeMonthSelector extends StatelessWidget {
     if (onMonthSelected == null) return;
 
     final now = DateTime.now();
-
-    // lastDate = 当月最后一天，避免 initialDate > lastDate 断言失败。
-    // DateTime(y, m+1, 0) 是 m 月最后一天的 trick（day=0 会回退到上月最后一天）。
     final lastDate = DateTime(now.year, now.month + 1, 0);
-
-    // initialDate 必须 ≤ lastDate；当 selectedMonth 是当月且 day > 1 时夹紧到 lastDate。
     final initialDate = month.isAfter(lastDate) ? lastDate : month;
 
     final picked = await showDatePicker(
@@ -104,18 +103,14 @@ class VeeMonthSelector extends StatelessWidget {
     );
 
     if (picked == null) return;
-
-    // 规范化为该月第一天
     final normalized = DateTime(picked.year, picked.month);
-
     if (!context.mounted) return;
-
     onMonthSelected!(normalized);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 导航按钮
+// 导航按钮（与原版相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NavButton extends StatelessWidget {
@@ -158,7 +153,7 @@ class _NavButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VeeMonthSelectorCard
+// VeeMonthSelectorCard（与原版相同）
 // ─────────────────────────────────────────────────────────────────────────────
 
 class VeeMonthSelectorCard extends StatelessWidget {
