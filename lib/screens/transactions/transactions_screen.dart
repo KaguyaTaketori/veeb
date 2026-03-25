@@ -67,8 +67,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   void initState() {
     super.initState();
     selectedMonth = DateTime.now();
-    _pagingController = PagingController<int, Transaction>(firstPageKey: 1);
-    _pagingController.addPageRequestListener(_onPageRequested);
+    _pagingController = PagingController<int, Transaction>(
+      getNextPageKey: (PagingState<int, Transaction>? state) {
+        if (state == null) return 1;
+        if (state.lastPageIsEmpty) return null;
+        return state.nextIntPageKey;
+      },
+      fetchPage: (int pageKey) async {
+        final notifier = ref.read(transactionsProvider.notifier);
+        if (pageKey == 1) {
+          await notifier.load(
+            selectedMonth,
+            refresh: true,
+            keyword: _searchCtrl.text.trim(),
+            typeFilter: _typeFilter,
+          );
+        } else {
+          await notifier.loadMore(selectedMonth);
+        }
+        final state = ref.read(transactionsProvider);
+        return state.transactions;
+      },
+    );
   }
 
   @override
@@ -76,20 +96,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     _pagingController.dispose();
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _onPageRequested(int pageKey) async {
-    final notifier = ref.read(transactionsProvider.notifier);
-    if (pageKey == 1) {
-      notifier.load(
-        selectedMonth,
-        refresh: true,
-        keyword: _searchCtrl.text.trim(),
-        typeFilter: _typeFilter,
-      );
-    } else {
-      notifier.loadMore(selectedMonth);
-    }
   }
 
   @override
@@ -142,17 +148,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     final summaryState = ref.watch(transactionsProvider);
     final groupId = ref.watch(currentGroupIdProvider);
 
-    ref.listen<TransactionsState>(transactionsProvider, (_, next) {
-      if (next.loading) return;
-
-      _pagingController.value = PagingState(
-        nextPageKey: next.hasNext ? next.page + 1 : null,
-        itemList: next.transactions,
-        error: next.error != null ? Exception(next.error) : null,
-      );
-    });
-
-    // ── 监听 groupId 变化，group 就绪时触发首次加载 ────────────────────
     ref.listen<int?>(currentGroupIdProvider, (previous, next) {
       if (previous == null && next != null) _refresh();
     });
@@ -167,21 +162,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       appBar: _buildAppBar(context, l10n),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: VeeTokens.maxContentWidth),
+          constraints: const BoxConstraints(
+            maxWidth: VeeTokens.maxContentWidth,
+          ),
           child: Column(
             children: [
               _buildSummaryCard(context, summaryState, l10n),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  VeeTokens.s16, 0, VeeTokens.s16, VeeTokens.s8,
+                  VeeTokens.s16,
+                  0,
+                  VeeTokens.s16,
+                  VeeTokens.s8,
                 ),
                 child: VeeChipGroup<String?>(
                   items: _filterValues,
                   labelBuilder: (v) => switch (v) {
-                    'expense'  => l10n.expense,
-                    'income'   => l10n.income,
+                    'expense' => l10n.expense,
+                    'income' => l10n.income,
                     'transfer' => l10n.transfer,
-                    _          => l10n.total,
+                    _ => l10n.total,
                   },
                   selected: _typeFilter,
                   onChanged: (v) {
@@ -220,7 +220,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 ),
               ),
               onChanged: (v) {
-                // 搜索词变化时重置分页
                 _refresh();
               },
             )
@@ -251,7 +250,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        VeeTokens.s16, VeeTokens.s4, VeeTokens.s16, VeeTokens.s12,
+        VeeTokens.s16,
+        VeeTokens.s4,
+        VeeTokens.s16,
+        VeeTokens.s12,
       ),
       child: VeeMonthSelectorCard(
         month: selectedMonth,
@@ -275,80 +277,77 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   }
 
   // ── 分页列表 ──────────────────────────────────────────────────────────────
-  // PagedListView 替代手动 ListView + "加载更多"按钮
 
   Widget _buildPagedList(BuildContext context, AppLocalizations l10n) {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
-      child: PagedListView<int, Transaction>(
-        pagingController: _pagingController,
-        padding: const EdgeInsets.only(bottom: VeeTokens.s80, top: VeeTokens.s4),
-
-        builderDelegate: PagedChildBuilderDelegate<Transaction>(
-          // ── 普通列表项：Slidable 替代 _SlidableRow ─────────────────────
-          itemBuilder: (context, txn, index) => Padding(
-            padding: VeeTokens.pageHorizontal,
-            child: _buildSlidableTile(context, txn, l10n),
-          ),
-
-          // ── 首页加载中：Skeletonizer 替代 VeeSkeletonCard ──────────────
-          // 直接用真实 _TransactionTile 结构 + 占位数据，自动生成闪烁效果
-          firstPageProgressIndicatorBuilder: (_) => Skeletonizer(
-            enabled: true,
-            containersColor: VeeTokens.surfaceSunken,
-            child: Column(
-              children: _fakeTxns
-                  .map(
-                    (txn) => Padding(
-                      padding: const EdgeInsets.only(
-                        left: VeeTokens.s16,
-                        right: VeeTokens.s16,
-                        bottom: VeeTokens.spacingXs,
-                      ),
-                      child: _TransactionTile(transaction: txn, onTap: () {}),
-                    ),
-                  )
-                  .toList(),
+      child: PagingListener(
+        controller: _pagingController,
+        builder: (context, state, fetchNextPage) =>
+            PagedListView<int, Transaction>(
+              state: state,
+              fetchNextPage: fetchNextPage,
+              padding: const EdgeInsets.only(
+                bottom: VeeTokens.s80,
+                top: VeeTokens.s4,
+              ),
+              builderDelegate: PagedChildBuilderDelegate<Transaction>(
+                itemBuilder: (context, txn, index) => Padding(
+                  padding: VeeTokens.pageHorizontal,
+                  child: _buildSlidableTile(context, txn, l10n),
+                ),
+                firstPageProgressIndicatorBuilder: (_) => Skeletonizer(
+                  enabled: true,
+                  containersColor: VeeTokens.surfaceSunken,
+                  child: Column(
+                    children: _fakeTxns
+                        .map(
+                          (txn) => Padding(
+                            padding: const EdgeInsets.only(
+                              left: VeeTokens.s16,
+                              right: VeeTokens.s16,
+                              bottom: VeeTokens.spacingXs,
+                            ),
+                            child: _TransactionTile(
+                              transaction: txn,
+                              onTap: () {},
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                newPageProgressIndicatorBuilder: (_) => const Padding(
+                  padding: EdgeInsets.all(VeeTokens.spacingMd),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                noItemsFoundIndicatorBuilder: (_) => VeeEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: l10n.noTransactions,
+                ),
+                firstPageErrorIndicatorBuilder: (_) => VeeEmptyState(
+                  icon: Icons.error_outline,
+                  title: _pagingController.error?.toString() ?? '加载失败',
+                  iconColor: VeeTokens.error,
+                  actionLabel: l10n.retry,
+                  onAction: _refresh,
+                ),
+                newPageErrorIndicatorBuilder: (_) => Padding(
+                  padding: VeeTokens.cardPadding,
+                  child: FilledButton.tonal(
+                    onPressed: _refresh,
+                    child: Text(l10n.retry),
+                  ),
+                ),
+              ),
             ),
-          ),
-
-          // ── 翻页加载中（底部 spinner）──────────────────────────────────
-          newPageProgressIndicatorBuilder: (_) => const Padding(
-            padding: EdgeInsets.all(VeeTokens.spacingMd),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-
-          // ── 无数据 ────────────────────────────────────────────────────
-          noItemsFoundIndicatorBuilder: (_) => VeeEmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: l10n.noTransactions,
-          ),
-
-          // ── 首页加载错误 ──────────────────────────────────────────────
-          firstPageErrorIndicatorBuilder: (_) => VeeEmptyState(
-            icon: Icons.error_outline,
-            title: _pagingController.error?.toString() ?? '加载失败',
-            iconColor: VeeTokens.error,
-            actionLabel: l10n.retry,
-            onAction: _refresh,
-          ),
-
-          // ── 翻页加载错误（底部重试）──────────────────────────────────
-          newPageErrorIndicatorBuilder: (_) => Padding(
-            padding: VeeTokens.cardPadding,
-            child: FilledButton.tonal(
-              onPressed: () => _pagingController.retryLastFailedRequest(),
-              child: Text(l10n.retry),
-            ),
-          ),
-        ),
       ),
     );
   }
 
-  // ── Slidable 瓦片（替代原 _SlidableRow + Dismissible）────────────────────
-  // flutter_slidable 处理手势、动画、按钮渲染
-  // 无需手动追踪 _dragProgress、AnimatedContainer 等
+  // ── Slidable 瓦片 ────────────────────────────────────────────────────────
 
   Widget _buildSlidableTile(
     BuildContext context,
@@ -369,7 +368,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 content: l10n.deleteThisRecord,
               );
               if (ok == true) {
-                // provider 删除 → state 更新 → ref.listen → PagingController 同步
                 ref
                     .read(transactionsProvider.notifier)
                     .deleteTransaction(txn.id);
@@ -392,7 +390,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _TransactionTile（与原版完全相同）
+// _TransactionTile
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TransactionTile extends StatelessWidget {
@@ -430,7 +428,6 @@ class _TransactionTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: VeeTokens.spacingSm),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +457,6 @@ class _TransactionTile extends StatelessWidget {
                 ],
               ),
             ),
-
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -489,7 +485,7 @@ class _TransactionTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _NoGroupPlaceholder（与原版相同）
+// _NoGroupPlaceholder
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NoGroupPlaceholder extends StatelessWidget {
